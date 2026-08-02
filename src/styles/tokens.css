@@ -1,0 +1,78 @@
+:root {
+  color-scheme: light;
+
+  /* Neutres — beaucoup de blanc, très peu de couleur */
+  --color-bg: #fafaf8;
+  --color-surface: #ffffff;
+  --color-border: #e7e5e1;
+  --color-border-strong: #d3d0c9;
+  --color-text-primary: #1c1c1e;
+  --color-text-secondary: #6e6e73;
+  --color-text-muted: #9b9a96;
+
+  /* Accent unique : un turquoise moderne, plus vivant qu'un bleu froid */
+  --color-accent: #14a098;
+  --color-accent-dark: #0c766f;
+  --color-accent-soft: #e3f5f3;
+  --color-accent-glow: rgba(20, 160, 152, 0.16);
+
+  /* Touche chaleureuse réservée aux moments d'énergie (séries, réussite) */
+  --color-warm: #f2994a;
+  --color-warm-soft: #fdeee0;
+  --color-warm-glow: rgba(242, 153, 74, 0.16);
+
+  /* Classification maîtrisé / à revoir (fiches de session) — seul usage de
+     vert/rouge dans l'app, réservé à ce jugement binaire précis */
+  --color-success: #2f9e58;
+  --color-success-soft: #e6f6ec;
+  --color-danger: #d0453c;
+  --color-danger-soft: #fbe9e7;
+
+  /* Espacements */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+
+  /* Rayons */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  /* Typographie — polices système uniquement (offline-first, rendu CJK natif) */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans',
+    'Yu Gothic', 'Noto Sans', sans-serif;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-accent: 0 6px 16px rgba(20, 160, 152, 0.22);
+}
+
+/* Le thème est piloté par l'attribut data-theme sur <html>, mis à jour
+   par themeStore — initialisé sur la préférence système, puis modifiable
+   manuellement via le bouton clair/sombre. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: #121212;
+  --color-surface: #1c1c1e;
+  --color-border: #2e2e30;
+  --color-border-strong: #3a3a3c;
+  --color-text-primary: #f2f2f2;
+  --color-text-secondary: #a3a3a7;
+  --color-text-muted: #6e6e73;
+  --color-accent: #3fc9be;
+  --color-accent-dark: #7fe0d6;
+  --color-accent-soft: #16302d;
+  --color-accent-glow: rgba(63, 201, 190, 0.14);
+  --color-warm: #f2994a;
+  --color-warm-soft: #3a2a18;
+  --color-warm-glow: rgba(242, 153, 74, 0.14);
+  --shadow-accent: 0 6px 18px rgba(63, 201, 190, 0.18);
+
+  --color-success: #5fbb82;
+  --color-success-soft: #16301f;
+  --color-danger: #e5766d;
+  --color-danger-soft: #3a1f1c;
+}

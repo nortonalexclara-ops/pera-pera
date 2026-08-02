@@ -1,0 +1,856 @@
+/* user-select/touch-callout désactivés sur tout l'écran de séance, pas
+   seulement `.session__writing-col` (fix précédent, insuffisant) — un
+   tracé au doigt/Apple Pencil qui déborde un peu de la zone de dessin
+   pouvait sélectionner en bleu les boutons de décision "Maîtrisé"/"À
+   revoir" (`.session__card-col`, hors de la zone jusque-là protégée) sur
+   iPad Safari. Plutôt que protéger chaque nouvelle zone au coup par coup
+   à chaque nouveau signalement, protection posée une fois pour toutes au
+   niveau racine de l'écran — rien ici n'a besoin d'être sélectionnable. */
+.session {
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-md) var(--space-lg);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.session__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  margin-bottom: var(--space-md);
+}
+
+.session__header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.session__module-badge {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+}
+
+.session__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: var(--space-lg);
+}
+
+.session__card-col {
+  flex: 1.1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* Position dans le programme complet du niveau (ex. "12 / 101 kanjis
+   N5") — pas un quota de séance, un repère de progression sur tout ce
+   qu'il y a à connaître à ce niveau. Centré et agrandi (demande
+   utilisateur) plutôt que discrètement casé en haut à gauche. */
+.session__top-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  align-self: center;
+}
+
+.session__level-counter {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 8px 20px;
+}
+
+/* Retour à l'élément précédent — grisé (pas caché) au tout premier élément
+   pour ne pas faire sauter la mise en page. */
+.session__back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.session__back-btn:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+.session__back-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Colonne d'écriture élargie (demande utilisateur) : plus de flex et de
+   max-width que la colonne carte, colonne verticale pour empiler le
+   repère "ordre des traits" au-dessus du canevas — juste à côté de là où
+   on trace, plutôt qu'enterré dans la carte à gauche. */
+/* user-select/touch-callout désactivés sur toute la colonne, pas
+   seulement sur .writing-canvas plus bas : .stroke-order-panel (repère
+   "ordre des traits") est un frère du canevas ici, pas un descendant — un
+   tracé qui déborde un peu de la zone de dessin sélectionnait sinon les
+   numéros sous les vignettes (bug signalé, la première correction ne
+   couvrait que le canevas lui-même). */
+.session__writing-col {
+  flex: 1.6;
+  min-width: 280px;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.session__writing-col > .writing-canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Carte retournable */
+.flip-card {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  perspective: 1600px;
+}
+
+.flip-card__inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.flip-card.is-flipped .flip-card__inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.flip-card__face--front {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  text-align: center;
+  width: 100%;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.flip-card__face--front:hover {
+  background: var(--color-bg);
+}
+
+.flip-card__face--back {
+  transform: rotateY(180deg);
+  padding: var(--space-lg);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.flip-card__char {
+  font-size: 176px;
+  line-height: 1;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.flip-card__flip-hint {
+  font-size: 16px;
+  color: var(--color-text-muted);
+}
+
+/* Carte vocabulaire — mot potentiellement long (expression), pas un seul
+   caractère : taille réduite par rapport au kanji, retour à la ligne
+   autorisé. */
+.flip-card__word {
+  font-size: 64px;
+  line-height: 1.3;
+  font-weight: 500;
+  max-width: 90%;
+  color: var(--color-text-primary);
+}
+
+.flip-card__mini-word {
+  font-size: 36px;
+  font-weight: 500;
+  line-height: 2.2;
+  margin: 6px 0 2px;
+  color: var(--color-text-primary);
+}
+
+.word-type-badge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
+}
+
+/* Dos de la carte — kanji/mot/motif centré en haut, traduction centrée
+   juste en dessous (pas à gauche comme avant). */
+.flip-card__back-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.flip-card__mini-char {
+  font-size: 60px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.flip-card__meanings {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* Ordre des traits — une mini-vignette par trait, cumulative (la vignette
+   n affiche les traits 1 à n), pour montrer comment le kanji se construit
+   plutôt qu'une seule image statique du résultat final. */
+.stroke-order {
+  margin-bottom: var(--space-lg);
+}
+
+/* Variante "panneau" du même repère — utilisée dans la colonne d'écriture
+   (à côté du canevas, pas dans la carte à gauche) pour le module Kanjis et
+   les Révisions : encart séparé, même habillage que WritingCanvas, plutôt
+   qu'un simple bloc dans le flux de la carte. */
+.stroke-order-panel {
+  flex-shrink: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-md);
+}
+
+.stroke-order-panel .flip-card__label {
+  margin-bottom: var(--space-sm);
+}
+
+.stroke-order__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stroke-order__step {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.stroke-order__step svg {
+  width: 100%;
+  height: 100%;
+}
+
+.stroke-order__step path {
+  fill: none;
+  stroke: var(--color-accent-dark);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.stroke-order__step-number {
+  position: absolute;
+  bottom: 1px;
+  right: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+/* La traduction est la réponse principale de la carte — doit se voir en
+   premier, avant les lectures et les exemples. */
+.meaning-pill {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-dark);
+  border-radius: var(--radius-pill);
+  padding: 8px 20px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* Séparation volontairement généreuse entre les prononciations/la
+   conjugaison et les exemples — deux blocs bien distincts, pas une
+   continuité visuelle. */
+.flip-card__readings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  margin-bottom: var(--space-2xl);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.flip-card__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.flip-card__reading-value {
+  font-size: 19px;
+  font-weight: 500;
+}
+
+/* Puces "clés" (composants du kanji, premier niveau de décomposition) —
+   même style `.component-chip*` réutilisé par la fiche Explorer
+   (`Explorer.css`), seul l'agencement de la liste diffère selon le
+   contexte : ici avec le même séparateur que `.flip-card__readings`
+   au-dessus, pour garder le rythme de sections de la carte de séance. */
+.flip-card__components {
+  list-style: none;
+  margin: 0 0 var(--space-2xl);
+  padding: 0 0 var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.component-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px 6px 10px;
+}
+
+.component-chip__char {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.component-chip__meaning {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.conjugation-table {
+  margin-bottom: var(--space-2xl);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+  text-align: center;
+}
+
+/* Vrai tableau (pas des lignes flex avec justify-content: space-between,
+   qui laissait un grand vide au milieu) — colonnes qui se resserrent
+   naturellement autour de leur contenu, centré, assez présent avant les
+   exemples. */
+.conjugation-grid {
+  width: auto;
+  max-width: 100%;
+  margin: 0 auto;
+  border-collapse: collapse;
+}
+
+.conjugation-grid th {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 4px 14px 8px;
+}
+
+.conjugation-grid td {
+  padding: 9px 14px;
+  border-top: 1px solid var(--color-border);
+  font-size: 18px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.conjugation-grid tr:first-child td {
+  border-top: none;
+}
+
+.conjugation-grid td:first-child {
+  text-align: left;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Sépare visuellement le groupe neutre du groupe poli (présent + passé
+   chacun) — une bordure un peu plus marquée qu'entre présent/passé du
+   même groupe. */
+.conjugation-grid__group-start td {
+  border-top: 1px solid var(--color-border-strong);
+  padding-top: 14px;
+}
+
+.conjugation-grid--simple td:first-child {
+  padding-right: 24px;
+}
+
+.conjugation-te {
+  margin-top: var(--space-md);
+  font-size: 15px;
+  color: var(--color-text-secondary);
+}
+
+.conjugation-te strong {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* Grammaire — règle et utilisation clairement séparées, chacune dans son
+   propre bloc, jamais mélangées dans un seul paragraphe. */
+.grammar-rule {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-bottom: var(--space-2xl);
+}
+
+.grammar-rule__block {
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.grammar-rule__text {
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+/* Mots (milieu gauche) / Phrases (milieu droite) — colonnes séparées */
+.flip-card__examples-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+}
+
+.example-list {
+  list-style: none;
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.example-item:not(:last-child) {
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.example__jp {
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 2.2;
+}
+
+.example__jp--sentence {
+  font-weight: 400;
+  line-height: 2.2;
+}
+
+/* Furigana : uniquement sous les runs de kanji qui en ont besoin (jamais
+   une ligne de lecture séparée pour toute la phrase), pour inciter à lire
+   le kanji plutôt qu'à sauter directement au hiragana. */
+ruby {
+  ruby-position: under;
+  ruby-align: center;
+}
+
+rt {
+  font-size: 0.55em;
+  font-weight: 400;
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+.furigana-highlight {
+  color: var(--color-accent-dark);
+  font-weight: 600;
+}
+
+.example__translation {
+  display: inline-block;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  margin-top: 4px;
+  font-size: 16px;
+  font-style: italic;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-align: left;
+}
+
+.example__translation.is-revealed {
+  color: var(--color-text-secondary);
+  font-style: normal;
+}
+
+/* Décision de classement */
+.session__decision {
+  display: flex;
+  gap: var(--space-md);
+  flex-shrink: 0;
+}
+
+.decision-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 15px 20px;
+  font-size: 17px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.decision-btn:hover {
+  transform: translateY(-1px);
+}
+
+.decision-btn--mastered {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.decision-btn--review {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+/* Carte de fin de module / module pas encore construit — pleine largeur */
+.module-end {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+}
+
+.module-end__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+  background: var(--color-accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.module-end__title {
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.module-end__description {
+  color: var(--color-text-secondary);
+  max-width: 360px;
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.module-end__button {
+  margin-top: var(--space-sm);
+}
+
+/* Panneau d'écriture — toujours visible, à droite, entièrement vierge.
+   user-select/touch-callout désactivés sur tout le panneau (pas juste le
+   canvas) : sur iPad, un tracé un peu long au doigt/Apple Pencil déclenche
+   sinon le menu de sélection de texte natif de Safari, qui sélectionne la
+   zone (et le texte au-dessus) en bleu sans qu'on puisse s'en défaire. */
+.writing-canvas {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-md);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.writing-canvas__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  margin-bottom: var(--space-sm);
+}
+
+/* Pas de titre (ex. Cahier, où le titre de l'écran suffit) — les outils
+   prennent toute la largeur disponible côté droit. */
+.writing-canvas__head--tools-only {
+  justify-content: flex-end;
+}
+
+.writing-canvas__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.writing-canvas__tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.writing-canvas__tool,
+.writing-canvas__undo,
+.writing-canvas__clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.writing-canvas__tool:hover,
+.writing-canvas__undo:hover:not(:disabled),
+.writing-canvas__clear:hover {
+  color: var(--color-text-primary);
+}
+
+.writing-canvas__undo:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Outil actif (stylo ou gomme) — même traitement visuel que les boutons
+   de choix sélectionnés (contour, pas de fond plein). */
+.writing-canvas__tool.active {
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
+  background: var(--color-accent-soft);
+}
+
+.writing-canvas__surface {
+  position: relative;
+  flex: 1;
+  min-height: 220px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-drag: none;
+}
+
+/* Papier quadrillé — Cahier uniquement, façon feuille japonaise. Motif
+   posé sur le fond, le canvas d'encre (transparent) dessine par-dessus. */
+.writing-canvas__surface--grid {
+  background-image:
+    linear-gradient(var(--color-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: -1px -1px;
+}
+
+.writing-canvas__ink {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.writing-canvas__ink--pen {
+  cursor: crosshair;
+}
+
+.writing-canvas__ink--eraser {
+  cursor: cell;
+}
+
+/* Paysage étroit / portrait : on empile, la carte garde la priorité de
+   hauteur et le panneau d'écriture reste compact mais toujours visible. */
+@media (max-width: 860px) {
+  .session__body {
+    flex-direction: column;
+  }
+
+  .session__writing-col {
+    max-width: none;
+    flex: 0 0 200px;
+  }
+
+  .flip-card__char {
+    font-size: 130px;
+  }
+
+  .flip-card__word {
+    font-size: 48px;
+  }
+}
+
+@media (max-width: 640px) {
+  .flip-card__examples-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-lg);
+  }
+}
+
+/* Téléphone : la carte retournée n'avait qu'une toute petite fenêtre de
+   défilement (signalé par l'utilisatrice) — le budget de hauteur du
+   palier ≤860px (padding généreux, colonne d'écriture fixée à 200px,
+   boutons de décision pleine taille) ne laissait presque rien à
+   `.flip-card`. Ici on resserre tout ce qui n'est pas la carte
+   (padding/marges/écarts, colonne d'écriture, boutons) pour lui rendre
+   le maximum de place — la colonne d'écriture devient plus compacte et
+   secondaire (garde une lecture pour le repère du trait, sert surtout à
+   vérifier deux-trois traits) plutôt que la zone d'entraînement complète
+   qu'elle est sur desktop/tablette. */
+@media (max-width: 600px) {
+  .session {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .session__header {
+    margin-bottom: var(--space-sm);
+  }
+
+  .session__body {
+    gap: var(--space-md);
+  }
+
+  .session__card-col {
+    gap: var(--space-sm);
+  }
+
+  .flip-card__face--front,
+  .flip-card__face--back {
+    padding: var(--space-md);
+  }
+
+  /* Filet de sécurité : si le repère "ordre des traits" + le canevas ne
+     tiennent pas tous les deux dans la hauteur réduite, la colonne
+     défile elle-même plutôt que de déborder sur le reste de la page. */
+  .session__writing-col {
+    flex: 0 0 150px;
+    gap: var(--space-sm);
+    overflow-y: auto;
+  }
+
+  .writing-canvas {
+    padding: var(--space-sm);
+  }
+
+  /* Quatre boutons pleine taille (stylo/gomme/annuler/tout effacer) ne
+     tiennent plus à côté du titre sur un écran étroit — on resserre outils
+     et espacement plutôt que de les laisser déborder ou passer le titre en
+     plusieurs lignes. */
+  .writing-canvas__tools {
+    gap: 8px;
+  }
+
+  .writing-canvas__tool,
+  .writing-canvas__undo,
+  .writing-canvas__clear {
+    width: 32px;
+    height: 32px;
+  }
+
+  .writing-canvas__surface {
+    min-height: 80px;
+  }
+
+  .stroke-order-panel {
+    padding: var(--space-sm);
+  }
+
+  .stroke-order__step {
+    width: 34px;
+    height: 34px;
+  }
+
+  .session__decision {
+    gap: var(--space-sm);
+  }
+
+  .decision-btn {
+    padding: 12px 16px;
+    font-size: 15px;
+  }
+}

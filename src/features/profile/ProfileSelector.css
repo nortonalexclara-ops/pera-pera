@@ -1,0 +1,125 @@
+.profile-selector {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  overflow: hidden;
+}
+
+.profile-selector__header {
+  position: relative;
+  text-align: center;
+  margin-bottom: var(--space-2xl);
+}
+
+.profile-selector__title {
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.profile-selector__subtitle {
+  margin-top: var(--space-sm);
+  color: var(--color-text-secondary);
+  font-size: 15px;
+}
+
+.profile-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-lg);
+  max-width: 640px;
+}
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 140px;
+  padding: var(--space-lg) var(--space-md);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.profile-card__avatar {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 24px;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  border: 3px solid var(--color-surface);
+  outline: 1px solid var(--color-border);
+}
+
+.profile-card__name {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.profile-card--new {
+  border-style: dashed;
+  color: var(--color-text-muted);
+}
+
+.profile-card--new .profile-card__avatar {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  box-shadow: none;
+  outline: none;
+}
+
+/* Formulaire de création — remplace la carte "Nouveau profil" sur place,
+   plutôt qu'une modale séparée pour un geste aussi simple qu'un prénom. */
+.profile-card--form {
+  border-style: dashed;
+  gap: var(--space-sm);
+}
+
+.profile-card__input {
+  width: 100%;
+  text-align: center;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  padding: 8px 10px;
+}
+
+.profile-card__input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.profile-card__confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.profile-selector__error {
+  position: relative;
+  margin-top: var(--space-lg);
+  color: var(--color-danger);
+  font-size: 13px;
+}

@@ -1,0 +1,485 @@
+.explorer {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.explorer__title {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.explorer__subtitle {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  margin-bottom: var(--space-lg);
+}
+
+.explorer__search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  padding: 12px 18px;
+  margin-bottom: var(--space-md);
+  color: var(--color-text-muted);
+}
+
+.explorer__search input {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: 15px;
+  color: var(--color-text-primary);
+}
+
+.explorer__search input:focus {
+  outline: none;
+}
+
+.explorer__filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+/* Filtre par champ lexical — n'apparaît que pour les kanjis (seul type de
+   contenu classé thématiquement pour l'instant), sous les filtres niveau/
+   type plutôt que mêlé à eux (liste d'options bien plus longue). */
+.explorer__theme-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: var(--space-md);
+}
+
+.explorer__theme-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.explorer__select-wrap {
+  position: relative;
+  display: inline-flex;
+  max-width: 260px;
+}
+
+.explorer__select {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: 10px 36px 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.explorer__select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.explorer__select-chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.explorer__count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.explorer__empty {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  padding: var(--space-lg) 0;
+  text-align: center;
+}
+
+.explorer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: var(--space-xl);
+}
+
+.explorer-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.explorer-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 12px 14px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.explorer-row:hover {
+  background: var(--color-bg);
+}
+
+.explorer-row__kind-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border-radius: var(--radius-pill);
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.explorer-row__headline {
+  font-size: 22px;
+  font-weight: 500;
+  min-width: 40px;
+}
+
+.explorer-row__sub {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorer-row__meaning {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* Toujours un slot de grille même sans bouton (mots/grammaire n'ont pas de
+   traits à s'entraîner) — sinon les colonnes suivantes (favori, chevron) se
+   décalent d'une ligne à l'autre selon que le bouton est présent ou non. */
+.explorer-row__practice-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+}
+
+.explorer-row__practice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.explorer-row__practice:hover {
+  color: var(--color-text-primary);
+}
+
+.explorer-row__practice.is-active {
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
+  background: var(--color-accent-soft);
+}
+
+.explorer-row__favorite {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+}
+
+.explorer-row__chevron {
+  color: var(--color-text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.explorer-row__chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.explorer-detail {
+  padding: 0 var(--space-lg) var(--space-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+.explorer-detail__body {
+  padding-top: var(--space-md);
+}
+
+.explorer-detail__readings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.explorer-detail__conjugation {
+  margin: 0 auto var(--space-sm);
+}
+
+.explorer-detail__examples {
+  list-style: none;
+  margin: var(--space-sm) 0 var(--space-lg);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.explorer-detail__examples li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.explorer-detail__examples li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.explorer-detail__example-meaning {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.explorer-detail__grammar-rule {
+  margin-bottom: var(--space-lg);
+}
+
+/* Puces des clés (composants du kanji) — style partagé `.component-chip*`
+   défini dans SessionCard.css (réutilisé aussi par la carte de séance),
+   seul l'agencement de la liste change ici (pas de séparateur en bas,
+   contrairement à `.flip-card__components`, la fiche Explorer n'a pas ce
+   rythme de sections séparées par un trait). */
+.explorer-detail__components {
+  list-style: none;
+  margin: var(--space-sm) 0 var(--space-lg);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .explorer-row {
+    grid-template-columns: auto 1fr auto auto;
+    grid-template-areas:
+      'badge badge practice fav'
+      'headline headline headline chevron'
+      'sub sub sub sub'
+      'meaning meaning meaning meaning';
+  }
+
+  .explorer-row__kind-badge {
+    grid-area: badge;
+  }
+
+  .explorer-row__practice-slot {
+    grid-area: practice;
+  }
+
+  .explorer-row__favorite {
+    grid-area: fav;
+  }
+
+  .explorer-row__chevron {
+    grid-area: chevron;
+  }
+
+  .explorer-row__headline {
+    grid-area: headline;
+  }
+
+  .explorer-row__sub {
+    grid-area: sub;
+    white-space: normal;
+  }
+
+  .explorer-row__meaning {
+    grid-area: meaning;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .explorer-detail__readings {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Petit encadré d'entraînement à l'écriture (bouton dédié sur les lignes
+   kanji) — même famille visuelle que `.writing-canvas`, en plus compact.
+   user-select/touch-callout désactivés pour la même raison que
+   `.writing-canvas` (voir ce fichier) : sans ça, un tracé un peu long au
+   doigt/Apple Pencil déclenche le menu de sélection de texte natif de
+   Safari sur iPad — implémentation de canvas séparée de WritingCanvas
+   (capture les traits point par point pour la correction), donc le
+   correctif n'était pas hérité automatiquement. */
+.kanji-practice {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.kanji-practice__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.kanji-practice__title {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.kanji-practice__title strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.kanji-practice__clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.kanji-practice__clear:hover {
+  color: var(--color-text-primary);
+}
+
+/* Zone de dessin + indice de tracé (débloqué après deux essais ratés)
+   côte à côte sur les écrans assez larges, empilés sinon. */
+.kanji-practice__body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.kanji-practice__surface {
+  position: relative;
+  flex: 1 1 200px;
+  width: 100%;
+  height: 160px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-drag: none;
+}
+
+.kanji-practice__hint {
+  flex: 0 0 auto;
+  max-width: 100%;
+  margin-bottom: 0;
+}
+
+.kanji-practice__ink {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.kanji-practice__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.kanji-practice__count {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.kanji-practice__check {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.kanji-practice__check:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kanji-practice__result {
+  margin-top: var(--space-sm);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+}
+
+.kanji-practice__result.correct {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.kanji-practice__result.incorrect {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}

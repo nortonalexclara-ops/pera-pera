@@ -1,0 +1,186 @@
+.notes-list {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.notes-list__title {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.notes-list__subtitle {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: var(--space-xl);
+  max-width: 480px;
+}
+
+.notes-list__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-md);
+}
+
+.note-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 6px;
+  min-height: 120px;
+  padding: var(--space-md);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.note-card__icon {
+  color: var(--color-accent);
+  margin-bottom: 2px;
+}
+
+.note-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.note-card__date {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.note-card__preview {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.note-card--new {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-style: dashed;
+  color: var(--color-text-muted);
+}
+
+.note-card--new .note-card__title {
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: normal;
+}
+
+/* Écran d'édition — un carnet : titre, une zone tapée, une zone
+   manuscrite juste en dessous. Les deux coexistent (pas de bascule de
+   mode) : on écrit comme on veut, parfois les deux sur la même note. */
+.note-editor {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.note-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.note-editor__delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.note-editor__delete:hover {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.note-editor__title {
+  border: none;
+  background: none;
+  font-size: 24px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.note-editor__title:focus-visible {
+  outline: none;
+  border-bottom-color: var(--color-accent);
+}
+
+.note-editor__title::placeholder {
+  color: var(--color-text-muted);
+}
+
+.note-editor__text {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.6;
+  padding: var(--space-md);
+}
+
+.note-editor__text:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
+.note-editor__text::placeholder {
+  color: var(--color-text-muted);
+}
+
+.note-editor__canvas-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.note-canvas .writing-canvas__surface {
+  min-height: 260px;
+}
+
+.note-editor__missing {
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-md);
+}
+
+@media (max-width: 600px) {
+  .note-editor__text {
+    min-height: 100px;
+    font-size: 16px;
+  }
+
+  .note-canvas .writing-canvas__surface {
+    min-height: 200px;
+  }
+}
