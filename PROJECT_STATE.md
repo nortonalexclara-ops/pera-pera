@@ -3537,3 +3537,64 @@ propre défilement (`needsOuterScroll: false`).
 
 `npx tsc -b` clean (changements CSS uniquement). Toujours pas commité/
 poussé.
+
+## Checkpoint — barre de nav mobile débordait, backend Redis en panne, seed retiré
+
+Trois problèmes distincts remontés après usage réel sur téléphone.
+
+**Barre de nav mobile débordait, "Réglages" inatteignable.** 8 éléments
+(avatar, thème, 6 onglets) dans `.tab-bar` sans aucune gestion de
+dépassement — mesuré en navigateur à 375px : 424px de contenu pour 375px
+disponibles (49px de débordement), "Réglages" poussé quasi entièrement
+hors champ, et sans `overflow-x` il était impossible de glisser pour
+l'atteindre. Corrigé dans `MainLayout.css`, nouveau bloc
+`@media (max-width: 779px)` : rembourrage/marges des onglets et boutons
+resserrés (tient sans déborder jusqu'à 320px de large, testé), et
+`overflow-x: auto` posé en filet de sécurité pour les écrans encore plus
+étroits (scrollbar masquée). `flex-shrink: 0` sur les éléments pour
+qu'ils défilent plutôt que de s'écraser illisiblement.
+
+**Suppression de profil échouait même code vide — backend Redis en
+panne, pas un bug de logique.** Diagnostiqué en interrogeant directement
+les endpoints déployés (`curl` vers pera-pera-eight.vercel.app) :
+`/api/backup`, `/api/restore` ET `/api/delete-account` renvoient tous
+les trois `500 FUNCTION_INVOCATION_FAILED` en ce moment — un problème
+d'infra (très probablement les variables d'env Redis côté Vercel, déjà
+signalées comme non garanties stables dans le checkpoint Upstash
+ci-dessus), pas quelque chose de cassé par le nouvel endpoint delete-
+account : même la lecture "ce profil a-t-il une sauvegarde ?" (première
+étape, avant toute vérification de code) nécessite un appel Redis qui
+échoue actuellement, donc même laisser le code vide finissait en erreur
+— l'utilisatrice n'y est pour rien, ce n'est pas un problème d'usage.
+**Pas résolu côté infra** (accès au dashboard Vercel de l'utilisatrice
+nécessaire pour rediagnostiquer — même piège de nommage de variables que
+précédemment, ou intégration déconnectée) — signalé, en attente qu'elle
+vérifie Settings → Environment Variables comme la première fois.
+
+En attendant, rendu la suppression de profil résiliente à une panne
+serveur : `deleteAccountBackup` (`cloudSync.ts`) distingue maintenant un
+vrai refus serveur (401/403, mauvais code — bloque la suppression) d'un
+échec d'infra/réseau (5xx, requête qui échoue carrément — ne bloque
+PLUS, juste un `console.warn`). Justifié par le fait que cette
+protection par code n'a jamais été une vraie sécurité (~10 utilisateurs
+de confiance, déjà documenté) : un backend en panne ne doit pas empêcher
+de gérer ses profils localement. Testé en navigateur contre le serveur
+de dev local (qui échoue nativement sur `/api/*`, aucun stub nécessaire
+cette fois — condition réelle) : profil "Throwaway" créé puis supprimé
+avec succès malgré l'échec réseau complet de l'appel serveur.
+
+**Seed Alex/Camille retiré définitivement.** L'utilisatrice a précisé
+ne pas vouloir que "les autres utilisateurs voient ces faux profils de
+test" — clarifié que profils/données sont 100% locaux par appareil
+(IndexedDB), il n'existe aucune liste partagée : supprimer Alex/Camille
+sur UN appareil n'a jamais affecté les autres, et tout NOUVEL appareil
+ouvrant l'app pour la première fois les recevait encore via
+`seedIfEmpty()`. Ce garde-fou n'a plus lieu d'être (l'app est bien
+au-delà de sa phase de migration mock) — fonction et flag
+`pera-pera:profiles-seeded` retirés de `src/db/profiles.ts`,
+`listProfiles()` ne sème plus rien : un nouvel appareil démarre
+désormais sur une liste de profils vide.
+
+`npx tsc -b` clean. Pas encore commité/poussé au moment d'écrire ceci —
+à faire dans la foulée (comportement habituel de session : commit +
+push dès que l'utilisatrice le demande).

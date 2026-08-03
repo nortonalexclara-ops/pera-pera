@@ -105,6 +105,58 @@
   color: var(--color-accent);
 }
 
+/* Téléphone : 8 éléments (avatar, thème, 6 onglets) ne tenaient plus sur
+   un écran étroit — "Réglages" (dernier onglet) se retrouvait poussé
+   hors champ, invisible et inatteignable, sans défilement horizontal
+   pour aller le chercher (signalé par l'utilisatrice). Resserré pour que
+   tout tienne sur un écran de 375px avec de la marge ; `overflow-x` en
+   filet de sécurité si jamais ça ne suffit toujours pas sur un écran
+   encore plus étroit. */
+@media (max-width: 779px) {
+  .tab-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  .tab-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-bar__profile,
+  .tab-bar__theme,
+  .tab-item {
+    flex-shrink: 0;
+  }
+
+  .tab-bar__profile {
+    margin: 0 2px;
+    padding: 4px;
+  }
+
+  .tab-bar__avatar,
+  .tab-bar__theme {
+    width: 27px;
+    height: 27px;
+  }
+
+  .tab-bar__avatar {
+    font-size: 12px;
+  }
+
+  .tab-bar__theme {
+    margin: 0 2px;
+  }
+
+  .tab-item {
+    gap: 3px;
+    font-size: 10px;
+    padding: 6px 5px;
+  }
+}
+
 /* Paysage / grands écrans (iPad landscape, desktop) : barre fine EN HAUT,
    en `position: fixed` — garantit qu'elle reste visible quoi qu'il arrive
    (indépendant du calcul de hauteur du flex parent). Première tentative

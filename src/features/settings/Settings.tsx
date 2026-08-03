@@ -144,19 +144,25 @@ export default function Settings() {
   // (voir api/delete-account.ts) — sinon rien à protéger, la suppression
   // locale se fait dès confirmation. Empêche qu'un autre utilisateur du
   // même appareil supprime un profil sauvegardé qui n'est pas le sien.
+  // Un souci serveur (Redis indisponible, réseau...) ne bloque PAS la
+  // suppression locale — seul un vrai refus (mauvais code) le fait, voir
+  // `deleteAccountBackup`.
   async function handleDeleteProfile() {
     if (!profileId || !profileName) return
     setDeleteBusy(true)
     setDeleteError(null)
-    try {
-      await deleteAccountBackup(profileName, deletePin)
-      await deleteProfile(profileId)
-      clearActiveProfile()
-      navigate('/')
-    } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Échec de la suppression.')
+    const result = await deleteAccountBackup(profileName, deletePin)
+    if (result.blockedByWrongPin) {
+      setDeleteError(result.error ?? 'Code incorrect.')
       setDeleteBusy(false)
+      return
     }
+    if (!result.ok) {
+      console.warn('Suppression de la sauvegarde en ligne impossible (suppression locale quand même) :', result.error)
+    }
+    await deleteProfile(profileId)
+    clearActiveProfile()
+    navigate('/')
   }
 
   return (

@@ -1,36 +1,16 @@
 import { db, type ProfileRecord } from './db'
 import { generateId } from './id'
 
-// Amorce la base au tout premier lancement avec les deux profils qui
-// existaient en dur (mock) jusqu'ici — pour ne pas faire disparaître
-// "Alex"/"Camille" du jour au lendemain pour les gens qui les utilisaient
-// déjà en phase mock.
-//
-// Ne se base PAS sur "la table est vide" pour décider de semer : une fois
-// la suppression de profil ajoutée (voir `deleteProfile`), supprimer le
-// tout dernier profil videait la table, et le prochain montage de
-// ProfileSelector rappelait `listProfiles` → table vide → Alex/Camille
-// ressuscitaient tout seuls, ce que le commentaire d'origine promettait
-// justement d'éviter. Un flag `localStorage` persistant (indépendant du
-// contenu de la table) marque "le seed a déjà eu lieu" une fois pour
-// toutes, y compris pour les bases déjà existantes qui n'ont jamais semé.
-const SEED_FLAG_KEY = 'pera-pera:profiles-seeded'
-
-async function seedIfEmpty() {
-  if (localStorage.getItem(SEED_FLAG_KEY)) return
-  const count = await db.profiles.count()
-  if (count === 0) {
-    const now = Date.now()
-    await db.profiles.bulkAdd([
-      { id: 'p1', name: 'Alex', colorIndex: 0, createdAt: now },
-      { id: 'p2', name: 'Camille', colorIndex: 1, createdAt: now + 1 },
-    ])
-  }
-  localStorage.setItem(SEED_FLAG_KEY, '1')
-}
-
+// Amorçait la base au tout premier lancement avec deux profils fictifs
+// "Alex"/"Camille" (hérités de la phase mock) — retiré à la demande de
+// l'utilisatrice : de vraies personnes utilisent maintenant l'app sur
+// leurs propres appareils, et chaque nouvel appareil qui ouvrait l'app
+// pour la première fois se retrouvait avec ces deux faux profils de test
+// (un profil = une base IndexedDB locale par appareil, il n'y a pas de
+// liste partagée entre utilisateurs). Un nouvel appareil démarre
+// désormais sur une liste vide — juste "Nouveau profil"/"Récupérer un
+// profil".
 export async function listProfiles(): Promise<ProfileRecord[]> {
-  await seedIfEmpty()
   const profiles = await db.profiles.toArray()
   return profiles.sort((a, b) => a.createdAt - b.createdAt)
 }
