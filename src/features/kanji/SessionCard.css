@@ -802,6 +802,20 @@ rt {
     gap: var(--space-sm);
   }
 
+  /* "Le titre et la flèche pour retourner à la carte d'avant" (demande
+     utilisateur) — rétréci pour laisser plus de hauteur à la carte
+     elle-même et à la colonne d'écriture, qui se partagent le reste de
+     l'écran. */
+  .session__back-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .session__level-counter {
+    padding: 5px 14px;
+    font-size: 13px;
+  }
+
   .flip-card__char {
     font-size: 96px;
   }
@@ -815,13 +829,28 @@ rt {
     padding: var(--space-md);
   }
 
-  /* Filet de sécurité : si le repère "ordre des traits" + le canevas ne
-     tiennent pas tous les deux dans la hauteur disponible, la colonne
-     défile elle-même plutôt que de déborder sur le reste de la page. */
+  /* "Agrandit le cadran en déplaçant l'ordre des traits sur la gauche en
+     long" (demande utilisateur) : au lieu d'une rangée de vignettes
+     AU-DESSUS du canevas (qui lui mangeait ~70-90px de hauteur), une
+     bande étroite À GAUCHE, en colonne, avec son propre défilement
+     interne si le kanji a beaucoup de traits — le canevas récupère
+     quasi toute la hauteur de la colonne d'écriture. Basis remonté
+     240px→300px : la place gagnée ici vient pour partie de la carte au-
+     dessus (le titre/flèche rétrécis ci-dessus, `.session__writing-col`
+     étant à largeur fixe, tout gain de hauteur totale de `.session__body`
+     lui profite directement puisque `.session__card-col` absorbe le
+     reste via flex-grow). Le `overflow-y: auto` reste un filet de
+     sécurité si jamais ça ne suffit toujours pas sur un très petit écran. */
   .session__writing-col {
-    flex: 0 0 240px;
+    flex: 0 0 300px;
+    flex-direction: row;
     gap: var(--space-sm);
     overflow-y: auto;
+  }
+
+  .session__writing-col > .writing-canvas {
+    flex: 1;
+    min-width: 0;
   }
 
   .writing-canvas {
@@ -848,12 +877,34 @@ rt {
   }
 
   .stroke-order-panel {
-    padding: var(--space-sm);
+    flex: 0 0 52px;
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+    overflow: hidden;
+  }
+
+  /* "ORDRE DES TRAITS" en majuscules ne tient pas lisiblement dans une
+     bande de 52px de large — les vignettes numérotées se suffisent à
+     elles-mêmes une fois qu'on sait ce qu'elles représentent. */
+  .stroke-order-panel .flip-card__label {
+    display: none;
+  }
+
+  .stroke-order__steps {
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    overflow-y: auto;
+    gap: 6px;
   }
 
   .stroke-order__step {
-    width: 34px;
-    height: 34px;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    flex-shrink: 0;
   }
 
   .session__decision {
@@ -863,5 +914,95 @@ rt {
   .decision-btn {
     padding: 12px 16px;
     font-size: 15px;
+  }
+
+  /* Dos de carte kanji : char+définition à gauche, prononciations à
+     droite au lieu d'empilés verticalement — signalé par l'utilisatrice,
+     on ne voyait pas qu'il y avait déjà des exemples plus bas sans
+     scroller. `.flip-card__back-summary` (KanjiCardLoop.tsx uniquement,
+     pas vocab/grammaire) regroupe les deux blocs qui étaient jusque-là
+     deux sections empilées avec leur propre séparateur — un seul
+     séparateur en bas du duo maintenant. */
+  .flip-card__back-summary {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .flip-card__back-summary .flip-card__back-head {
+    flex: 0 0 auto;
+    align-items: flex-start;
+    text-align: left;
+    gap: 6px;
+    margin-bottom: 0;
+  }
+
+  .flip-card__back-summary .flip-card__mini-char {
+    font-size: 40px;
+  }
+
+  .flip-card__back-summary .flip-card__meanings {
+    justify-content: flex-start;
+  }
+
+  .flip-card__back-summary .meaning-pill {
+    font-size: 13px;
+    padding: 5px 12px;
+  }
+
+  .flip-card__back-summary .flip-card__readings {
+    flex: 1;
+    grid-template-columns: 1fr;
+    gap: 4px;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .flip-card__back-summary .flip-card__label {
+    font-size: 10px;
+    margin-bottom: 2px;
+  }
+
+  .flip-card__back-summary .flip-card__reading-value {
+    font-size: 13px;
+  }
+
+  /* Un peu plus d'exemples visibles sans défiler (demande utilisatrice).
+     Pas de passage en deux colonnes ici : à 375px de large, deux
+     colonnes donneraient ~160px chacune, trop étroit pour des phrases
+     avec furigana sans retours à la ligne malvenus — on resserre plutôt
+     marges/interlignage tout en gardant une seule colonne lisible. */
+  .flip-card__components {
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-sm);
+  }
+
+  .flip-card__examples-grid {
+    gap: var(--space-md);
+  }
+
+  .flip-card__label {
+    margin-bottom: 6px;
+  }
+
+  .example-list {
+    gap: var(--space-sm);
+  }
+
+  .example-item:not(:last-child) {
+    padding-bottom: var(--space-sm);
+  }
+
+  .example__jp {
+    font-size: 17px;
+    line-height: 1.9;
+  }
+
+  .example__translation {
+    font-size: 14px;
   }
 }

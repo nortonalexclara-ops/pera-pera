@@ -56,11 +56,25 @@ export interface ActivityRecord {
   date: string
 }
 
+// Kanji/mot/point de grammaire marqué favori — remplace les étoiles
+// jusque-là purement visuelles (Dashboard "Mot du jour", Explorer) qui
+// ne survivaient pas à un rechargement. Même forme que `MasteryRecord`
+// (kind+itemId), table séparée plutôt qu'un champ sur `mastery` : un
+// item favori n'est pas forcément maîtrisé, et inversement.
+export interface FavoriteRecord {
+  id?: number
+  profileId: string
+  kind: ItemKind
+  itemId: string
+  favoritedAt: number
+}
+
 class PeraPeraDB extends Dexie {
   profiles!: Table<ProfileRecord, string>
   mastery!: Table<MasteryRecord, number>
   notes!: Table<NoteRecord, string>
   activity!: Table<ActivityRecord, number>
+  favorites!: Table<FavoriteRecord, number>
 
   constructor() {
     super('pera-pera')
@@ -85,6 +99,15 @@ class PeraPeraDB extends Dexie {
       mastery: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
       notes: 'id, profileId, updatedAt',
       activity: '++id, [profileId+date], profileId',
+    })
+    // v4 : ajout des favoris (vrais, persistés — remplace les étoiles
+    // purement visuelles de Dashboard/Explorer).
+    this.version(4).stores({
+      profiles: 'id',
+      mastery: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      notes: 'id, profileId, updatedAt',
+      activity: '++id, [profileId+date], profileId',
+      favorites: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
     })
   }
 }

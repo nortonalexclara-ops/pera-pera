@@ -39,6 +39,21 @@ export async function getAllMasteredIds(profileId: string): Promise<Record<ItemK
   return empty
 }
 
+// Marquage en masse depuis Réglages — pour un profil qui connaît déjà tout
+// un niveau JLPT (ex. N5) et ne veut pas recocher "Maîtrisé" carte par
+// carte. N'ajoute que ce qui manque (skip les itemIds déjà maîtrisés) pour
+// rester idempotent si rappelé deux fois.
+export async function bulkMarkMastered(profileId: string, kind: ItemKind, itemIds: string[]): Promise<number> {
+  if (!profileId || itemIds.length === 0) return 0
+  const existing = await db.mastery.where({ profileId, kind }).toArray()
+  const existingIds = new Set(existing.map((r) => r.itemId))
+  const toAdd = itemIds
+    .filter((itemId) => !existingIds.has(itemId))
+    .map((itemId) => ({ profileId, kind, itemId, masteredAt: Date.now() }))
+  if (toAdd.length > 0) await db.mastery.bulkAdd(toAdd)
+  return toAdd.length
+}
+
 // Réinitialisation depuis Réglages — `kinds` absent efface toute la
 // maîtrise du profil, sinon seulement les types cochés (ex. juste
 // Kanjis) pour laisser le choix plutôt qu'un unique "tout effacer".

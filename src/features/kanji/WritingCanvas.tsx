@@ -10,6 +10,11 @@ interface WritingCanvasProps {
   // Grille carrée en fond, façon papier quadrillé japonais — utilisée pour
   // le Cahier (feuille libre), pas dans les cartes de séance.
   grid?: boolean
+  // Notifié après chaque mutation des traits (fin de trait, undo, effacer)
+  // avec les traits "encre" uniquement (la gomme ne fait qu'effacer, ce
+  // n'est pas une forme à comparer) — utilisé par la reconnaissance de
+  // kanji manuscrit, qui a besoin des points bruts, pas juste du bitmap.
+  onStrokesChange?: (strokes: Point[][]) => void
 }
 
 type Tool = 'pen' | 'eraser'
@@ -37,7 +42,12 @@ const ERASER_WIDTH = 42
  * seul moyen fiable de "retirer" un trait déjà composité (la gomme d'un
  * trait suivant peut avoir mordu sur l'encre d'un trait précédent).
  */
-export default function WritingCanvas({ strokeKey, title = "Entraînement à l'écriture", grid = false }: WritingCanvasProps) {
+export default function WritingCanvas({
+  strokeKey,
+  title = "Entraînement à l'écriture",
+  grid = false,
+  onStrokesChange,
+}: WritingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const isDrawing = useRef(false)
@@ -118,10 +128,15 @@ export default function WritingCanvas({ strokeKey, title = "Entraînement à l'�
     drawSegment(ctx, currentStroke.tool, last, pos)
   }
 
+  function notifyStrokes() {
+    onStrokesChange?.(strokesRef.current.filter((s) => s.tool === 'pen').map((s) => s.points))
+  }
+
   function handlePointerUp() {
     if (!isDrawing.current) return
     isDrawing.current = false
     setStrokeCount(strokesRef.current.length)
+    notifyStrokes()
   }
 
   function clear() {
@@ -131,6 +146,7 @@ export default function WritingCanvas({ strokeKey, title = "Entraînement à l'�
     const ctx = canvas?.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, size.current.w, size.current.h)
+    notifyStrokes()
   }
 
   // Retire juste le dernier trait tracé — rejoue tous les traits restants
@@ -148,6 +164,7 @@ export default function WritingCanvas({ strokeKey, title = "Entraînement à l'�
         drawSegment(ctx, stroke.tool, stroke.points[i - 1], stroke.points[i])
       }
     }
+    notifyStrokes()
   }
 
   // Efface le tracé et repasse au stylo quand on change de kanji.

@@ -33,3 +33,16 @@ export async function restoreProfile(profileName: string, pin: string): Promise<
   if (!res.ok) throw new Error(await parseErrorMessage(res, 'Échec de la récupération.'))
   return res.json()
 }
+
+// Vérifie/supprime la sauvegarde en ligne avant suppression locale du
+// profil. `pin` peut être vide — si le profil n'a jamais été sauvegardé,
+// le serveur répond succès quand même (rien à protéger), sinon le code
+// doit correspondre exactement (voir api/delete-account.ts).
+export async function deleteAccountBackup(profileName: string, pin: string): Promise<void> {
+  const res = await fetch('/api/delete-account', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ profileName, pin }),
+  })
+  if (!res.ok) throw new Error(await parseErrorMessage(res, 'Échec de la suppression.'))
+}

@@ -32,6 +32,75 @@
   color: var(--color-warm);
 }
 
+/* Bannière "retrouve ton profil ailleurs" — discrète, pas une carte
+   pleine largeur comme .hero-card, juste une ligne fine au-dessus. */
+.backup-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-md);
+  padding: 10px var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.backup-banner__icon {
+  flex-shrink: 0;
+  color: var(--color-accent-dark);
+}
+
+.backup-banner__text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--color-text-primary);
+}
+
+.backup-banner__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--color-accent-dark);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.backup-banner__dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.backup-banner__dismiss:hover {
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 500px) {
+  .backup-banner {
+    flex-wrap: wrap;
+  }
+
+  .backup-banner__text {
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .backup-banner__link {
+    order: 2;
+  }
+}
+
 /* Carte héro : une seule vision de la séance du jour */
 .hero-card {
   padding: var(--space-lg);

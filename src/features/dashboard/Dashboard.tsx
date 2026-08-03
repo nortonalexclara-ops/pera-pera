@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Flame, ArrowRight, Star } from 'lucide-react'
+import { Flame, ArrowRight, Star, CloudUpload, X } from 'lucide-react'
 import { useProfileStore } from '../profile/profileStore'
 import { countMastered, getAllMasteredIds } from '../../db/mastery'
 import { getStreak } from '../../db/activity'
+import { isFavorite as checkIsFavorite, toggleFavorite } from '../../db/favorites'
 import type { ItemKind } from '../../db/db'
 import { mockKanjiList } from '../kanji/mockKanji'
 import { mockVocabList } from '../vocab/mockVocab'
@@ -50,6 +51,19 @@ export default function Dashboard() {
   const profileId = useProfileStore((s) => s.activeProfileId)
   const profileName = useProfileStore((s) => s.activeProfileName) ?? 'vous'
 
+  // Bannière "retrouve ton profil sur un autre appareil" — juste une
+  // préférence d'affichage, pas une vraie donnée de profil : stockée en
+  // localStorage (par profil) plutôt qu'en IndexedDB. Cachée une fois
+  // fermée, sans date d'expiration ni réapparition automatique.
+  const backupBannerKey = `pera-pera:backup-banner-dismissed:${profileId ?? ''}`
+  const [backupBannerDismissed, setBackupBannerDismissed] = useState(
+    () => profileId != null && localStorage.getItem(backupBannerKey) === '1',
+  )
+  function dismissBackupBanner() {
+    if (profileId) localStorage.setItem(backupBannerKey, '1')
+    setBackupBannerDismissed(true)
+  }
+
   // Le nombre de kanjis maîtrisés vient réellement de la base (persisté par
   // profil) — seul mockGoal.target (objectif de programme complet, pas
   // encore tout authoré) reste une valeur invente. `useLiveQuery` se
@@ -79,8 +93,13 @@ export default function Dashboard() {
   const [wordOfDay] = useState(() => getWordOfDay())
   const wordOfDayReading = wordOfDay.wordSegments.map((s) => s.reading ?? s.text).join('')
 
-  // Purement visuel — pas de persistance à ce stade.
-  const [isFavorite, setIsFavorite] = useState(false)
+  // Vrai favori persisté (voir src/db/favorites.ts) — remplace un
+  // `useState` purement visuel qui oubliait tout au rechargement.
+  const isWordFavorite = useLiveQuery(
+    () => (profileId ? checkIsFavorite(profileId, 'vocab', wordOfDay.id) : Promise.resolve(false)),
+    [profileId, wordOfDay.id],
+    false,
+  )
   const [mode, setMode] = useState<SessionMode>('recommended')
 
   const goalCurrent = masteredKanjiCount ?? 0
@@ -129,6 +148,32 @@ export default function Dashboard() {
             {streak} jour{streak !== 1 ? 's' : ''} de suite
           </p>
         </div>
+
+        {!backupBannerDismissed && (
+          <motion.div
+            className="backup-banner"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <CloudUpload size={18} strokeWidth={1.75} className="backup-banner__icon" />
+            <p className="backup-banner__text">
+              Retrouve ton compte et ta progression sur tous tes appareils : crée un code à 4 chiffres.
+            </p>
+            <button type="button" className="backup-banner__link" onClick={() => navigate('/settings')}>
+              Configurer
+              <ArrowRight size={13} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              className="backup-banner__dismiss"
+              onClick={dismissBackupBanner}
+              title="Ne plus afficher"
+            >
+              <X size={15} strokeWidth={1.75} />
+            </button>
+          </motion.div>
+        )}
 
         <motion.div variants={listVariants} initial="hidden" animate="visible">
           {/* Carte héro : les éléments fixes (toggle) ne bougent pas, seul
@@ -186,11 +231,11 @@ export default function Dashboard() {
               </p>
               <div className="word-card__actions">
                 <motion.button
-                  className={`word-card__action${isFavorite ? ' active' : ''}`}
+                  className={`word-card__action${isWordFavorite ? ' active' : ''}`}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => setIsFavorite((v) => !v)}
+                  onClick={() => profileId && toggleFavorite(profileId, 'vocab', wordOfDay.id)}
                 >
-                  <Star size={14} strokeWidth={1.75} fill={isFavorite ? 'var(--color-warm)' : 'none'} />
+                  <Star size={14} strokeWidth={1.75} fill={isWordFavorite ? 'var(--color-warm)' : 'none'} />
                   Favori
                 </motion.button>
                 <button className="word-card__action" onClick={() => navigate('/explorer')}>

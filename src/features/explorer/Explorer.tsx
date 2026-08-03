@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Search, Star, ChevronDown, PenLine } from 'lucide-react'
 import ChoiceButtonGroup from '../../components/ui/ChoiceButtonGroup'
@@ -9,6 +10,7 @@ import type { VocabWord } from '../vocab/mockVocab'
 import type { GrammarPoint } from '../grammar/mockGrammar'
 import { useProfileStore } from '../profile/profileStore'
 import { getAllMasteredIds } from '../../db/mastery'
+import { getAllFavoriteIds, toggleFavorite as toggleFavoriteDb } from '../../db/favorites'
 import type { ItemKind } from '../../db/db'
 import { buildExplorerItems, normalizeSearch, type ExplorerItem } from './buildExplorerItems'
 import KanjiPracticeBox from './KanjiPracticeBox'
@@ -25,6 +27,12 @@ const MASTERY_OPTIONS = ['Tous', 'Non maîtrisés', 'Maîtrisés']
 const KIND_TO_LABEL: Record<string, string> = { kanji: 'Kanjis', vocab: 'Vocabulaire', grammar: 'Grammaire' }
 const TYPE_LABELS: Record<string, string> = { nom: 'Nom', verbe: 'Verbe', adjectif: 'Adjectif', expression: 'Expression' }
 const EMPTY_MASTERED: Record<ItemKind, Set<string>> = { kanji: new Set(), vocab: new Set(), grammar: new Set() }
+const EMPTY_FAVORITES: Record<ItemKind, Set<string>> = { kanji: new Set(), vocab: new Set(), grammar: new Set() }
+// Sans plafond, ~10 000 résultats sans filtre devenaient ~10 000 <li> montés
+// d'un coup — c'était la vraie cause du chargement lent signalé, pas
+// `buildExplorerItems` (déjà mémoïsé). On affiche par paliers plutôt que de
+// tout monter, avec un bouton "Afficher plus" pour continuer.
+const RESULTS_PAGE_SIZE = 60
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
@@ -41,21 +49,35 @@ function isGrammar(data: ExplorerItem['data']): data is GrammarPoint {
 }
 
 export default function Explorer() {
+  const location = useLocation()
+  // Arrivée depuis la reconnaissance de kanji manuscrit (voir
+  // Notebook.tsx) : `navigate('/explorer', { state: { query } })` pré-
+  // remplit la recherche avec le candidat choisi plutôt que de laisser
+  // l'utilisateur retaper le kanji.
+  const initialQuery = (location.state as { query?: string } | null)?.query ?? ''
   const allItems = useMemo(() => buildExplorerItems(), [])
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery)
   const [level, setLevel] = useState('Tous')
   const [kind, setKind] = useState('Tous')
   const [theme, setTheme] = useState('Tous')
   const [mastery, setMastery] = useState('Tous')
+  const [favoriteFilter, setFavoriteFilter] = useState('Tous')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [practiceId, setPracticeId] = useState<string | null>(null)
-  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [visibleCount, setVisibleCount] = useState(RESULTS_PAGE_SIZE)
 
   const profileId = useProfileStore((s) => s.activeProfileId)
   const masteredIds = useLiveQuery(
     () => (profileId ? getAllMasteredIds(profileId) : Promise.resolve(EMPTY_MASTERED)),
     [profileId],
     EMPTY_MASTERED,
+  )
+  // Vrais favoris persistés (voir src/db/favorites.ts) — remplace un
+  // `useState` purement visuel qui oubliait tout au rechargement.
+  const favoriteIds = useLiveQuery(
+    () => (profileId ? getAllFavoriteIds(profileId) : Promise.resolve(EMPTY_FAVORITES)),
+    [profileId],
+    EMPTY_FAVORITES,
   )
 
   // Champs lexicaux disponibles — dérivés des kanjis existants (seul type de
@@ -71,15 +93,6 @@ export default function Explorer() {
     if (next !== 'Kanjis') setTheme('Tous')
   }
 
-  function toggleFavorite(id: string) {
-    setFavorites((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
   const results = useMemo(() => {
     const q = normalizeSearch(query)
     const themeFilter = theme === 'Tous' ? null : theme.toLowerCase()
@@ -87,15 +100,24 @@ export default function Explorer() {
       if (level !== 'Tous' && item.jlptLevel !== level) return false
       if (kind !== 'Tous' && KIND_TO_LABEL[item.kind] !== kind) return false
       if (themeFilter && !item.themes.includes(themeFilter)) return false
-      if (q && !normalizeSearch(item.searchText).includes(q)) return false
+      if (q && !item.normalizedSearchText.includes(q)) return false
       if (mastery !== 'Tous') {
         const isMastered = masteredIds[item.kind].has(item.data.id)
         if (mastery === 'Maîtrisés' && !isMastered) return false
         if (mastery === 'Non maîtrisés' && isMastered) return false
       }
+      if (favoriteFilter === 'Favoris' && !favoriteIds[item.kind].has(item.data.id)) return false
       return true
     })
-  }, [allItems, query, level, kind, theme, mastery, masteredIds])
+  }, [allItems, query, level, kind, theme, mastery, masteredIds, favoriteFilter, favoriteIds])
+
+  // Nouvelle recherche/filtre = on repart du premier palier, pas de rester
+  // scrollé à "300 affichés" sur un tout autre sous-ensemble de résultats.
+  useEffect(() => {
+    setVisibleCount(RESULTS_PAGE_SIZE)
+  }, [results])
+
+  const visibleResults = results.slice(0, visibleCount)
 
   return (
     <PageTransition>
@@ -103,16 +125,35 @@ export default function Explorer() {
         <h1 className="explorer__title">Explorer</h1>
         <p className="explorer__subtitle">Parcours librement tous les kanjis, mots et points de grammaire.</p>
 
-        <div className="explorer__search">
-          <Search size={17} strokeWidth={1.75} />
-          <input
-            type="text"
-            placeholder="Chercher un kanji, un mot, une lecture, un sens..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            autoComplete="off"
-            spellCheck={false}
-          />
+        <div className="explorer__search-row">
+          <div className="explorer__search">
+            <Search size={17} strokeWidth={1.75} />
+            <input
+              type="text"
+              placeholder="Chercher un kanji, un mot, une lecture, un sens..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </div>
+          {/* Interrupteur simple plutôt qu'une rangée de choix de plus
+              (voir session-toggle sur le Dashboard pour l'esprit) — un
+              favori est un statut personnel binaire ("je veux voir QUE
+              mes favoris" ou non), pas une catégorie à choisir parmi
+              plusieurs. Sortir cette bascule de `.explorer__filters`
+              réduit aussi le nombre de rangées de boutons empilées, seul
+              vrai reproche sur la mise en page (trop de catégories à
+              la fois). */}
+          <button
+            type="button"
+            className={`explorer__fav-toggle${favoriteFilter === 'Favoris' ? ' active' : ''}`}
+            onClick={() => setFavoriteFilter(favoriteFilter === 'Favoris' ? 'Tous' : 'Favoris')}
+            title="Afficher uniquement les favoris"
+          >
+            <Star size={15} strokeWidth={1.75} fill={favoriteFilter === 'Favoris' ? 'var(--color-warm)' : 'none'} />
+            Favoris
+          </button>
         </div>
 
         <div className="explorer__filters">
@@ -151,10 +192,10 @@ export default function Explorer() {
         {results.length === 0 && <p className="explorer__empty">Rien ne correspond à cette recherche.</p>}
 
         <ul className="explorer-list">
-          {results.map((item) => {
+          {visibleResults.map((item) => {
             const isExpanded = expandedId === item.id
             const isPracticing = practiceId === item.id
-            const isFavorite = favorites.has(item.id)
+            const isFavorite = favoriteIds[item.kind].has(item.data.id)
             const canPractice = isKanji(item.data) && item.data.strokePaths.length > 0
             return (
               <li key={item.id} className="explorer-item">
@@ -189,7 +230,7 @@ export default function Explorer() {
                     className="explorer-row__favorite"
                     onClick={(e) => {
                       e.stopPropagation()
-                      toggleFavorite(item.id)
+                      if (profileId) toggleFavoriteDb(profileId, item.kind, item.data.id)
                     }}
                   >
                     <Star size={16} strokeWidth={1.75} fill={isFavorite ? 'var(--color-warm)' : 'none'} color={isFavorite ? 'var(--color-warm)' : undefined} />
@@ -214,6 +255,16 @@ export default function Explorer() {
             )
           })}
         </ul>
+
+        {visibleCount < results.length && (
+          <button
+            type="button"
+            className="btn-link explorer__load-more"
+            onClick={() => setVisibleCount((v) => v + RESULTS_PAGE_SIZE)}
+          >
+            Afficher plus ({results.length - visibleCount} restants)
+          </button>
+        )}
       </div>
     </PageTransition>
   )

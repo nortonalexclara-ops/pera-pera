@@ -1,18 +1,41 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Trash2, Check, AlertTriangle, CloudUpload } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { Trash2, Check, AlertTriangle, CloudUpload, CheckCheck } from 'lucide-react'
 import PageTransition from '../../components/ui/PageTransition'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import { useProfileStore } from '../profile/profileStore'
-import { resetMastery } from '../../db/mastery'
+import { resetMastery, bulkMarkMastered, getMasteredIds } from '../../db/mastery'
 import { resetActivity } from '../../db/activity'
 import { resetNotes } from '../../db/notes'
+import { resetFavorites } from '../../db/favorites'
 import { exportProfileData } from '../../db/profileSync'
-import { backupProfile } from '../profile/cloudSync'
+import { deleteProfile } from '../../db/profiles'
+import { backupProfile, deleteAccountBackup } from '../profile/cloudSync'
 import type { ItemKind } from '../../db/db'
+import { mockKanjiList, type JlptLevel } from '../kanji/mockKanji'
+import { mockVocabList } from '../vocab/mockVocab'
+import { mockGrammarList } from '../grammar/mockGrammar'
 import './Settings.css'
 
-type ResetOption = 'kanji' | 'vocab' | 'grammar' | 'streak' | 'notes'
+const JLPT_LEVELS: JlptLevel[] = ['N5', 'N4', 'N3', 'N2', 'N1']
+
+const KIND_OPTIONS: { key: ItemKind; label: string }[] = [
+  { key: 'kanji', label: 'Kanjis' },
+  { key: 'vocab', label: 'Vocabulaire' },
+  { key: 'grammar', label: 'Grammaire' },
+]
+
+// Même contenu que Explorer/Stats, juste ré-indexé par (kind, level) pour
+// le marquage en masse — pas de nouvelle source de données.
+function itemIdsFor(kind: ItemKind, level: JlptLevel): string[] {
+  if (kind === 'kanji') return mockKanjiList.filter((k) => k.jlptLevel === level).map((k) => k.id)
+  if (kind === 'vocab') return mockVocabList.filter((w) => w.jlptLevel === level).map((w) => w.id)
+  return mockGrammarList.filter((g) => g.jlptLevel === level).map((g) => g.id)
+}
+
+type ResetOption = 'kanji' | 'vocab' | 'grammar' | 'streak' | 'notes' | 'favorites'
 
 const RESET_OPTIONS: { key: ResetOption; label: string; description: string }[] = [
   { key: 'kanji', label: 'Progression Kanjis', description: 'Retire "Maîtrisé" de tous les kanjis de ce profil.' },
@@ -20,6 +43,7 @@ const RESET_OPTIONS: { key: ResetOption; label: string; description: string }[] 
   { key: 'grammar', label: 'Progression Grammaire', description: 'Retire "Maîtrisé" de tous les points de grammaire de ce profil.' },
   { key: 'streak', label: 'Série (jours de suite)', description: 'Remet le compteur "jours de suite" à zéro.' },
   { key: 'notes', label: 'Notes personnelles', description: 'Supprime toutes les notes du Cahier de notes.' },
+  { key: 'favorites', label: 'Favoris', description: 'Retire tous les kanjis/mots/points de grammaire mis en favori.' },
 ]
 
 /**
@@ -32,8 +56,10 @@ const RESET_OPTIONS: { key: ResetOption; label: string; description: string }[] 
  * inventés partagés par tout le monde).
  */
 export default function Settings() {
+  const navigate = useNavigate()
   const profileId = useProfileStore((s) => s.activeProfileId)
   const profileName = useProfileStore((s) => s.activeProfileName)
+  const clearActiveProfile = useProfileStore((s) => s.clearActiveProfile)
   const [selected, setSelected] = useState<Set<ResetOption>>(new Set())
   const [confirming, setConfirming] = useState(false)
   const [done, setDone] = useState(false)
@@ -42,6 +68,34 @@ export default function Settings() {
   const [pin, setPin] = useState('')
   const [backupBusy, setBackupBusy] = useState(false)
   const [backupResult, setBackupResult] = useState<'ok' | string | null>(null)
+
+  const [deleteConfirming, setDeleteConfirming] = useState(false)
+  const [deletePin, setDeletePin] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const [bulkKind, setBulkKind] = useState<ItemKind>('kanji')
+  const [bulkLevel, setBulkLevel] = useState<JlptLevel>('N5')
+  const [bulkConfirming, setBulkConfirming] = useState(false)
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkDone, setBulkDone] = useState<number | null>(null)
+
+  const bulkItemIds = useMemo(() => itemIdsFor(bulkKind, bulkLevel), [bulkKind, bulkLevel])
+  const bulkMasteredIds = useLiveQuery(
+    () => (profileId ? getMasteredIds(profileId, bulkKind) : Promise.resolve(new Set<string>())),
+    [profileId, bulkKind],
+    new Set<string>(),
+  )
+  const bulkRemaining = bulkItemIds.filter((id) => !bulkMasteredIds.has(id)).length
+
+  async function applyBulkMark() {
+    if (!profileId || bulkRemaining === 0) return
+    setBulkBusy(true)
+    const added = await bulkMarkMastered(profileId, bulkKind, bulkItemIds)
+    setBulkConfirming(false)
+    setBulkBusy(false)
+    setBulkDone(added)
+  }
 
   function toggle(key: ResetOption) {
     setSelected((prev) => {
@@ -64,6 +118,7 @@ export default function Settings() {
     if (kinds.length > 0) await resetMastery(profileId, kinds)
     if (selected.has('streak')) await resetActivity(profileId)
     if (selected.has('notes')) await resetNotes(profileId)
+    if (selected.has('favorites')) await resetFavorites(profileId)
     setSelected(new Set())
     setConfirming(false)
     setBusy(false)
@@ -82,6 +137,25 @@ export default function Settings() {
       setBackupResult(err instanceof Error ? err.message : 'Échec de la sauvegarde.')
     } finally {
       setBackupBusy(false)
+    }
+  }
+
+  // Le code n'est vérifié que si ce profil a déjà une sauvegarde en ligne
+  // (voir api/delete-account.ts) — sinon rien à protéger, la suppression
+  // locale se fait dès confirmation. Empêche qu'un autre utilisateur du
+  // même appareil supprime un profil sauvegardé qui n'est pas le sien.
+  async function handleDeleteProfile() {
+    if (!profileId || !profileName) return
+    setDeleteBusy(true)
+    setDeleteError(null)
+    try {
+      await deleteAccountBackup(profileName, deletePin)
+      await deleteProfile(profileId)
+      clearActiveProfile()
+      navigate('/')
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Échec de la suppression.')
+      setDeleteBusy(false)
     }
   }
 
@@ -133,6 +207,88 @@ export default function Settings() {
             </p>
           )}
           {backupResult && backupResult !== 'ok' && <p className="settings-error">{backupResult}</p>}
+        </section>
+
+        <section className="settings-card">
+          <h2 className="settings-card__title">Marquer un niveau comme maîtrisé</h2>
+          <p className="settings-card__hint">
+            Tu connais déjà tout un niveau ? Marque-le "Maîtrisé" d'un coup pour {profileName ?? 'ce profil'}, sans repasser
+            chaque carte une par une.
+          </p>
+
+          <div className="bulk-mark-row">
+            <select
+              className="bulk-mark-select"
+              value={bulkKind}
+              onChange={(e) => {
+                setBulkKind(e.target.value as ItemKind)
+                setBulkDone(null)
+                setBulkConfirming(false)
+              }}
+            >
+              {KIND_OPTIONS.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="bulk-mark-select"
+              value={bulkLevel}
+              onChange={(e) => {
+                setBulkLevel(e.target.value as JlptLevel)
+                setBulkDone(null)
+                setBulkConfirming(false)
+              }}
+            >
+              {JLPT_LEVELS.map((level) => (
+                <option key={level} value={level}>
+                  {level}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <p className="settings-card__hint">
+            {bulkRemaining === 0
+              ? `Tout le niveau ${bulkLevel} est déjà marqué "Maîtrisé".`
+              : `${bulkRemaining} sur ${bulkItemIds.length} pas encore marqués "Maîtrisé".`}
+          </p>
+
+          {!bulkConfirming ? (
+            <button
+              type="button"
+              className="btn-primary bulk-mark-trigger"
+              disabled={bulkRemaining === 0}
+              onClick={() => setBulkConfirming(true)}
+            >
+              <CheckCheck size={16} strokeWidth={1.75} />
+              Marquer {bulkRemaining} comme maîtrisés
+            </button>
+          ) : (
+            <motion.div className="reset-confirm bulk-mark-confirm" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+              <p className="reset-confirm__text bulk-mark-confirm__text">
+                <AlertTriangle size={16} strokeWidth={1.75} />
+                Marquer les {bulkRemaining} {KIND_OPTIONS.find((k) => k.key === bulkKind)?.label.toLowerCase()} {bulkLevel}{' '}
+                restants comme maîtrisés ?
+              </p>
+              <div className="reset-confirm__actions">
+                <button type="button" className="btn-link" onClick={() => setBulkConfirming(false)} disabled={bulkBusy}>
+                  Annuler
+                </button>
+                <button type="button" className="btn-primary" onClick={applyBulkMark} disabled={bulkBusy}>
+                  {bulkBusy ? 'Marquage…' : 'Oui, marquer'}
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {bulkDone !== null && (
+            <p className="reset-done">
+              <Check size={15} strokeWidth={2} />
+              {bulkDone} élément{bulkDone !== 1 ? 's' : ''} marqué{bulkDone !== 1 ? 's' : ''} "Maîtrisé".
+            </p>
+          )}
         </section>
 
         <section className="settings-card">
@@ -191,6 +347,67 @@ export default function Settings() {
               <Check size={15} strokeWidth={2} />
               C'est fait.
             </p>
+          )}
+        </section>
+
+        <section className="settings-card">
+          <h2 className="settings-card__title">Supprimer ce profil</h2>
+          <p className="settings-card__hint">
+            Supprime définitivement {profileName ?? 'ce profil'} et toutes ses données (progression, notes, favoris) de
+            cet appareil. Si ce profil a une sauvegarde en ligne, entre son code à 4 chiffres pour confirmer — sinon,
+            laisse le champ vide.
+          </p>
+
+          {!deleteConfirming ? (
+            <button
+              type="button"
+              className="btn-danger reset-trigger"
+              onClick={() => setDeleteConfirming(true)}
+              disabled={!profileId}
+            >
+              <Trash2 size={16} strokeWidth={1.75} />
+              Supprimer ce profil
+            </button>
+          ) : (
+            <motion.div className="reset-confirm" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+              <p className="reset-confirm__text">
+                <AlertTriangle size={16} strokeWidth={1.75} />
+                Action irréversible pour {profileName ?? 'ce profil'}.
+              </p>
+              <div className="pin-row">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  placeholder="Code à 4 chiffres (si sauvegardé)"
+                  className="pin-input"
+                  value={deletePin}
+                  onChange={(e) => {
+                    setDeletePin(e.target.value.replace(/\D/g, '').slice(0, 4))
+                    setDeleteError(null)
+                  }}
+                />
+              </div>
+              <div className="reset-confirm__actions">
+                <button
+                  type="button"
+                  className="btn-link"
+                  onClick={() => {
+                    setDeleteConfirming(false)
+                    setDeletePin('')
+                    setDeleteError(null)
+                  }}
+                  disabled={deleteBusy}
+                >
+                  Annuler
+                </button>
+                <button type="button" className="btn-danger" onClick={handleDeleteProfile} disabled={deleteBusy}>
+                  {deleteBusy ? 'Suppression…' : 'Oui, supprimer définitivement'}
+                </button>
+              </div>
+              {deleteError && <p className="settings-error">{deleteError}</p>}
+            </motion.div>
           )}
         </section>
       </div>

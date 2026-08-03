@@ -3289,3 +3289,251 @@ les variables créées par l'intégration sont scope "Production and
 Preview" par défaut, pas "Development" — sans incidence sur le site
 déployé, seulement sur `vercel env pull` en local si besoin de tester
 avec `vercel dev`.
+
+## Checkpoint — bannière backup, vrais favoris, marquage en masse, reconnaissance de kanji
+
+Suite de 4 demandes traitées dans la foulée, toutes vérifiées en
+navigateur (profil Alex, via clics DOM simulés — le pane de preview de
+cette session ne compose pas de frames, donc pas de screenshot possible,
+vérification faite via `get_page_text`/`innerText`).
+
+1. **Bannière Dashboard → Réglages** : `Dashboard.tsx` affiche une
+   bannière discrète ("Retrouve ton compte et ta progression sur tous
+   tes appareils : crée un code à 4 chiffres.") avec lien vers
+   `/settings`, fermable (croix), mémorisée fermée en `localStorage` par
+   profil (`pera-pera:backup-banner-dismissed:{profileId}` — pas en
+   IndexedDB, c'est une préférence d'affichage, pas une donnée de
+   profil). CSS dans `Dashboard.css` (`.backup-banner*`).
+
+2. **Vrais favoris persistés** : nouvelle table Dexie `favorites` (v4 du
+   schéma, `src/db/db.ts`), même forme que `mastery`
+   (`profileId+kind+itemId`). `src/db/favorites.ts` :
+   `isFavorite`/`toggleFavorite`/`getFavoriteIds`/`getAllFavoriteIds`/
+   `resetFavorites`. Remplace les étoiles purement visuelles (`useState`
+   local, perdu au rechargement) sur le mot du jour du Dashboard et dans
+   Explorer. Explorer a un 4ᵉ filtre "Favoris" (`ChoiceButtonGroup`) qui
+   ne montre que les items favoris du profil actif. Reset des favoris
+   ajouté aux options de Réglages (`RESET_OPTIONS`).
+
+3. **Marquage en masse d'un niveau JLPT** : nouvelle fonction
+   `bulkMarkMastered(profileId, kind, itemIds)` dans `src/db/mastery.ts`
+   (idempotente — ignore les itemIds déjà maîtrisés). Nouvelle section
+   dans Settings ("Marquer un niveau comme maîtrisé") : deux `<select>`
+   (type de contenu / niveau JLPT), affiche "X sur Y pas encore
+   marqués", bouton avec confirmation (même pattern que le reset
+   existant, mais en accent turquoise plutôt qu'en rouge danger — ce
+   n'est pas une action destructive). Testé en marquant les 101 kanjis
+   N5 d'un coup pour Alex : le Dashboard reflète immédiatement le
+   nouveau total maîtrisé (`useLiveQuery` déjà branché).
+
+4. **Reconnaissance de kanji manuscrit (remplace Cahier)** : l'ancien
+   `/notebook` ("Cahier", dessin libre sans but) devient un outil de
+   reconnaissance façon Renshuu/SLJFAQ — on dessine, on appuie sur
+   "Reconnaître", l'app propose les 5 kanjis les plus proches parmi les
+   ~2491 connus. Nouveau fichier `src/features/kanji/kanjiRecognize.ts` :
+   contrairement à `strokeMatch.ts` (qui VÉRIFIE un tracé contre UNE
+   cible connue, trait par trait, en séance), `recognizeKanji` ne connaît
+   pas la cible à l'avance — chaque caractère (dessiné et candidats) est
+   aplati en un seul chemin continu (tous les traits mis bout à bout dans
+   l'ordre), rééchantillonné à 64 points par longueur d'arc et normalisé,
+   puis comparé par distance moyenne point à point ; une petite pénalité
+   proportionnelle à l'écart de nombre de traits désambiguïse les paires
+   à silhouette quasi identique (ex. 大/犬). Reste une heuristique de
+   forme honnête, pas un modèle entraîné — peut se tromper sur des
+   tracés ambigus, comme documenté dans le code. Les traits de référence
+   (parsés depuis les path SVG KanjiVG) sont mis en cache après le
+   premier calcul (`Map` module-level) pour ne pas refaire le travail DOM
+   à chaque clic sur "Reconnaître" pour un même kanji.
+   `WritingCanvas.tsx` gagne une prop optionnelle `onStrokesChange` pour
+   exposer les traits bruts (traits "encre" seulement, pas la gomme) au
+   composant parent. Le calcul (potentiellement ~1s la première fois, le
+   temps de construire le cache de 2491 candidats) est différé via
+   `setTimeout(fn, 0)` pour laisser le bouton se re-rendre en
+   "Reconnaissance…" avant le blocage synchrone — **pas**
+   `requestAnimationFrame`, qui ne se déclenche pas tant que l'onglet
+   n'est pas visuellement composité (piège découvert pendant les tests :
+   le pane de preview de cette session ne compose jamais de frames, donc
+   rAF ne se déclenchait jamais et le bouton restait bloqué indéfiniment
+   sur "Reconnaissance…" — `setTimeout` n'a pas ce problème). Tapoter un
+   candidat navigue vers `/explorer` avec le kanji pré-rempli dans la
+   recherche (`navigate('/explorer', { state: { query } })`, lu par
+   `Explorer.tsx` via `useLocation().state`). Testé avec un simple trait
+   horizontal dessiné via `PointerEvent` synthétiques : meilleur candidat
+   retourné = 一 (un seul trait horizontal), comme attendu ; clic dessus
+   → Explorer bien pré-rempli avec "一" et 62 résultats.
+
+Nav : entrée "Cahier"/`PenLine` renommée "Kanji"/`ScanSearch` dans
+`MainLayout.tsx` (même route `/notebook`, fichiers `Notebook.tsx`/
+`.css` gardés tels quels par simplicité — seul le contenu a changé,
+pas le nom des fichiers/route).
+
+`npx tsc -b` clean après chaque étape. **Pas encore commité/poussé sur
+git** — en attente de confirmation utilisateur comme d'habitude.
+
+## Checkpoint — retours utilisatrice : Explorer trop chargé, reconnaissance peu fiable
+
+Deux retours concrets après la vérification ci-dessus, corrigés dans la
+foulée.
+
+**Explorer : trop de rangées de filtres.** 4 rangées `ChoiceButtonGroup`
+empilées (Niveau/Type/Maîtrise/Favoris) jugées trop chargées. Favoris
+sorti de cette pile et transformé en interrupteur compact à côté de la
+barre de recherche (`.explorer__search-row` : `.explorer__search` en
+`flex:1` + `.explorer__fav-toggle`, pastille étoile qui bascule juste
+Tous/Favoris) plutôt qu'une rangée de choix — un favori est un statut
+personnel binaire, pas une catégorie parmi d'autres (inspiré du
+`session-toggle` du Dashboard évoqué par l'utilisatrice, sans reprendre
+le composant tel quel). `.explorer__filters` ne contient plus que 3
+rangées (Niveau/Type/Maîtrise). Vérifié : pas de chevauchement à 375px
+de large (recherche 223px + interrupteur 96px côte à côte), filtre
+Favoris toujours fonctionnel (1 résultat sur le mot favori de test).
+
+**Reconnaissance de kanji peu fiable.** Signalé : dessiner 女 (3 traits)
+ne le proposait pas, et les candidats proposés avaient un nombre de
+traits sans rapport. Cause réelle : `recognizeKanji` v1 aplatissait tout
+le caractère en UN SEUL chemin continu (traits mis bout à bout dans
+l'ordre de dessin) et comparait point par point à index égal — very
+sensible à l'ordre de dessin (un utilisateur ne dessinant pas exactement
+dans l'ordre KanjiVG obtenait un tracé "aplati" complètement différent
+du candidat pourtant correct), et la pénalité d'écart de nombre de
+traits (0.015/trait) beaucoup trop faible pour repousser des candidats à
+nombre de traits très différent. Réécrit dans
+`src/features/kanji/kanjiRecognize.ts` : chaque trait dessiné est
+maintenant apparié au trait de référence le plus proche par un algorithme
+glouton (`greedyStrokeMatchScore` — prend la paire trait-dessiné/trait-
+référence la plus proche restante, la retire des deux côtés, recommence),
+insensible à l'ordre de dessin par construction ; les traits non
+appariés (écart de nombre de traits) coûtent un forfait
+(`UNMATCHED_STROKE_COST = 0.55`, du même ordre qu'un mauvais match plutôt
+qu'un score écrasant). Testé en dessinant les vrais traits KanjiVG de 女
+**dans l'ordre inverse** (3, 2, 1 au lieu de 1, 2, 3) : 女 ressort bien
+premier candidat, suivi de 才/丈/寸/大 — tous des kanjis à 3 traits de
+forme réellement proche, plus aucun candidat "sans rapport". Re-testé
+aussi le cas plus simple (trait horizontal seul → 一 en premier) pour
+confirmer l'absence de régression.
+
+`npx tsc -b` clean. Toujours pas commité/poussé.
+
+## Checkpoint — dos de carte mobile, perf Explorer, suppression de profil
+
+Trois nouvelles demandes traitées.
+
+**Dos de carte kanji plus compact sur mobile.** `KanjiCardLoop.tsx` :
+`.flip-card__back-head` (mini-kanji + définition) et `.flip-card__readings`
+(on'yomi/kun'yomi) regroupés dans un nouveau wrapper
+`.flip-card__back-summary` (seulement pour les cartes KANJI — vocab/
+grammaire ont leur propre `renderBack`, non touché). Sur desktop ce
+wrapper n'a aucun effet (les deux blocs gardent leur mise en page
+d'origine, empilés). Sous `@media (max-width: 600px)` dans
+`SessionCard.css`, il devient une rangée flex : définition à gauche
+(mini-char réduit 60px→40px), prononciations à droite (empilées, plus
+petites) — un seul séparateur en bas du duo au lieu de deux. Vérifié à
+375px : le kanji constant est bien à gauche (x=0), les lectures à droite
+(x=170), et le label "Mots" (début des exemples) tombe à 148px de haut
+contre 388px de zone visible — donc visible sans scroller, ce qui était
+la vraie demande (pas "tout faire tenir sans scroll", juste "voir qu'il y
+a déjà des exemples"). Vérifié aussi que le desktop n'a pas régressé
+(bloc classique, 60px, empilé).
+
+Piège de vérification rencontré : dans CE pane de preview (qui ne
+compose jamais de frames — voir le piège rAF déjà noté plus haut), les
+`transition: transform` CSS ne s'animent jamais jusqu'à leur valeur
+finale, donc lire `getComputedStyle` juste après avoir retourné la carte
+donnait une matrice figée à l'identité (au lieu de `rotateY(180deg)`),
+ce qui faisait paraître les enfants inversés gauche/droite. Contourné en
+mettant `transition: none` sur `.flip-card__inner` juste avant la lecture
+(force l'application instantanée du transform, sans dépendre du
+compositeur) — n'affecte pas le vrai comportement utilisateur, seulement
+ma capacité à mesurer dans cet environnement de test.
+
+**Explorer lent à charger — confirmé et corrigé.** Deux causes réelles
+(pas `buildExplorerItems`, déjà mémoïsé) : (1) aucune pagination —
+jusqu'à ~10 200 `<li>` montés d'un coup sans filtre ; (2)
+`normalizeSearch(item.searchText)` (NFD + regex) recalculé pour les
+~10 200 items à CHAQUE frappe dans la recherche. Fixé : `searchText`
+normalisé une seule fois à la construction (`normalizedSearchText` dans
+`buildExplorerItems.ts`) : et affichage par paliers de 60
+(`RESULTS_PAGE_SIZE`, `Explorer.tsx`) avec bouton "Afficher plus",
+palier remis à zéro à chaque changement de filtre/recherche.
+
+**Suppression de profil, protégée par le code à 4 chiffres.** Nouveau
+endpoint `api/delete-account.ts` (même schéma que backup/restore) :
+si le profil n'a jamais de sauvegarde en ligne, répond succès direct
+(rien à protéger) ; s'il en a une, le code doit correspondre au hash
+stocké, sinon 403. Le client (`Settings.tsx`, section "Supprimer ce
+profil") appelle toujours cet endpoint avec le code tapé (vide si aucun)
+avant de supprimer quoi que ce soit localement — même logique que pour
+le reset, mais irréversible et à l'échelle du profil entier (plus ses
+données : `deleteProfile` dans `src/db/profiles.ts`, transaction unique
+sur profiles/mastery/notes/activity/favorites). Objectif : empêcher
+qu'un autre utilisateur du même appareil partagé supprime un profil
+sauvegardé qui n'est pas le sien, tout en laissant les profils jamais
+sauvegardés (test, essai...) supprimables sans friction.
+
+Bug réel découvert en testant cette suppression : `seedIfEmpty()` (voir
+`src/db/profiles.ts`) re-semait Alex/Camille dès que la table
+`profiles` repassait à 0 lignes — donc supprimer le tout dernier profil
+les faisait *ressusciter* au prochain montage de ProfileSelector,
+contredisant le commentaire d'origine qui promettait justement l'inverse
+("un utilisateur qui les supprime ensuite ne les reverra pas revenir").
+Corrigé avec un flag persistant `localStorage`
+(`pera-pera:profiles-seeded`) qui découple "a-t-on déjà semé" de "la
+table est-elle vide maintenant" — le seed ne peut plus se redéclencher
+après coup, y compris pour les bases existantes qui n'avaient jamais eu
+ce flag.
+
+**Nettoyage effectué à la demande de l'utilisatrice** : profils "Alex"
+et "Camille" (données de test/mock originelles) supprimés, un seul
+profil "Test" créé à la place. Fait en utilisant la vraie fonctionnalité
+de suppression ci-dessus (donc aussi un test en conditions quasi
+réelles) — l'appel réseau vers `/api/delete-account` a dû être stubé
+côté navigateur pendant le test car le serveur de dev local (`npm run
+dev`, Vite seul) ne sert pas `/api/*` (seul le site déployé sur Vercel
+le fait) ; réponse stubée `{hadBackup: false}`, fidèle à la réalité
+puisque ni Alex ni Camille n'avaient jamais été sauvegardés en ligne
+dans cette session.
+
+`npx tsc -b` et `npx tsc -p tsconfig.api.json` clean. Toujours pas
+commité/poussé.
+
+## Checkpoint — mobile : colonne d'écriture agrandie, exemples resserrés
+
+Demande : sur mobile, plus de place pour s'entraîner à écrire sans
+défiler, et voir un peu plus d'exemples au dos de la carte sans passer en
+deux colonnes (jugé peu lisible avec le furigana à 375px de large).
+Trois leviers combinés dans `SessionCard.css`, tous sous
+`@media (max-width: 600px)` :
+
+1. **Ordre des traits déplacé à gauche du canevas, en bande verticale**
+   (suggestion explicite de l'utilisatrice) — remplace la rangée de
+   vignettes AU-DESSUS du canevas (~70-90px de hauteur perdue) par une
+   bande étroite de 52px À GAUCHE (`.session__writing-col` passe en
+   `flex-direction: row`), défilement interne propre si beaucoup de
+   traits (`.stroke-order__steps` en colonne avec `overflow-y: auto`),
+   label "ORDRE DES TRAITS" masqué (illisible à 52px de large, les
+   vignettes numérotées suffisent). Le canevas récupère quasi toute la
+   hauteur de la colonne.
+2. **`.session__writing-col` remonté de 240px à 300px de hauteur fixe**,
+   compensé par un rétrécissement du repère "précédent/niveau"
+   au-dessus de la carte (`.session__back-btn` 34→28px,
+   `.session__level-counter` resserré) — c'est ce repère que
+   l'utilisatrice désignait par "le titre et la flèche pour retourner à
+   la carte d'avant", pas le bouton "Retour au dashboard" tout en haut
+   de l'écran (vérifié via le contexte : "retourner à la CARTE d'avant"
+   correspond au bouton "Élément précédent" du deck, pas à la navigation
+   de page).
+3. **Espacements resserrés autour des exemples** (composants/lectures/
+   marges de liste/interligne) plutôt qu'un passage en deux colonnes —
+   qui aurait donné ~160px par colonne, trop étroit pour des phrases
+   avec furigana sans casse de ligne malvenue.
+
+Vérifié en navigateur (375×812, profil Test) : colonne d'écriture
+300px de haut, zone de dessin réellement utilisable 265×240 (contre
+~265×120 avant, soit le double) ; bande de traits testée à 2, 4, 6 et 13
+traits — tient sans défiler jusqu'à 6, défile proprement en interne à 13
+(`overflow-y` s'active correctement, le canevas garde sa taille pleine
+dans tous les cas) ; colonne d'écriture elle-même n'a plus besoin de son
+propre défilement (`needsOuterScroll: false`).
+
+`npx tsc -b` clean (changements CSS uniquement). Toujours pas commité/
+poussé.

@@ -110,6 +110,10 @@
   margin-bottom: var(--space-md);
 }
 
+.reset-confirm .pin-row {
+  margin-bottom: var(--space-md);
+}
+
 .reset-confirm__actions {
   display: flex;
   align-items: center;
@@ -125,6 +129,42 @@
   font-weight: 500;
   color: var(--color-success);
   margin-top: var(--space-md);
+}
+
+.bulk-mark-row {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.bulk-mark-select {
+  flex: 1;
+  background: var(--color-bg);
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.bulk-mark-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.bulk-mark-trigger {
+  width: 100%;
+  justify-content: center;
+  margin-top: var(--space-sm);
+}
+
+.bulk-mark-confirm {
+  background: var(--color-accent-soft);
+}
+
+.bulk-mark-confirm__text {
+  color: var(--color-accent-dark);
 }
 
 .pin-row {

@@ -91,25 +91,32 @@ export default function KanjiCardLoop({
       renderFront={(kanji: Kanji) => <span className="flip-card__char">{kanji.character}</span>}
       renderBack={(kanji: Kanji, revealed, toggleReveal) => (
         <>
-          <div className="flip-card__back-head">
-            <span className="flip-card__mini-char">{kanji.character}</span>
-            <div className="flip-card__meanings">
-              {kanji.meanings.map((m) => (
-                <span key={m} className="meaning-pill">
-                  {m}
-                </span>
-              ))}
+          {/* Groupés dans un wrapper commun pour pouvoir les mettre côte à
+              côte (kanji+définition à gauche, prononciations à droite) sur
+              mobile sans toucher `.flip-card__face--back`, partagé avec les
+              cartes vocabulaire/grammaire — voir la règle mobile dans
+              SessionCard.css. */}
+          <div className="flip-card__back-summary">
+            <div className="flip-card__back-head">
+              <span className="flip-card__mini-char">{kanji.character}</span>
+              <div className="flip-card__meanings">
+                {kanji.meanings.map((m) => (
+                  <span key={m} className="meaning-pill">
+                    {m}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="flip-card__readings">
-            <div>
-              <p className="flip-card__label">On&apos;yomi</p>
-              <p className="flip-card__reading-value">{kanji.onyomi.join(' · ')}</p>
-            </div>
-            <div>
-              <p className="flip-card__label">Kun&apos;yomi</p>
-              <p className="flip-card__reading-value">{kanji.kunyomi.join(' · ')}</p>
+            <div className="flip-card__readings">
+              <div>
+                <p className="flip-card__label">On&apos;yomi</p>
+                <p className="flip-card__reading-value">{kanji.onyomi.join(' · ')}</p>
+              </div>
+              <div>
+                <p className="flip-card__label">Kun&apos;yomi</p>
+                <p className="flip-card__reading-value">{kanji.kunyomi.join(' · ')}</p>
+              </div>
             </div>
           </div>
 
