@@ -27,8 +27,16 @@ function reconstructReading(segments: { text: string; reading?: string }[]): str
   return segments.map((s) => s.reading ?? s.text).join('')
 }
 
+// Virgule entre lectures d'un même type (intra on'yomi / intra
+// kun'yomi), slash entre les deux types — demande explicite de
+// l'utilisatrice, remplace le simple espace qui ne distinguait pas les
+// deux groupes (ex. "ジン ニン ひと" devient "ジン, ニン / ひと").
 function kanjiReadings(k: Kanji): string {
-  return [...k.onyomi, ...k.kunyomi].join(' ').replace(/[（(][^）)]*[）)]/g, '')
+  const strip = (s: string) => s.replace(/[（(][^）)]*[）)]/g, '').trim()
+  const onyomi = k.onyomi.map(strip).join(', ')
+  const kunyomi = k.kunyomi.map(strip).join(', ')
+  if (onyomi && kunyomi) return `${onyomi} / ${kunyomi}`
+  return onyomi || kunyomi
 }
 
 export function buildExplorerItems(): ExplorerItem[] {

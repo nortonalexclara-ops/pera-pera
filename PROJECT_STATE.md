@@ -3598,3 +3598,50 @@ désormais sur une liste de profils vide.
 `npx tsc -b` clean. Pas encore commité/poussé au moment d'écrire ceci —
 à faire dans la foulée (comportement habituel de session : commit +
 push dès que l'utilisatrice le demande).
+
+## Checkpoint — Explorer mobile : accordéon, exemples cliquables, lectures groupées
+
+Backend Redis toujours en panne (revérifié par curl direct sur
+`/api/backup` — même `FUNCTION_INVOCATION_FAILED` que le checkpoint
+précédent) — signalé à l'utilisatrice, en attente qu'elle revérifie ses
+variables d'environnement Vercel. Quatre demandes indépendantes traitées
+côté Explorer pendant ce temps, toutes dans `Explorer.tsx`/`.css` et
+`buildExplorerItems.ts` :
+
+1. **Accordéon entre cartes.** `expandedId` était déjà exclusif (une
+   seule valeur), mais `practiceId` (entraînement à l'écriture) restait
+   indépendant — on pouvait avoir le détail d'un item ET l'entraînement
+   d'un AUTRE item ouverts en même temps. `handleToggleExpand`/
+   `handleTogglePractice` ferment maintenant le panneau de l'AUTRE type
+   quand il appartient à un item différent, sans toucher à l'état de la
+   MÊME carte (ouvrir le détail de X n'y ferme pas sa propre pratique
+   déjà affichée). Vérifié : un seul `.explorer-detail` monté à la fois,
+   y compris en croisant détail/pratique entre deux items différents.
+
+2. **Mots fréquents cliquables** (ex. 安 → 安全). Nouveau helper
+   `segmentsToText` (texte brut sans furigana) + `openExample(text)`
+   dans Explorer : remplit la recherche avec le mot cliqué et remet TOUS
+   les autres filtres à "Tous" (sinon le mot cible pourrait rester caché
+   par un filtre actif sans qu'on comprenne pourquoi). Scopé
+   volontairement aux `frequentWords` de `KanjiDetail` uniquement, pas
+   aux phrases d'exemple (`.explorer-detail__examples` "Exemples") : une
+   phrase entière n'est pas une entrée de dictionnaire à elle seule.
+   Vérifié : clic sur 安全 depuis la fiche de 安 → recherche mise à jour,
+   1 résultat (l'entrée vocabulaire 安全 elle-même).
+
+3. **Lectures groupées avec virgule/slash.** `kanjiReadings()` dans
+   `buildExplorerItems.ts` (sub-label des lignes Explorer) et les
+   valeurs on'yomi/kun'yomi de `KanjiDetail` : virgule entre lectures du
+   même type, slash entre on'yomi et kun'yomi — remplace l'espace simple
+   qui ne distinguait pas les deux groupes ("ジン ニン ひと" →
+   "ジン, ニン / ひと"). Vérifié sur 安 : "アン / やす" affiché
+   correctement dans la ligne de résultat.
+
+4. **Mobile : kanji/mot agrandi, lecture réduite.** Signalé : le
+   caractère semblait perdu à côté d'une lecture qui prenait toute la
+   largeur en dessous. `.explorer-row__headline` 22px→30px et
+   `.explorer-row__sub` 12px→11px, uniquement sous
+   `@media (max-width: 600px)` — vérifié que le desktop garde bien
+   22px/12px (pas de fuite de la règle mobile).
+
+`npx tsc -b` clean. Toujours pas commité/poussé au moment d'écrire ceci.

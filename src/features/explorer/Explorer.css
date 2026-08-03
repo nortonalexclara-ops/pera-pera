@@ -321,6 +321,27 @@
   font-style: italic;
 }
 
+/* Mots fréquents cliquables (ex. 安全 depuis la fiche de 安) — rebondit
+   vers la fiche du mot lui-même plutôt que de rester un simple texte.
+   Pas appliqué aux phrases d'exemple (juste des `span`, non-cliquables) :
+   une phrase entière n'est pas une entrée du dictionnaire. */
+.explorer-detail__example-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  border-radius: var(--radius-sm);
+}
+
+.explorer-detail__example-link:hover .example__jp,
+.explorer-detail__example-link:focus-visible .example__jp {
+  color: var(--color-accent-dark);
+}
+
 .explorer-detail__grammar-rule {
   margin-bottom: var(--space-lg);
 }
@@ -365,13 +386,18 @@
     grid-area: chevron;
   }
 
+  /* Le kanji/mot se perdait à côté d'une lecture qui prenait toute la
+     largeur en dessous (signalé par l'utilisatrice) — inversé
+     l'emphase : le caractère grossit, la lecture rétrécit un peu. */
   .explorer-row__headline {
     grid-area: headline;
+    font-size: 30px;
   }
 
   .explorer-row__sub {
     grid-area: sub;
     white-space: normal;
+    font-size: 11px;
   }
 
   .explorer-row__meaning {

@@ -48,6 +48,13 @@ function isGrammar(data: ExplorerItem['data']): data is GrammarPoint {
   return 'pattern' in data && 'rule' in data
 }
 
+// Texte brut (sans furigana) d'un mot segmenté — sert à rebondir vers sa
+// propre fiche (ex. 安全 depuis la liste "Mots fréquents" de 安), pas à
+// l'affichage (voir FuriganaText pour ça).
+function segmentsToText(segments: { text: string }[]): string {
+  return segments.map((s) => s.text).join('')
+}
+
 export default function Explorer() {
   const location = useLocation()
   // Arrivée depuis la reconnaissance de kanji manuscrit (voir
@@ -91,6 +98,39 @@ export default function Explorer() {
   function handleKindToggle(next: string) {
     setKind(next)
     if (next !== 'Kanjis') setTheme('Tous')
+  }
+
+  // Ouvrir un panneau (détail OU entraînement) sur une carte ferme
+  // l'AUTRE panneau s'il était ouvert sur une carte différente — demande
+  // explicite de l'utilisatrice ("si je clique sur une autre carte je
+  // veux que ça ferme la précédente"). Ne touche pas à l'état de la
+  // MÊME carte : ouvrir le détail d'un item n'y ferme pas sa propre
+  // pratique d'écriture si elle était déjà affichée.
+  function handleToggleExpand(id: string) {
+    setExpandedId((prev) => (prev === id ? null : id))
+    setPracticeId((prev) => (prev === id ? prev : null))
+  }
+
+  function handleTogglePractice(id: string) {
+    setPracticeId((prev) => (prev === id ? null : id))
+    setExpandedId((prev) => (prev === id ? prev : null))
+  }
+
+  // Rebondir d'un mot fréquent (ex. 安全 dans la fiche de 安) vers sa
+  // propre entrée — demande explicite de l'utilisatrice. Réinitialise
+  // les filtres pour garantir que l'entrée cible n'est pas cachée par un
+  // filtre actif (niveau, maîtrise...), plutôt que de risquer une
+  // recherche qui ne renvoie "rien" sans explication apparente.
+  function openExample(text: string) {
+    setQuery(text)
+    setLevel('Tous')
+    setKind('Tous')
+    setTheme('Tous')
+    setMastery('Tous')
+    setFavoriteFilter('Tous')
+    setPracticeId(null)
+    setExpandedId(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const results = useMemo(() => {
@@ -202,7 +242,7 @@ export default function Explorer() {
                 <button
                   type="button"
                   className="explorer-row"
-                  onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                  onClick={() => handleToggleExpand(item.id)}
                 >
                   <span className="explorer-row__kind-badge">{KIND_TO_LABEL[item.kind]}</span>
                   <span className="explorer-row__headline">{item.headline}</span>
@@ -217,7 +257,7 @@ export default function Explorer() {
                         title="S'entraîner à l'écrire"
                         onClick={(e) => {
                           e.stopPropagation()
-                          setPracticeId(isPracticing ? null : item.id)
+                          handleTogglePractice(item.id)
                         }}
                       >
                         <PenLine size={15} strokeWidth={1.75} />
@@ -246,7 +286,7 @@ export default function Explorer() {
 
                 {isExpanded && (
                   <div className="explorer-detail">
-                    {isKanji(item.data) && <KanjiDetail kanji={item.data} />}
+                    {isKanji(item.data) && <KanjiDetail kanji={item.data} onExampleClick={openExample} />}
                     {isVocab(item.data) && <VocabDetail vocab={item.data} />}
                     {isGrammar(item.data) && <GrammarDetail point={item.data} />}
                   </div>
@@ -270,17 +310,17 @@ export default function Explorer() {
   )
 }
 
-function KanjiDetail({ kanji }: { kanji: Kanji }) {
+function KanjiDetail({ kanji, onExampleClick }: { kanji: Kanji; onExampleClick: (text: string) => void }) {
   return (
     <div className="explorer-detail__body">
       <div className="explorer-detail__readings">
         <div>
           <p className="flip-card__label">On&apos;yomi</p>
-          <p className="flip-card__reading-value">{kanji.onyomi.join(' · ') || '—'}</p>
+          <p className="flip-card__reading-value">{kanji.onyomi.join(', ') || '—'}</p>
         </div>
         <div>
           <p className="flip-card__label">Kun&apos;yomi</p>
-          <p className="flip-card__reading-value">{kanji.kunyomi.join(' · ') || '—'}</p>
+          <p className="flip-card__reading-value">{kanji.kunyomi.join(', ') || '—'}</p>
         </div>
         <div>
           <p className="flip-card__label">Radical</p>
@@ -314,9 +354,16 @@ function KanjiDetail({ kanji }: { kanji: Kanji }) {
       <ul className="explorer-detail__examples">
         {kanji.frequentWords.map((w, i) => (
           <li key={i}>
-            <span className="example__jp">
-              <FuriganaText segments={w.segments} />
-            </span>
+            <button
+              type="button"
+              className="explorer-detail__example-link"
+              onClick={() => onExampleClick(segmentsToText(w.segments))}
+              title="Ouvrir ce mot dans Explorer"
+            >
+              <span className="example__jp">
+                <FuriganaText segments={w.segments} />
+              </span>
+            </button>
             <span className="explorer-detail__example-meaning">{w.meaning}</span>
           </li>
         ))}
