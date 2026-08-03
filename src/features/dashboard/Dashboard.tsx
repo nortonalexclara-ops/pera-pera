@@ -100,7 +100,11 @@ export default function Dashboard() {
     [profileId, wordOfDay.id],
     false,
   )
-  const [mode, setMode] = useState<SessionMode>('recommended')
+  // Démarre sur "personnalisée" plutôt que "recommandée" (demande
+  // explicite de l'utilisatrice) — reste modifiable via le même
+  // interrupteur, ce n'est qu'un changement de mode par défaut à
+  // l'ouverture du Dashboard.
+  const [mode, setMode] = useState<SessionMode>('custom')
 
   const goalCurrent = masteredKanjiCount ?? 0
   const goalPercent = Math.round((goalCurrent / mockGoal.target) * 100)
