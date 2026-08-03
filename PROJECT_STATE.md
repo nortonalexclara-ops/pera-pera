@@ -3267,3 +3267,25 @@ résolution de conflits à gérer, correspond à la demande littérale
 avant de commencer — changement d'architecture non trivial (l'app perd
 une partie de son fonctionnement hors-ligne pur pour ce qui passe par le
 compte).
+
+**Suite (implémenté)** : sauvegarde/récupération par code à 4 chiffres
+construite (`api/backup.ts`, `api/restore.ts`, Upstash Redis via
+`@upstash/redis`, `src/db/profileSync.ts` pour export/import local,
+`src/features/profile/cloudSync.ts` côté client, UI dans Settings
+"Sauvegarder en ligne" et ProfileSelector "Récupérer un profil"). Piège
+rencontré à la connexion réelle : l'intégration Marketplace "Upstash for
+Redis" de Vercel **ne crée pas** `UPSTASH_REDIS_REST_URL`/`_TOKEN`
+(noms attendus par `Redis.fromEnv()`) mais des noms différents —
+constaté dans Settings → Environment Variables du projet une fois
+l'intégration connectée : `UPSTASH_REDIS_REST_KV_REST_API_URL`/
+`_TOKEN` (probablement lié à l'héritage de l'ancien produit "Vercel KV"
+dans le nommage de l'intégration). Corrigé en construisant le client
+explicitement (`api/_redis.ts`, préfixe `_` = fichier partagé non exposé
+comme route côté Vercel) avec ces noms précis plutôt que `fromEnv()` —
+**à revérifier si l'utilisatrice reconnecte l'intégration sur un
+nouveau projet**, les noms exacts ne sont pas garantis stables/
+documentés côté Vercel. Autre point noté en passant (non bloquant) :
+les variables créées par l'intégration sont scope "Production and
+Preview" par défaut, pas "Development" — sans incidence sur le site
+déployé, seulement sur `vercel env pull` en local si besoin de tester
+avec `vercel dev`.

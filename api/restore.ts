@@ -1,8 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { Redis } from '@upstash/redis'
 import { createHash } from 'crypto'
-
-const redis = Redis.fromEnv()
+import { redis } from './_redis'
 
 function hashPin(pin: string, normalizedName: string): string {
   return createHash('sha256').update(`${normalizedName}:${pin}`).digest('hex')

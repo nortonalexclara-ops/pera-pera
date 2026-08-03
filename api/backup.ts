@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { Redis } from '@upstash/redis'
 import { createHash } from 'crypto'
+import { redis } from './_redis'
 
 // Fonction serverless Vercel (pas incluse dans le build Vite — voir
 // PROJECT_STATE.md pour le contexte complet). Stocke la progression d'un
@@ -8,11 +8,7 @@ import { createHash } from 'crypto'
 // "Vercel KV" en tant que produit séparé est déprécié, remplacé par
 // cette intégration), gardée par un code à 4 chiffres — seule "auth"
 // prévue vu le nombre d'utilisateurs (~10, usage familial/amis), pas un
-// vrai système de comptes. `Redis.fromEnv()` lit automatiquement
-// `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`, injectées par
-// Vercel une fois l'intégration liée au projet.
-const redis = Redis.fromEnv()
-
+// vrai système de comptes.
 function hashPin(pin: string, normalizedName: string): string {
   return createHash('sha256').update(`${normalizedName}:${pin}`).digest('hex')
 }
