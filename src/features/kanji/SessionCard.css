@@ -777,11 +777,14 @@ rt {
    palier ≤860px (padding généreux, colonne d'écriture fixée à 200px,
    boutons de décision pleine taille) ne laissait presque rien à
    `.flip-card`. Ici on resserre tout ce qui n'est pas la carte
-   (padding/marges/écarts, colonne d'écriture, boutons) pour lui rendre
-   le maximum de place — la colonne d'écriture devient plus compacte et
-   secondaire (garde une lecture pour le repère du trait, sert surtout à
-   vérifier deux-trois traits) plutôt que la zone d'entraînement complète
-   qu'elle est sur desktop/tablette. */
+   (padding/marges/écarts, boutons) pour lui laisser de la place.
+   Correctif suivant (nouveau signalement) : donner tout l'espace
+   restant à la carte réglait le défilement des exemples mais rendait la
+   colonne d'écriture (150px fixes) trop exiguë pour vraiment s'entraîner
+   à tracer — `flip-card__char`/`__word` réduits ici pour que la carte
+   prenne moins de place, et la colonne d'écriture agrandie en
+   conséquence (150px → 240px) pour redevenir une vraie zone
+   d'entraînement, pas un aperçu à peine visible. */
 @media (max-width: 600px) {
   .session {
     padding: var(--space-sm) var(--space-md);
@@ -799,16 +802,24 @@ rt {
     gap: var(--space-sm);
   }
 
+  .flip-card__char {
+    font-size: 96px;
+  }
+
+  .flip-card__word {
+    font-size: 34px;
+  }
+
   .flip-card__face--front,
   .flip-card__face--back {
     padding: var(--space-md);
   }
 
   /* Filet de sécurité : si le repère "ordre des traits" + le canevas ne
-     tiennent pas tous les deux dans la hauteur réduite, la colonne
+     tiennent pas tous les deux dans la hauteur disponible, la colonne
      défile elle-même plutôt que de déborder sur le reste de la page. */
   .session__writing-col {
-    flex: 0 0 150px;
+    flex: 0 0 240px;
     gap: var(--space-sm);
     overflow-y: auto;
   }
@@ -833,7 +844,7 @@ rt {
   }
 
   .writing-canvas__surface {
-    min-height: 80px;
+    min-height: 120px;
   }
 
   .stroke-order-panel {

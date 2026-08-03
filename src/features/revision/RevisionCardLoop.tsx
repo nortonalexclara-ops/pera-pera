@@ -50,6 +50,7 @@ export default function RevisionCardLoop({ level, limit, continueLabel, onDone, 
       getKey={(item) => item.id}
       continueLabel={continueLabel}
       onDone={onDone}
+      profileId={profileId}
       onAdvance={(item, decision) => {
         onItemSeen?.(item)
         if (profileId) setMastered(profileId, item.kind, item.itemId, decision)

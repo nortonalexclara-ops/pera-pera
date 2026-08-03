@@ -39,3 +39,8 @@ export async function updateNote(
 export async function deleteNote(id: string): Promise<void> {
   await db.notes.delete(id)
 }
+
+export async function resetNotes(profileId: string): Promise<void> {
+  if (!profileId) return
+  await db.notes.where({ profileId }).delete()
+}

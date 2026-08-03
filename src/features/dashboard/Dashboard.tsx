@@ -5,11 +5,13 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Flame, ArrowRight, Star } from 'lucide-react'
 import { useProfileStore } from '../profile/profileStore'
 import { countMastered, getAllMasteredIds } from '../../db/mastery'
+import { getStreak } from '../../db/activity'
 import type { ItemKind } from '../../db/db'
 import { mockKanjiList } from '../kanji/mockKanji'
 import { mockVocabList } from '../vocab/mockVocab'
 import { mockGrammarList } from '../grammar/mockGrammar'
-import { mockStreak, mockGoal, mockWordOfDay, type RecommendedSession } from './mockDashboard'
+import { mockGoal, type RecommendedSession } from './mockDashboard'
+import { getWordOfDay } from './wordOfDay'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import ProgressRing from '../../components/ui/ProgressRing'
 import PageTransition from '../../components/ui/PageTransition'
@@ -68,6 +70,15 @@ export default function Dashboard() {
     EMPTY_MASTERED,
   )
 
+  // Vrai streak par profil (voir src/db/activity.ts) — remplace
+  // `mockStreak`, jusque-là fixe et identique pour tout le monde.
+  const streak = useLiveQuery(() => (profileId ? getStreak(profileId) : Promise.resolve(0)), [profileId], 0)
+
+  // Recalculé une seule fois par montage (pas à chaque rendu) — la date ne
+  // change pas pendant la session de l'utilisateur sur cet écran.
+  const [wordOfDay] = useState(() => getWordOfDay())
+  const wordOfDayReading = wordOfDay.wordSegments.map((s) => s.reading ?? s.text).join('')
+
   // Purement visuel — pas de persistance à ce stade.
   const [isFavorite, setIsFavorite] = useState(false)
   const [mode, setMode] = useState<SessionMode>('recommended')
@@ -115,7 +126,7 @@ export default function Dashboard() {
           </h1>
           <p className="dashboard__streak">
             <Flame size={14} className="dashboard__streak-icon" />
-            {mockStreak} jours de suite
+            {streak} jour{streak !== 1 ? 's' : ''} de suite
           </p>
         </div>
 
@@ -169,9 +180,9 @@ export default function Dashboard() {
 
             <div className="soft-card word-card">
               <p className="word-card__eyebrow">Mot du jour</p>
-              <p className="word-card__jp">{mockWordOfDay.japanese}</p>
+              <p className="word-card__jp">{wordOfDay.word}</p>
               <p className="word-card__reading">
-                {mockWordOfDay.reading} · {mockWordOfDay.meaning}
+                {wordOfDayReading} · {wordOfDay.meanings[0]}
               </p>
               <div className="word-card__actions">
                 <motion.button

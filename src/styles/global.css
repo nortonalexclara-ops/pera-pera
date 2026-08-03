@@ -121,6 +121,34 @@ a:focus-visible {
   box-shadow: none;
 }
 
+/* Action destructive (ex. réinitialiser des données) — même gabarit que
+   `.btn-primary`, teinte danger plutôt qu'accent, pour rester cohérent
+   visuellement sans faire passer une suppression pour une action neutre. */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-danger);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 13px 24px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-danger:hover {
+  transform: translateY(-1px);
+}
+
+.btn-danger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Boutons de choix (esprit Anki) : sélection simple ou multiple selon
    la façon dont l'appelant gère `selected` — pas de liste déroulante. */
 .choice-btn-group {

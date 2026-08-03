@@ -8,7 +8,7 @@ import Notebook from './features/notebook/Notebook'
 import NotesList from './features/notes/NotesList'
 import NoteEditor from './features/notes/NoteEditor'
 import StatsScreen from './features/stats/StatsScreen'
-import SettingsPlaceholder from './features/settings/SettingsPlaceholder'
+import Settings from './features/settings/Settings'
 import SessionFlow from './features/kanji/SessionFlow'
 import TestKnowledge from './features/test/TestKnowledge'
 import TrainingPlaceholder from './features/training/TrainingPlaceholder'
@@ -39,7 +39,7 @@ export default function App() {
         <Route path="/notes" element={<NotesList />} />
         <Route path="/notes/:id" element={<NoteEditor />} />
         <Route path="/stats" element={<StatsScreen />} />
-        <Route path="/settings" element={<SettingsPlaceholder />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

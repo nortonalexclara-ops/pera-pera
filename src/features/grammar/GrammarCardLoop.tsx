@@ -49,6 +49,7 @@ export default function GrammarCardLoop({
       getKey={(point) => point.id}
       continueLabel={continueLabel}
       onDone={onDone}
+      profileId={profileId}
       onAdvance={(point, decision) => {
         onItemSeen?.({ kind: 'grammar', id: point.id, data: point })
         if (profileId) setMastered(profileId, 'grammar', point.id, decision)

@@ -46,10 +46,21 @@ export interface NoteRecord {
   updatedAt: number
 }
 
+// Une ligne par jour où le profil a fait au moins une carte en séance
+// (voir `src/db/activity.ts`) — sert uniquement à calculer un vrai "N
+// jours de suite" (remplace `mockStreak`, jusque-là identique et fixe
+// pour tout le monde). `date` au format 'YYYY-MM-DD', heure locale.
+export interface ActivityRecord {
+  id?: number
+  profileId: string
+  date: string
+}
+
 class PeraPeraDB extends Dexie {
   profiles!: Table<ProfileRecord, string>
   mastery!: Table<MasteryRecord, number>
   notes!: Table<NoteRecord, string>
+  activity!: Table<ActivityRecord, number>
 
   constructor() {
     super('pera-pera')
@@ -67,6 +78,13 @@ class PeraPeraDB extends Dexie {
       profiles: 'id',
       mastery: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
       notes: 'id, profileId, updatedAt',
+    })
+    // v3 : ajout du suivi d'activité (vrai streak par profil).
+    this.version(3).stores({
+      profiles: 'id',
+      mastery: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      notes: 'id, profileId, updatedAt',
+      activity: '++id, [profileId+date], profileId',
     })
   }
 }

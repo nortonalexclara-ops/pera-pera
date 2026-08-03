@@ -11,16 +11,8 @@ export interface RecommendedSession {
   durationMinutes: number
 }
 
-export const mockStreak = 12
-
 export const mockGoal = {
   label: 'Maîtriser 500 kanjis',
   current: 128,
   target: 500,
-}
-
-export const mockWordOfDay = {
-  japanese: 'ありがとう',
-  reading: 'arigatou',
-  meaning: 'merci',
 }

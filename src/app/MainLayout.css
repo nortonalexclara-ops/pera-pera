@@ -1,18 +1,41 @@
 .main-layout {
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   min-height: 100vh;
   background: var(--color-bg);
 }
 
 .main-layout__content {
   flex: 1;
+  /* `min-height: 0` — sans ça, un flex item déborde de l'espace qui lui
+     est alloué au lieu de défiler en interne dès que son contenu est
+     intrinsèquement plus grand (piège classique flexbox). Ça poussait
+     toute `.main-layout` au-delà de 100vh sur les pages denses (Cahier
+     avec son canevas, longues listes...), ce qui repoussait la barre de
+     navigation hors de l'écran — obligeant à défiler toute la page pour
+     la retrouver (signalé par l'utilisatrice, mobile). */
+  min-height: 0;
   overflow-y: auto;
   padding: var(--space-lg);
-  padding-bottom: var(--space-xl);
+  /* Dégage la barre de nav fixe en bas (hauteur réelle ~64px + la zone de
+     sécurité iOS en plus, pas juste `--space-xl`) — sinon le bas du
+     contenu se retrouve masqué derrière. */
+  padding-bottom: calc(64px + env(safe-area-inset-bottom) + var(--space-lg));
 }
 
+/* Barre de nav toujours visible sur mobile — `position: fixed` plutôt
+   que de compter sur l'ordre flex (`column-reverse` + hauteur 100vh
+   exacte du parent) : déjà jugé "pas assez fiable en pratique sur iPad
+   Safari" pour la version desktop ci-dessous (voir commentaire du media
+   query), donc pas question de reproduire la même approche fragile ici.
+   `padding-bottom` sur `.main-layout__content` (plus bas) compense la
+   hauteur de la barre pour qu'elle ne cache jamais le bas du contenu. */
 .tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
   display: flex;
   justify-content: space-around;
   align-items: center;
@@ -98,6 +121,7 @@
   .tab-bar {
     position: fixed;
     top: 0;
+    bottom: auto;
     left: 0;
     right: 0;
     z-index: 20;
@@ -130,6 +154,7 @@
 
   .main-layout__content {
     padding: var(--space-xl) var(--space-2xl);
+    padding-bottom: var(--space-xl);
     margin-top: 56px;
   }
 }

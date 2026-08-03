@@ -62,6 +62,7 @@ export default function VocabCardLoop({
       getKey={(vocab) => vocab.id}
       continueLabel={continueLabel}
       onDone={onDone}
+      profileId={profileId}
       onAdvance={(vocab, decision) => {
         onItemSeen?.({ kind: 'vocab', id: vocab.id, data: vocab })
         if (profileId) setMastered(profileId, 'vocab', vocab.id, decision)

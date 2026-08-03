@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Check, RotateCcw, GraduationCap, Info, ChevronLeft } from 'lucide-react'
 import WritingCanvas from './WritingCanvas'
 import ModuleEndCard from './ModuleEndCard'
+import { recordActivityToday } from '../../db/activity'
 
 interface CardLoopShellProps<T> {
   items: T[]
@@ -40,6 +41,11 @@ interface CardLoopShellProps<T> {
   // le module Kanjis pour l'ordre des traits (repère utile juste à côté
   // d'où on écrit, plutôt qu'enterré dans la carte à gauche).
   renderWritingExtra?: (item: T) => ReactNode
+  // Profil actif — sert uniquement à enregistrer une ligne d'activité du
+  // jour (streak, voir `src/db/activity.ts`) à chaque carte passée.
+  // Centralisé ici plutôt que dupliqué dans les 4 appelants (Kanjis/
+  // Vocabulaire/Grammaire/Révisions), qui font déjà tous un `advance()`.
+  profileId?: string | null
 }
 
 /**
@@ -65,6 +71,7 @@ export default function CardLoopShell<T>({
   renderCounter,
   onAdvance,
   renderWritingExtra,
+  profileId,
 }: CardLoopShellProps<T>) {
   // Figée une seule fois, dès que `itemsReady` passe à true, puis plus
   // jamais resynchronisée ensuite : les listes fournies par les appelants
@@ -145,6 +152,7 @@ export default function CardLoopShell<T>({
 
   function advance(decision: 'mastered' | 'review') {
     onAdvance?.(item, decision)
+    if (profileId) recordActivityToday(profileId)
     if (isLast) {
       setModuleDone(true)
     } else {

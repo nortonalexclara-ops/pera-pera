@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Plus, Check } from 'lucide-react'
+import { Plus, Check, CloudDownload } from 'lucide-react'
 import { avatarGradients } from './mockProfiles'
 import { useProfileStore } from './profileStore'
 import { listProfiles, createProfile } from '../../db/profiles'
+import { importProfileData } from '../../db/profileSync'
+import { restoreProfile } from './cloudSync'
 import type { ProfileRecord } from '../../db/db'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import PageTransition from '../../components/ui/PageTransition'
@@ -30,6 +32,12 @@ export default function ProfileSelector() {
   const [newName, setNewName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  const [restoring, setRestoring] = useState(false)
+  const [restoreName, setRestoreName] = useState('')
+  const [restorePin, setRestorePin] = useState('')
+  const [restoreBusy, setRestoreBusy] = useState(false)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
+
   useEffect(() => {
     listProfiles()
       .then(setProfiles)
@@ -51,6 +59,30 @@ export default function ProfileSelector() {
       handleSelect(record.id, record.name, record.colorIndex)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de créer ce profil.')
+    }
+  }
+
+  // Récupère un profil sauvegardé depuis un autre appareil (voir Réglages
+  // "Retrouver mon profil sur un autre appareil") — crée un nouveau profil
+  // local (id forcément différent de l'appareil d'origine) puis y importe
+  // la progression reçue du cloud.
+  async function handleRestore() {
+    setRestoreError(null)
+    if (!restoreName.trim() || !/^\d{4}$/.test(restorePin)) return
+    setRestoreBusy(true)
+    try {
+      const result = await restoreProfile(restoreName, restorePin)
+      const record = await createProfile(result.displayName)
+      await importProfileData(record.id, result.payload)
+      setProfiles((prev) => [...prev, record])
+      setRestoring(false)
+      setRestoreName('')
+      setRestorePin('')
+      handleSelect(record.id, record.name, record.colorIndex)
+    } catch (err) {
+      setRestoreError(err instanceof Error ? err.message : 'Impossible de récupérer ce profil.')
+    } finally {
+      setRestoreBusy(false)
     }
   }
 
@@ -118,10 +150,58 @@ export default function ProfileSelector() {
                 <span className="profile-card__name">Nouveau profil</span>
               </motion.button>
             )}
+
+            {restoring ? (
+              <motion.div className="profile-card profile-card--form profile-card--restore card" variants={cardVariants}>
+                <input
+                  type="text"
+                  className="profile-card__input"
+                  placeholder="Nom du profil"
+                  value={restoreName}
+                  autoFocus
+                  maxLength={20}
+                  onChange={(e) => setRestoreName(e.target.value)}
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  className="profile-card__input"
+                  placeholder="Code à 4 chiffres"
+                  value={restorePin}
+                  onChange={(e) => setRestorePin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  onKeyDown={(e) => e.key === 'Enter' && handleRestore()}
+                />
+                <button
+                  type="button"
+                  className="profile-card__confirm"
+                  onClick={handleRestore}
+                  disabled={restoreBusy}
+                  title="Récupérer ce profil"
+                >
+                  <Check size={16} strokeWidth={2} />
+                </button>
+              </motion.div>
+            ) : (
+              <motion.button
+                className="profile-card profile-card--new card"
+                variants={cardVariants}
+                whileHover={{ y: -3 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setRestoring(true)}
+              >
+                <span className="profile-card__avatar">
+                  <CloudDownload size={24} strokeWidth={1.75} />
+                </span>
+                <span className="profile-card__name">Récupérer un profil</span>
+              </motion.button>
+            )}
           </motion.div>
         )}
 
         {error && <p className="profile-selector__error">{error}</p>}
+        {restoreError && <p className="profile-selector__error">{restoreError}</p>}
       </div>
     </PageTransition>
   )

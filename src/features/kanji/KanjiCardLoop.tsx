@@ -56,6 +56,7 @@ export default function KanjiCardLoop({
       getKey={(kanji) => kanji.id}
       continueLabel={continueLabel}
       onDone={onDone}
+      profileId={profileId}
       onAdvance={(kanji, decision) => {
         onItemSeen?.({ kind: 'kanji', id: kanji.id, data: kanji })
         if (profileId) setMastered(profileId, 'kanji', kanji.id, decision)

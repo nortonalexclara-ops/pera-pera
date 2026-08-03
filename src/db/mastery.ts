@@ -38,3 +38,17 @@ export async function getAllMasteredIds(profileId: string): Promise<Record<ItemK
   for (const row of rows) empty[row.kind].add(row.itemId)
   return empty
 }
+
+// Réinitialisation depuis Réglages — `kinds` absent efface toute la
+// maîtrise du profil, sinon seulement les types cochés (ex. juste
+// Kanjis) pour laisser le choix plutôt qu'un unique "tout effacer".
+export async function resetMastery(profileId: string, kinds?: ItemKind[]): Promise<void> {
+  if (!profileId) return
+  if (!kinds || kinds.length === 0) {
+    await db.mastery.where({ profileId }).delete()
+    return
+  }
+  for (const kind of kinds) {
+    await db.mastery.where({ profileId, kind }).delete()
+  }
+}

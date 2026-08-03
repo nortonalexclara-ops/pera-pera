@@ -3200,3 +3200,70 @@ séance) — plus aucun texte de cet écran n'est sélectionnable, peu
 importe où un tracé déborde. Vérifié : `getComputedStyle` sur le bouton
 "Maîtrisé" confirme `user-select: none` hérité, écran testé visuellement
 sans régression (séance personnalisée, N5 Kanjis).
+
+## Déploiement Vercel + vraies stats + mobile (après mise en ligne)
+
+Site en ligne : https://pera-pera-eight.vercel.app/ (repo GitHub
+`nortonalexclara-ops/pera-pera`, déploiement continu — chaque push sur
+`main` redéploie). `vercel.json` ajouté (rewrite SPA, sinon 404 sur
+refresh/lien direct hors `/`).
+
+**Vraies stats par profil** (remplace `mockStreak`/`mockWordOfDay`,
+fixes et identiques pour tout le monde) :
+- Nouvelle table Dexie `activity` (v3 du schéma, `src/db/db.ts`) : une
+  ligne par jour où le profil a fait au moins une carte en séance.
+  `src/db/activity.ts` — `recordActivityToday` (appelé depuis
+  `CardLoopShell.advance()`, centralisé plutôt que dupliqué dans les 4
+  boucles Kanjis/Vocab/Grammaire/Révisions — nouveau prop `profileId` sur
+  `CardLoopShell`), `getStreak` (remonte les jours consécutifs depuis
+  aujourd'hui, ou hier si pas encore pratiqué aujourd'hui — la série ne
+  casse qu'après un jour entier sans activité), `resetActivity`.
+- `src/features/dashboard/wordOfDay.ts` — `getWordOfDay()` choisit un
+  vrai mot de `mockVocabList` de façon déterministe sur la date du jour
+  (même mot pour tout le monde toute la journée, change le lendemain,
+  sans état à synchroniser).
+- **Écran Réglages construit** (`src/features/settings/Settings.tsx`,
+  remplace `SettingsPlaceholder` — supprimé) : réinitialisation
+  granulaire par profil (Kanjis/Vocabulaire/Grammaire/Série/Notes,
+  cases à cocher indépendantes, pas un unique "tout effacer"), avec
+  étape de confirmation avant d'exécuter. Nouvelles fonctions
+  `resetMastery(profileId, kinds?)` (db/mastery.ts),
+  `resetActivity(profileId)`, `resetNotes(profileId)` (db/notes.ts).
+  Nouveau `.btn-danger` dans global.css (même gabarit que `.btn-primary`,
+  teinte danger). Testé en navigateur de bout en bout : coché "Série"
+  seul → confirmé → streak repassé à 0, mastery kanji (2/500) intacte
+  (la sélection granulaire ne touche bien que ce qui est coché).
+
+**Mobile — deux signalements corrigés** :
+- Barre de nav du bas disparaissait au scroll (ex. depuis Cahier,
+  difficile de revenir au Dashboard). Cause réelle : `.main-layout__content`
+  n'avait pas `min-height: 0` — piège flexbox classique, un flex item
+  déborde de l'espace alloué au lieu de défiler en interne dès que son
+  contenu est intrinsèquement plus grand, ce qui poussait toute
+  `.main-layout` au-delà de 100vh. Fix définitif : `.tab-bar` passée en
+  `position: fixed; bottom: 0` sur mobile (même stratégie déjà validée
+  pour la version desktop `top: 0`, plutôt que refaire confiance à un
+  calcul de hauteur flex jugé "pas assez fiable en pratique sur iPad
+  Safari" par le passé) + `min-height: 0` corrigé en plus. Vérifié par
+  script (scroll à 5000px, `position:fixed` reste ancré au viewport).
+- Carte de séance trop grande sur téléphone, colonne d'écriture réduite
+  à 150px devenue trop exiguë pour vraiment s'entraîner (nouveau
+  signalement après un fix précédent qui avait fait l'inverse — donner
+  le maximum de place à la carte). Rééquilibré à ≤600px :
+  `flip-card__char` 130px→96px, `flip-card__word` 48px→34px,
+  `.session__writing-col` 150px→240px, canevas 80px→120px min-height.
+  Vérifié par mesure DOM (`getBoundingClientRect`) : carte 442px de haut
+  (contre la quasi-totalité de l'écran avant), colonne d'écriture 240px
+  avec un canevas de 120px effectivement utilisable.
+
+**Comptes/PIN multi-appareils** — demandé (~10 utilisateurs, code à 4
+chiffres par profil) mais **pas encore implémenté**, nécessite un
+backend (l'app est 100% IndexedDB local jusqu'ici). Recommandation
+donnée à l'utilisatrice : Vercel KV/Postgres + quelques routes API
+serverless (déjà sur Vercel, pas de nouveau service tiers), en backup/
+restore explicite plutôt qu'une synchro continue (plus simple, pas de
+résolution de conflits à gérer, correspond à la demande littérale
+"retrouver son profil sur un autre appareil"). En attente de son accord
+avant de commencer — changement d'architecture non trivial (l'app perd
+une partie de son fonctionnement hors-ligne pur pour ce qui passe par le
+compte).
