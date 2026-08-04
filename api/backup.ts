@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash } from 'crypto'
-import { redis, redisConfigured } from './_redis'
+import { redis, redisConfigured } from './_redis.js'
 
 // Fonction serverless Vercel (pas incluse dans le build Vite — voir
 // PROJECT_STATE.md pour le contexte complet). Stocke la progression d'un
