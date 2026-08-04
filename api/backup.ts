@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash } from 'crypto'
-import { redis } from './_redis'
+import { redis, redisConfigured } from './_redis'
 
 // Fonction serverless Vercel (pas incluse dans le build Vite — voir
 // PROJECT_STATE.md pour le contexte complet). Stocke la progression d'un
@@ -34,26 +34,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
+  if (!redisConfigured) {
+    res.status(503).json({ error: 'Sauvegarde indisponible : variables Redis manquantes côté serveur (Vercel).' })
+    return
+  }
+
   const normalizedName = profileName.trim().toLowerCase()
   const key = `profile:${normalizedName}`
   const pinHash = hashPin(pin, normalizedName)
 
-  // Le premier backup sous un nom donné "réserve" ce nom avec ce code —
-  // un backup suivant sous le même nom doit fournir le même code, sinon
-  // n'importe qui pourrait écraser la progression de quelqu'un d'autre
-  // rien qu'en devinant/réutilisant un prénom courant.
-  const existing = await redis.get<{ pinHash: string }>(key)
-  if (existing && existing.pinHash !== pinHash) {
-    res.status(403).json({ error: 'Ce nom de profil est déjà utilisé avec un autre code.' })
-    return
+  try {
+    // Le premier backup sous un nom donné "réserve" ce nom avec ce code —
+    // un backup suivant sous le même nom doit fournir le même code, sinon
+    // n'importe qui pourrait écraser la progression de quelqu'un d'autre
+    // rien qu'en devinant/réutilisant un prénom courant.
+    const existing = await redis.get<{ pinHash: string }>(key)
+    if (existing && existing.pinHash !== pinHash) {
+      res.status(403).json({ error: 'Ce nom de profil est déjà utilisé avec un autre code.' })
+      return
+    }
+
+    await redis.set(key, {
+      pinHash,
+      displayName: profileName.trim(),
+      payload,
+      savedAt: Date.now(),
+    })
+
+    res.status(200).json({ ok: true })
+  } catch (err) {
+    // Convertit un crash Redis (identifiants invalides, service
+    // injoignable...) en réponse JSON exploitable plutôt que de laisser
+    // la fonction planter sans message (voir le commentaire sur
+    // `redisConfigured` dans _redis.ts).
+    console.error('backup: erreur Redis', err)
+    res.status(500).json({ error: 'Service de sauvegarde indisponible pour le moment.' })
   }
-
-  await redis.set(key, {
-    pinHash,
-    displayName: profileName.trim(),
-    payload,
-    savedAt: Date.now(),
-  })
-
-  res.status(200).json({ ok: true })
 }

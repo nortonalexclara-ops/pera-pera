@@ -115,6 +115,20 @@ export default function CardLoopShell<T>({
   const [phase, setPhase] = useState<'front' | 'back'>('front')
   const [revealed, setRevealed] = useState<Set<number>>(new Set())
   const [moduleDone, setModuleDone] = useState(false)
+  const backFaceRef = useRef<HTMLDivElement>(null)
+
+  // Bug signalé : après "Maîtrisé"/"À revoir", la carte suivante
+  // s'ouvrait parfois déjà scrollée tout en bas (traduction/exemples
+  // hors champ) au lieu de démarrer en haut. `.flip-card__face--back`
+  // est le même élément DOM réutilisé d'une carte à l'autre (seul son
+  // contenu change) — son scroll ne se réinitialise pas tout seul juste
+  // parce que `item` a changé. Remis à zéro à chaque fois qu'on regarde
+  // le dos d'une carte (nouvelle carte OU re-retournement de la même).
+  useEffect(() => {
+    if (phase === 'back' && backFaceRef.current) {
+      backFaceRef.current.scrollTop = 0
+    }
+  }, [phase, index])
 
   const total = queue.length
   const item = queue[index]
@@ -205,7 +219,9 @@ export default function CardLoopShell<T>({
               <p className="flip-card__flip-hint">Touche la carte pour révéler</p>
             </button>
 
-            <div className="flip-card__face flip-card__face--back">{renderBack(item, revealed, toggleReveal)}</div>
+            <div className="flip-card__face flip-card__face--back" ref={backFaceRef}>
+              {renderBack(item, revealed, toggleReveal)}
+            </div>
           </div>
         </div>
 

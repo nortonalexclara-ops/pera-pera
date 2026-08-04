@@ -18,6 +18,17 @@
   -webkit-touch-callout: none;
 }
 
+/* Dos de la carte (traduction, lectures, exemples) : ré-autorisé à la
+   sélection — demande utilisateur, pouvoir copier le texte des exemples
+   sur mobile. Sans risque pour le bug ci-dessus : c'est du contenu
+   statique, aucun tracé n'a jamais lieu ici (le dessin se fait dans
+   `.session__writing-col`, une zone séparée, toujours protégée). */
+.flip-card__face--back {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
 .session__header {
   display: flex;
   align-items: center;

@@ -232,7 +232,7 @@ export default function Explorer() {
         {results.length === 0 && <p className="explorer__empty">Rien ne correspond à cette recherche.</p>}
 
         <ul className="explorer-list">
-          {visibleResults.map((item) => {
+          {visibleResults.map((item, i) => {
             const isExpanded = expandedId === item.id
             const isPracticing = practiceId === item.id
             const isFavorite = favoriteIds[item.kind].has(item.data.id)
@@ -244,6 +244,11 @@ export default function Explorer() {
                   className="explorer-row"
                   onClick={() => handleToggleExpand(item.id)}
                 >
+                  {/* Position dans la liste actuelle (résultats filtrés,
+                      pas dans les 10216 items bruts) — `i` correspond
+                      déjà à l'index dans `results` puisque `visibleResults`
+                      en est une slice à partir de 0. */}
+                  <span className="explorer-row__index">{i + 1}</span>
                   <span className="explorer-row__kind-badge">{KIND_TO_LABEL[item.kind]}</span>
                   <span className="explorer-row__headline">{item.headline}</span>
                   <span className="explorer-row__sub">{item.subLabel}</span>

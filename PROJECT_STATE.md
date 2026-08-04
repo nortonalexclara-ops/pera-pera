@@ -3645,3 +3645,67 @@ côté Explorer pendant ce temps, toutes dans `Explorer.tsx`/`.css` et
    22px/12px (pas de fuite de la règle mobile).
 
 `npx tsc -b` clean. Toujours pas commité/poussé au moment d'écrire ceci.
+
+## Checkpoint — diagnostic Redis amélioré, texte copiable, bug de scroll, compteur Explorer
+
+Backend Redis **toujours en panne** au moment d'écrire ceci (troisième
+signalement) — l'utilisatrice a demandé "dis-moi comment faire" plutôt
+que je continue à lui redemander de vérifier sans plus de détail. Deux
+choses faites : (1) rendu le diagnostic exploitable côté code — voir
+ci-dessous — et (2) des instructions précises lui ont été données pour
+son dashboard Vercel (pas dans ce fichier, dans la réponse de chat
+directement, hors du scope de ce qui se persiste ici).
+
+**Diagnostic Redis rendu exploitable.** Jusqu'ici `new Redis({ url:
+process.env.X!, token: process.env.Y! })` dans `api/_redis.ts` pouvait
+planter la fonction serverless ENTIÈRE si les variables sont absentes —
+un crash à ce niveau ne renvoie aucun détail au client
+(`FUNCTION_INVOCATION_FAILED`, page générique Vercel, confirmé par curl
+direct sur `/api/backup` les trois fois), impossible à diagnostiquer de
+l'extérieur. Corrigé : `_redis.ts` construit le client avec `?? ''` (ne
+plante plus jamais à la construction) et exporte `redisConfigured`
+(booléen). Les trois endpoints (`backup.ts`, `restore.ts`,
+`delete-account.ts`) vérifient `redisConfigured` en premier (renvoie un
+503 explicite si les variables manquent) ET enveloppent leurs appels
+Redis dans un `try/catch` (renvoie un 500 avec message plutôt qu'un
+crash muet pour toute autre panne). Ne corrige PAS le problème de fond
+(toujours besoin que l'utilisatrice vérifie Vercel → Settings →
+Environment Variables), mais la PROCHAINE fois que ça casse, un `curl`
+direct donnera enfin un message exploitable au lieu d'une page Vercel
+générique.
+
+**Texte des exemples copiable sur mobile.** `.session` a un
+`user-select: none` global (fix du bug de sélection Apple Pencil, voir
+plus haut dans ce fichier) qui empêchait aussi de copier le texte du dos
+de carte (lectures, exemples, traductions) — signalé comme gênant.
+Réautorisé spécifiquement sur `.flip-card__face--back` dans
+`SessionCard.css` (contenu statique, aucun tracé n'y a jamais lieu — le
+dessin reste dans `.session__writing-col`, toujours protégée). Vérifié :
+`user-select: text` sur le dos de carte, `none` toujours en vigueur sur
+la colonne d'écriture et les boutons de décision (pas de régression du
+bug Apple Pencil).
+
+**Bug de scroll à la carte suivante.** Signalé : après "Maîtrisé", la
+carte suivante s'ouvrait parfois déjà scrollée tout en bas. Cause :
+`.flip-card__face--back` est le MÊME élément DOM réutilisé d'une carte à
+l'autre (seul le contenu change via `renderBack`), donc son `scrollTop`
+ne se réinitialisait jamais tout seul. `CardLoopShell.tsx` : nouveau
+`backFaceRef` + `useEffect` qui remet `scrollTop = 0` à chaque passage en
+phase 'back' (nouvelle carte OU re-retournement de la même). Vérifié en
+navigateur : carte 人 scrollée à 200px manuellement, "Maîtrisé" → carte
+suivante (大) s'ouvre avec `scrollTop: 0`.
+
+**Compteur de position dans Explorer.** Nouvelle colonne
+`.explorer-row__index` (1, 2, 3...) affichée devant chaque ligne —
+position dans la liste FILTRÉE actuelle (`results`, pas les 10216 items
+bruts sans filtre) : `visibleResults.map((item, i) => ...)`, `i`
+correspond déjà à l'index dans `results` puisque `visibleResults` en est
+une slice à partir de 0. Grille desktop : une colonne `auto`
+supplémentaire ajoutée en tête. Grille mobile (`grid-template-areas`) :
+nouvelle zone `index` en haut-gauche, `.` (cellule vide) dans les 3
+autres lignes pour garder une colonne de large cohérente sans forcer de
+contenu. Vérifié : 1-6 affichés dans l'ordre sur mobile et desktop, pas
+de chevauchement avec le badge de type.
+
+`npx tsc -b` et `npx tsc -p tsconfig.api.json` clean. Toujours pas
+commité/poussé.

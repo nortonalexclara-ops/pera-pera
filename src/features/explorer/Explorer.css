@@ -167,7 +167,7 @@
 
 .explorer-row {
   display: grid;
-  grid-template-columns: auto auto 1fr auto auto auto auto;
+  grid-template-columns: auto auto auto 1fr auto auto auto auto;
   align-items: center;
   gap: 12px;
   width: 100%;
@@ -181,6 +181,16 @@
 
 .explorer-row:hover {
   background: var(--color-bg);
+}
+
+/* Position dans la liste actuelle — demande utilisateur, pour se
+   repérer/compter dans les résultats affichés. */
+.explorer-row__index {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 24px;
+  text-align: right;
 }
 
 .explorer-row__kind-badge {
@@ -362,12 +372,16 @@
 
 @media (max-width: 600px) {
   .explorer-row {
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: auto auto 1fr auto auto;
     grid-template-areas:
-      'badge badge practice fav'
-      'headline headline headline chevron'
-      'sub sub sub sub'
-      'meaning meaning meaning meaning';
+      'index badge badge practice fav'
+      '.     headline headline headline chevron'
+      '.     sub sub sub sub'
+      '.     meaning meaning meaning meaning';
+  }
+
+  .explorer-row__index {
+    grid-area: index;
   }
 
   .explorer-row__kind-badge {

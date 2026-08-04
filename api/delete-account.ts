@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash } from 'crypto'
-import { redis } from './_redis'
+import { redis, redisConfigured } from './_redis'
 
 function hashPin(pin: string, normalizedName: string): string {
   return createHash('sha256').update(`${normalizedName}:${pin}`).digest('hex')
@@ -26,21 +26,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
+  if (!redisConfigured) {
+    res.status(503).json({ error: 'Vérification indisponible : variables Redis manquantes côté serveur (Vercel).' })
+    return
+  }
+
   const normalizedName = profileName.trim().toLowerCase()
   const key = `profile:${normalizedName}`
 
-  const stored = await redis.get<{ pinHash: string }>(key)
-  if (!stored) {
-    res.status(200).json({ hadBackup: false })
-    return
-  }
+  try {
+    const stored = await redis.get<{ pinHash: string }>(key)
+    if (!stored) {
+      res.status(200).json({ hadBackup: false })
+      return
+    }
 
-  const pinHash = hashPin(typeof pin === 'string' ? pin : '', normalizedName)
-  if (stored.pinHash !== pinHash) {
-    res.status(403).json({ error: 'Code incorrect.' })
-    return
-  }
+    const pinHash = hashPin(typeof pin === 'string' ? pin : '', normalizedName)
+    if (stored.pinHash !== pinHash) {
+      res.status(403).json({ error: 'Code incorrect.' })
+      return
+    }
 
-  await redis.del(key)
-  res.status(200).json({ hadBackup: true })
+    await redis.del(key)
+    res.status(200).json({ hadBackup: true })
+  } catch (err) {
+    console.error('delete-account: erreur Redis', err)
+    res.status(500).json({ error: 'Service indisponible pour le moment.' })
+  }
 }

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHash } from 'crypto'
-import { redis } from './_redis'
+import { redis, redisConfigured } from './_redis'
 
 function hashPin(pin: string, normalizedName: string): string {
   return createHash('sha256').update(`${normalizedName}:${pin}`).digest('hex')
@@ -23,19 +23,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
 
+  if (!redisConfigured) {
+    res.status(503).json({ error: 'Récupération indisponible : variables Redis manquantes côté serveur (Vercel).' })
+    return
+  }
+
   const normalizedName = profileName.trim().toLowerCase()
   const key = `profile:${normalizedName}`
   const pinHash = hashPin(pin, normalizedName)
 
-  const stored = await redis.get<{ pinHash: string; displayName: string; payload: unknown; savedAt: number }>(key)
-  if (!stored) {
-    res.status(404).json({ error: 'Aucun profil trouvé avec ce nom.' })
-    return
-  }
-  if (stored.pinHash !== pinHash) {
-    res.status(403).json({ error: 'Code incorrect.' })
-    return
-  }
+  try {
+    const stored = await redis.get<{ pinHash: string; displayName: string; payload: unknown; savedAt: number }>(key)
+    if (!stored) {
+      res.status(404).json({ error: 'Aucun profil trouvé avec ce nom.' })
+      return
+    }
+    if (stored.pinHash !== pinHash) {
+      res.status(403).json({ error: 'Code incorrect.' })
+      return
+    }
 
-  res.status(200).json({ displayName: stored.displayName, payload: stored.payload, savedAt: stored.savedAt })
+    res.status(200).json({ displayName: stored.displayName, payload: stored.payload, savedAt: stored.savedAt })
+  } catch (err) {
+    console.error('restore: erreur Redis', err)
+    res.status(500).json({ error: 'Service de récupération indisponible pour le moment.' })
+  }
 }
