@@ -3709,3 +3709,162 @@ de chevauchement avec le badge de type.
 
 `npx tsc -b` et `npx tsc -p tsconfig.api.json` clean. Toujours pas
 commité/poussé.
+
+## Checkpoint — RÉSOLU : cause réelle du crash Redis (rien à voir avec la config)
+
+Fausse piste corrigée. Après trois checkpoints à soupçonner les
+variables d'environnement Redis (et l'utilisatrice ayant confirmé via
+capture d'écran qu'elles étaient bien présentes, bien nommées, scope
+"Production and Preview"), la vraie cause a été trouvée grâce à
+`vercel logs` (l'utilisatrice avait déjà la CLI Vercel liée depuis le
+setup initial — lui faire lancer `vercel logs pera-pera-eight.vercel.app`
+puis réessayer l'action dans l'app a donné le vrai message, invisible
+via `curl` qui ne recevait qu'une page générique
+`FUNCTION_INVOCATION_FAILED` sans détail) :
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/var/task/api/_redis'
+imported from /var/task/api/backup.js
+```
+
+**Cause : import relatif sans extension.** `backup.ts`/`restore.ts`/
+`delete-account.ts` faisaient `import { redis } from './_redis'` (sans
+`.js`). Ça compile et fonctionne très bien avec Vite (bundler côté
+front, résout les extensions tout seul) mais le runtime Node ESM de
+Vercel pour `/api/*` n'est PAS bundlé de la même façon : Node exige
+l'extension explicite sur un import relatif en ESM natif. Sans elle, le
+module plantait au chargement — avant même la première ligne de
+`handler()` — ce qui explique pourquoi ÇA CRASHAIT MÊME SUR UNE REQUÊTE
+QUI NE TOUCHE JAMAIS REDIS (testé avec un body `{}` : devrait renvoyer
+un 400 "Nom de profil manquant" avant tout appel Redis, plantait quand
+même) — la preuve qui aurait dû orienter plus tôt vers un problème de
+chargement de module plutôt que de config Redis. Tous les checkpoints
+précédents sur `redisConfigured`/try-catch (voir plus haut) étaient donc
+inutiles pour CE bug précis (ils ne pouvaient pas s'exécuter, le module
+ne chargeait jamais) — gardés quand même, ils restent utiles pour de
+vrais futurs problèmes Redis (credentials invalides, service
+injoignable...).
+
+**Fix** : `./_redis'` → `./_redis.js'` dans les trois fichiers (le
+`.js` pointe vers le FICHIER COMPILÉ, pas le fichier source — `.ts`
+aurait été faux ; `moduleResolution: "bundler"` dans
+`tsconfig.api.json` accepte cette convention et résout `.js` vers le
+`.ts` source correspondant pour la vérification de types). Un piège
+TypeScript+ESM classique, pas spécifique à ce projet — à garder en tête
+pour tout futur fichier ajouté sous `/api` avec un import relatif vers
+un autre fichier du dossier.
+
+**Vérifié en production, bout en bout** (`curl` direct, pas juste en
+local) : sauvegarde d'un profil de test → `{"ok":true}` (200) ;
+récupération du même profil → payload renvoyé correctement (200) ;
+suppression via `delete-account` → `{"hadBackup":true}` (200,
+nettoyage du profil de test, rien ne traîne dans Redis). Les trois
+endpoints fonctionnent réellement maintenant. Sujet clos.
+
+Effets de bord découverts en cours de route (corrigés, pas commités —
+c'était du bruit non lié) : `git status` montrait `package.json`/
+`package-lock.json` modifiés avec des montées de version majeures
+inattendues (`@vercel/node` 3→5, `vite` 5→8) et un fichier vide nommé
+littéralement `{` — origine non identifiée (pas une action volontaire
+de cette session), les deux `git restore`/supprimés avant de committer
+pour ne pousser que le vrai fix.
+
+## Checkpoint — gros lot : Explorer, Séance, Mot du jour, Objectif, code PIN
+
+Sept demandes traitées d'un coup (liste donnée par l'utilisatrice avant
+de pousser le fix Redis).
+
+**Explorer — scroll au dépliage.** Ouvrir une carte pouvait retomber
+n'importe où dans la mise en page à cause du déplacement de contenu
+(fermeture de l'ancien panneau, ouverture du nouveau) — l'utilisatrice
+se retrouvait en bas de la fiche plutôt qu'en haut. Nouveau
+`rowRefs` (Map id→élément `<li>`) + `useEffect` sur `[expandedId]` qui
+appelle `scrollIntoView({block:'start', behavior:'smooth'})` sur la
+ligne concernée. Vérifié en navigateur : `behavior:'instant'` positionne
+bien la ligne pile en haut (`rowTop: 1`) — `smooth` ne s'anime pas
+jusqu'au bout dans CE pane de test (même limitation de compositing déjà
+notée pour le flip-card plus haut dans ce fichier), sans rapport avec un
+vrai navigateur.
+
+**Explorer — polices encore réduites.** `.explorer-detail__readings
+.flip-card__label`/`.flip-card__reading-value` (On'yomi/Kun'yomi/
+Radical/Traits) réduits à 11px/15px sous `@media (max-width: 600px)`
+(étaient à 13px/19px, hérités de SessionCard.css, pensés pour la carte
+plein écran). Vérifié : 11px/15px appliqués sur mobile.
+
+**Explorer — mots fréquents et liens profonds ouvrent directement la
+fiche.** `pendingAutoExpandRef` (ref, pas state) posé par `openExample`
+et par un effet au montage sur `initialQuery` ; consommé par un effet
+sur `[results]` qui déplie automatiquement la première correspondance
+dès qu'elle apparaît. Unifie deux entrées (clic sur un mot fréquent
+dans Explorer, arrivée depuis "Voir la fiche" du mot du jour) sous le
+même mécanisme plutôt que de le dupliquer.
+
+**Séance — mode "Mélange" maintenant aléatoire.** `KanjiCardLoop`/
+`VocabCardLoop`/`GrammarCardLoop` : nouveau `src/utils/shuffle.ts`
+(`shuffleArray`, extrait de `buildRevisionPool.ts` qui avait déjà sa
+propre copie locale — factorisé). Le mode 'mix' pioche maintenant dans
+`shuffledLevel` (mémoïsé sur `level` SEUL, jamais sur `masteredIds`) au
+lieu de l'ordre du dataset ; le mode 'new' n'y touche jamais et reste
+calculé frais à chaque rendu (toujours à jour vis-à-vis de
+`masteredIds` — piège évité : mémoïser le retour de la fonction
+elle-même selon le mode aurait figé 'new' sur une valeur périmée).
+Vérifié : deux séances N4 Kanjis "Mélange" démarrées à la suite → 冬
+puis 私 en première carte (l'ordre naturel du dataset N4 commence par
+悪, aucune des deux ne correspond).
+
+**Séance — "Révisions" avec un niveau : PAS un bug.** Testé en direct :
+avec du contenu maîtrisé au niveau choisi (N5, 100 kanjis marqués via
+Réglages), la révision affiche bien une carte. Avec un niveau sans
+aucun contenu maîtrisé (N1), l'app affiche clairement "Rien à réviser à
+ce niveau" avec une explication — pas un écran vide. Le comportement
+demandé ("mettre tous les kanjis/vocs/grammaire maîtrisés du niveau en
+question") est déjà exactement ce que fait `buildRevisionPool.ts`.
+Conclusion communiquée à l'utilisatrice plutôt qu'un correctif inventé :
+"rien ne s'affiche" venait très probablement d'un niveau sans contenu
+encore maîtrisé, pas d'un bug.
+
+**Séance recommandée "toujours la même" : expliqué, pas modifié.** Le
+mode 'new' (utilisé par la séance recommandée) prend les N premiers
+éléments PAS ENCORE maîtrisés dans l'ordre du dataset — déterministe
+par design (un vrai programme à suivre dans l'ordre, pas un tirage).
+Si on quitte une séance sans trancher "Maîtrisé"/"À revoir" sur les 5
+kanjis proposés, rien n'est enregistré → la prochaine visite propose
+exactement les 5 mêmes. Explication donnée à l'utilisatrice, aucun
+changement de code (pas clair depuis la question posée si un
+changement de comportement était réellement voulu).
+
+**Mot du jour → fiche spécifique.** `Dashboard.tsx` "Voir la fiche" :
+`navigate('/explorer')` → `navigate('/explorer', { state: { query:
+wordOfDay.word } })`, combiné au dépliage automatique ci-dessus.
+Vérifié : clique sur "Voir la fiche" pour 学期 → Explorer s'ouvre avec
+la recherche pré-remplie ET la fiche déjà dépliée (exemples visibles
+immédiatement, plus besoin de re-cliquer).
+
+**Objectif personnalisable.** Nouvelle table Dexie `profileSettings`
+(v5 du schéma, clé primaire `profileId`, une ligne par profil) —
+`src/db/settings.ts` : `getKanjiGoal`/`setKanjiGoal` (défaut 500,
+`DEFAULT_KANJI_GOAL`) et `getHasCloudBackup`/`setHasCloudBackup` (voir
+plus bas). Remplace l'ancien `mockGoal` (`mockDashboard.ts`, retiré) —
+le libellé "Maîtriser N kanjis" est maintenant construit dynamiquement
+depuis la vraie valeur au lieu d'un texte figé. Nouvelle section
+"Objectif" dans Settings (`<input type="number">` + bouton
+Enregistrer). Vérifié : objectif changé à 250 dans Réglages → Dashboard
+affiche bien "101 / 250" et "Maîtriser 250 kanjis" derrière.
+
+**Code déjà enregistré → plus de re-proposition.** `hasCloudBackup`
+(nouveau champ `profileSettings`, mis à `true` juste après un
+`backupProfile()` réussi dans `handleBackup` de Settings.tsx) : (1) la
+bannière Dashboard ne s'affiche plus automatiquement une fois vrai (en
+plus du dismiss manuel existant) ; (2) la section "Retrouver mon profil"
+de Settings remplace le champ de code + bouton par un message "Code
+déjà enregistré pour {profil}." — plus moyen d'en recréer un par
+erreur. Suivi localement (pas d'appel serveur pour vérifier), cohérent
+avec le fait que ce n'est de toute façon pas une vraie sécurité (déjà
+noté plus haut). Vérifié en navigateur (flag posé directement en base
+pour simuler un backup réussi, `backupProfile` réel inatteignable en
+dev local) : bannière absente au rechargement, Settings affiche bien le
+message "déjà enregistré".
+
+`npx tsc -b` et `npx tsc -p tsconfig.api.json` clean. Pas encore
+commité/poussé au moment d'écrire ceci.

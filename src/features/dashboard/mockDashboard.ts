@@ -10,9 +10,3 @@ export interface RecommendedSession {
   reviewCount: number
   durationMinutes: number
 }
-
-export const mockGoal = {
-  label: 'Maîtriser 500 kanjis',
-  current: 128,
-  target: 500,
-}

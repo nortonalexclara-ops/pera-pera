@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Search, Star, ChevronDown, PenLine } from 'lucide-react'
@@ -72,6 +72,13 @@ export default function Explorer() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [practiceId, setPracticeId] = useState<string | null>(null)
   const [visibleCount, setVisibleCount] = useState(RESULTS_PAGE_SIZE)
+  // Élément DOM de chaque ligne, par id — sert à scroller la ligne
+  // nouvellement dépliée en haut de l'écran (voir l'effet plus bas).
+  const rowRefs = useRef<Map<string, HTMLLIElement>>(new Map())
+  // Mis à `true` juste avant un changement de recherche censé aboutir à
+  // UNE fiche précise (arrivée par lien profond, mot fréquent cliqué) —
+  // consommé dès que `results` reflète la nouvelle recherche.
+  const pendingAutoExpandRef = useRef(false)
 
   const profileId = useProfileStore((s) => s.activeProfileId)
   const masteredIds = useLiveQuery(
@@ -120,7 +127,11 @@ export default function Explorer() {
   // propre entrée — demande explicite de l'utilisatrice. Réinitialise
   // les filtres pour garantir que l'entrée cible n'est pas cachée par un
   // filtre actif (niveau, maîtrise...), plutôt que de risquer une
-  // recherche qui ne renvoie "rien" sans explication apparente.
+  // recherche qui ne renvoie "rien" sans explication apparente. Même
+  // mécanisme de dépliage automatique que l'arrivée par lien profond
+  // (voir l'effet sur `initialQuery` plus bas) : pas la peine de laisser
+  // l'utilisatrice retaper un clic pour ouvrir la fiche qu'elle vient de
+  // demander explicitement.
   function openExample(text: string) {
     setQuery(text)
     setLevel('Tous')
@@ -130,8 +141,18 @@ export default function Explorer() {
     setFavoriteFilter('Tous')
     setPracticeId(null)
     setExpandedId(null)
+    pendingAutoExpandRef.current = true
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  // Arrivée par lien profond avec une recherche pré-remplie (mot du jour,
+  // reconnaissance de kanji manuscrit...) : ouvre directement la fiche
+  // correspondante plutôt que de laisser une simple liste filtrée qu'il
+  // faudrait encore déplier soi-même.
+  useEffect(() => {
+    if (initialQuery) pendingAutoExpandRef.current = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const results = useMemo(() => {
     const q = normalizeSearch(query)
@@ -156,6 +177,28 @@ export default function Explorer() {
   useEffect(() => {
     setVisibleCount(RESULTS_PAGE_SIZE)
   }, [results])
+
+  // Consomme le dépliage automatique en attente (voir `openExample` et
+  // l'effet sur `initialQuery`) dès que `results` reflète la recherche
+  // visée — ouvre la première correspondance plutôt que de laisser une
+  // liste filtrée fermée.
+  useEffect(() => {
+    if (pendingAutoExpandRef.current && results.length > 0) {
+      setExpandedId(results[0].id)
+      pendingAutoExpandRef.current = false
+    }
+  }, [results])
+
+  // "Quand j'ouvre une carte... j'arrive à la fin de la nouvelle carte,
+  // j'aimerais arriver au début" (demande utilisatrice) — remonte la
+  // ligne nouvellement dépliée en haut de l'écran plutôt que de laisser
+  // le navigateur là où le déplacement de mise en page (fermeture de
+  // l'ancien panneau, ouverture du nouveau) l'a laissé retomber.
+  useEffect(() => {
+    if (!expandedId) return
+    const el = rowRefs.current.get(expandedId)
+    el?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }, [expandedId])
 
   const visibleResults = results.slice(0, visibleCount)
 
@@ -238,7 +281,14 @@ export default function Explorer() {
             const isFavorite = favoriteIds[item.kind].has(item.data.id)
             const canPractice = isKanji(item.data) && item.data.strokePaths.length > 0
             return (
-              <li key={item.id} className="explorer-item">
+              <li
+                key={item.id}
+                className="explorer-item"
+                ref={(el) => {
+                  if (el) rowRefs.current.set(item.id, el)
+                  else rowRefs.current.delete(item.id)
+                }}
+              >
                 <button
                   type="button"
                   className="explorer-row"

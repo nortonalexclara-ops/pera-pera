@@ -2,6 +2,7 @@ import { mockKanjiList, type Kanji, type JlptLevel } from '../kanji/mockKanji'
 import { mockVocabList, type VocabWord } from '../vocab/mockVocab'
 import { mockGrammarList, type GrammarPoint } from '../grammar/mockGrammar'
 import type { ItemKind } from '../../db/db'
+import { shuffleArray } from '../../utils/shuffle'
 
 // `id` reste préfixé (kanji-xxx / vocab-xxx / grammar-xxx) — c'est la clé
 // React et l'identité de l'item côté test de connaissances. `itemId` est
@@ -14,15 +15,6 @@ export type RevisionItem =
   | { kind: 'kanji'; id: string; itemId: string; data: Kanji }
   | { kind: 'vocab'; id: string; itemId: string; data: VocabWord }
   | { kind: 'grammar'; id: string; itemId: string; data: GrammarPoint }
-
-function shuffle<T>(arr: T[]): T[] {
-  const copy = [...arr]
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[copy[i], copy[j]] = [copy[j], copy[i]]
-  }
-  return copy
-}
 
 /**
  * Le module Révisions n'a pas de file de révision au sens FSRS (pas
@@ -54,6 +46,6 @@ export function buildRevisionPool(
     ...points.map((g): RevisionItem => ({ kind: 'grammar', id: `grammar-${g.id}`, itemId: g.id, data: g })),
   ]
 
-  const shuffled = shuffle(items)
+  const shuffled = shuffleArray(items)
   return typeof limit === 'number' ? shuffled.slice(0, limit) : shuffled
 }

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import FuriganaText from '../../components/ui/FuriganaText'
 import CardLoopShell from '../kanji/CardLoopShell'
@@ -6,6 +7,7 @@ import type { SeenItem } from '../test/buildTest'
 import { mockVocabList, type VocabWord } from './mockVocab'
 import { useProfileStore } from '../profile/profileStore'
 import { getMasteredIds, setMastered } from '../../db/mastery'
+import { shuffleArray } from '../../utils/shuffle'
 
 const EMPTY_SET: Set<string> = new Set()
 
@@ -48,7 +50,12 @@ export default function VocabCardLoop({
 
   const levelFiltered = level ? mockVocabList.filter((w) => w.jlptLevel === level) : mockVocabList
   const contentFiltered = contentMode === 'new' ? levelFiltered.filter((w) => !masteredIds.has(w.id)) : levelFiltered
-  const vocabList = typeof limit === 'number' ? contentFiltered.slice(0, limit) : contentFiltered
+
+  // Voir KanjiCardLoop pour le détail : mode "Mélange" mélangé aléatoirement
+  // (demande utilisatrice), mémoïsé sur `level` seul.
+  const shuffledLevel = useMemo(() => shuffleArray(levelFiltered), [level])
+  const orderedContent = contentMode === 'mix' ? shuffledLevel : contentFiltered
+  const vocabList = typeof limit === 'number' ? orderedContent.slice(0, limit) : orderedContent
 
   const allMastered = contentMode === 'new' && levelFiltered.length > 0 && contentFiltered.length === 0
   // Voir KanjiCardLoop : en 'new', attendre la vraie valeur de masteredIds

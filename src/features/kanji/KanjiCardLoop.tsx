@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import FuriganaText from '../../components/ui/FuriganaText'
 import CardLoopShell from './CardLoopShell'
@@ -5,6 +6,7 @@ import type { SeenItem } from '../test/buildTest'
 import { mockKanjiList, type JlptLevel, type Kanji } from './mockKanji'
 import { useProfileStore } from '../profile/profileStore'
 import { getMasteredIds, setMastered } from '../../db/mastery'
+import { shuffleArray } from '../../utils/shuffle'
 
 const EMPTY_SET: Set<string> = new Set()
 
@@ -39,7 +41,19 @@ export default function KanjiCardLoop({
 
   const levelFiltered = level ? mockKanjiList.filter((k) => k.jlptLevel === level) : mockKanjiList
   const contentFiltered = contentMode === 'new' ? levelFiltered.filter((k) => !masteredIds.has(k.id)) : levelFiltered
-  const kanjiList = typeof limit === 'number' ? contentFiltered.slice(0, limit) : contentFiltered
+
+  // Mode "Mélange" : ordre aléatoire plutôt que l'ordre du dataset (~ordre
+  // d'apprentissage/JLPT) — demande explicite de l'utilisatrice. Mémoïsé
+  // sur (level) seul, pas sur `levelFiltered` (nouvelle référence de
+  // tableau à CHAQUE rendu, qui re-mélangerait sans arrêt et ferait
+  // "sauter" les cartes déjà vues pendant la séance) — `levelFiltered` ne
+  // dépend que de `level` (+ le dataset constant), donc c'est un
+  // raccourci sûr. Le mode 'new' n'y touche jamais : il reste calculé
+  // directement à partir de `contentFiltered`, toujours à jour vis-à-vis
+  // de `masteredIds`.
+  const shuffledLevel = useMemo(() => shuffleArray(levelFiltered), [level])
+  const orderedContent = contentMode === 'mix' ? shuffledLevel : contentFiltered
+  const kanjiList = typeof limit === 'number' ? orderedContent.slice(0, limit) : orderedContent
 
   const allMastered = contentMode === 'new' && levelFiltered.length > 0 && contentFiltered.length === 0
   // En 'mix', kanjiList ne dépend pas de masteredIds donc c'est déjà bon

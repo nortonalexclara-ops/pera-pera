@@ -11,7 +11,8 @@ import type { ItemKind } from '../../db/db'
 import { mockKanjiList } from '../kanji/mockKanji'
 import { mockVocabList } from '../vocab/mockVocab'
 import { mockGrammarList } from '../grammar/mockGrammar'
-import { mockGoal, type RecommendedSession } from './mockDashboard'
+import type { RecommendedSession } from './mockDashboard'
+import { getKanjiGoal, getHasCloudBackup, DEFAULT_KANJI_GOAL } from '../../db/settings'
 import { getWordOfDay } from './wordOfDay'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import ProgressRing from '../../components/ui/ProgressRing'
@@ -65,14 +66,30 @@ export default function Dashboard() {
   }
 
   // Le nombre de kanjis maîtrisés vient réellement de la base (persisté par
-  // profil) — seul mockGoal.target (objectif de programme complet, pas
-  // encore tout authoré) reste une valeur invente. `useLiveQuery` se
-  // réabonne automatiquement : cocher "Maîtrisé" en séance met ce chiffre à
-  // jour dès le retour sur le Dashboard, sans rechargement.
+  // profil). `useLiveQuery` se réabonne automatiquement : cocher
+  // "Maîtrisé" en séance met ce chiffre à jour dès le retour sur le
+  // Dashboard, sans rechargement.
   const masteredKanjiCount = useLiveQuery(
     () => (profileId ? countMastered(profileId, 'kanji') : Promise.resolve(0)),
     [profileId],
     0,
+  )
+
+  // Objectif personnalisable depuis Réglages (voir src/db/settings.ts) —
+  // remplace l'ancienne valeur fixe (500) codée en dur.
+  const kanjiGoal = useLiveQuery(
+    () => (profileId ? getKanjiGoal(profileId) : Promise.resolve(DEFAULT_KANJI_GOAL)),
+    [profileId],
+    DEFAULT_KANJI_GOAL,
+  )
+
+  // Cache automatiquement la bannière/le lien "créer un code" une fois
+  // qu'une sauvegarde en ligne existe déjà pour ce profil — pas la peine
+  // de continuer à le proposer (demande utilisatrice).
+  const hasCloudBackup = useLiveQuery(
+    () => (profileId ? getHasCloudBackup(profileId) : Promise.resolve(false)),
+    [profileId],
+    false,
   )
 
   // Tous les items maîtrisés (3 kinds) en un aller-retour — sert à calculer
@@ -107,8 +124,8 @@ export default function Dashboard() {
   const [mode, setMode] = useState<SessionMode>('custom')
 
   const goalCurrent = masteredKanjiCount ?? 0
-  const goalPercent = Math.round((goalCurrent / mockGoal.target) * 100)
-  const remaining = mockGoal.target - goalCurrent
+  const goalPercent = Math.round((goalCurrent / kanjiGoal) * 100)
+  const remaining = kanjiGoal - goalCurrent
 
   const newKanjiCount = Math.min(SESSION_SIZE.kanji, Math.max(0, mockKanjiList.length - masteredIds.kanji.size))
   const newVocabCount = Math.min(SESSION_SIZE.vocab, Math.max(0, mockVocabList.length - masteredIds.vocab.size))
@@ -153,7 +170,7 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {!backupBannerDismissed && (
+        {!backupBannerDismissed && !hasCloudBackup && (
           <motion.div
             className="backup-banner"
             initial={{ opacity: 0, y: -8 }}
@@ -219,9 +236,9 @@ export default function Dashboard() {
 
           <motion.div className="dashboard__secondary-grid" variants={fadeUp}>
             <div className="soft-card goal-card">
-              <ProgressRing percent={goalPercent} label={`${goalCurrent}`} sublabel={`/ ${mockGoal.target}`} />
+              <ProgressRing percent={goalPercent} label={`${goalCurrent}`} sublabel={`/ ${kanjiGoal}`} />
               <div>
-                <p className="goal-card__label">{mockGoal.label}</p>
+                <p className="goal-card__label">Maîtriser {kanjiGoal} kanjis</p>
                 <p className="goal-card__remaining">{remaining} kanjis restants</p>
                 <p className="goal-card__pace">à ce rythme : ~{paceDays} jours</p>
               </div>
@@ -242,7 +259,10 @@ export default function Dashboard() {
                   <Star size={14} strokeWidth={1.75} fill={isWordFavorite ? 'var(--color-warm)' : 'none'} />
                   Favori
                 </motion.button>
-                <button className="word-card__action" onClick={() => navigate('/explorer')}>
+                <button
+                  className="word-card__action"
+                  onClick={() => navigate('/explorer', { state: { query: wordOfDay.word } })}
+                >
                   Voir la fiche
                   <ArrowRight size={12} strokeWidth={2} />
                 </button>

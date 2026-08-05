@@ -423,6 +423,20 @@
   .explorer-detail__readings {
     grid-template-columns: 1fr;
   }
+
+  /* Prononciations/radical/nombre de traits encore resserrés (demande
+     utilisatrice, "diminue encore") — `.flip-card__label`/
+     `.flip-card__reading-value` viennent de SessionCard.css (19px/13px
+     par défaut, pensés pour la carte de séance en plein écran), trop
+     grands ici où quatre blocs se partagent une fiche repliable étroite. */
+  .explorer-detail__readings .flip-card__label {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  .explorer-detail__readings .flip-card__reading-value {
+    font-size: 15px;
+  }
 }
 
 /* Petit encadré d'entraînement à l'écriture (bouton dédié sur les lignes

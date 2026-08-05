@@ -69,12 +69,27 @@ export interface FavoriteRecord {
   favoritedAt: number
 }
 
+// Réglages divers par profil — une seule ligne par profil (`profileId` en
+// clé primaire, pas d'auto-incrément) plutôt qu'une table par réglage,
+// vu le peu de champs pour l'instant. `kanjiGoal` : objectif affiché sur
+// le Dashboard, personnalisable (remplace la valeur fixe 500 codée en
+// dur). `hasCloudBackup` : vrai dès qu'une sauvegarde en ligne a réussi
+// depuis cet appareil — sert à cacher automatiquement la bannière/le
+// formulaire de création de code une fois que c'est fait, sans avoir à
+// interroger le serveur juste pour ça.
+export interface ProfileSettingsRecord {
+  profileId: string
+  kanjiGoal: number
+  hasCloudBackup: boolean
+}
+
 class PeraPeraDB extends Dexie {
   profiles!: Table<ProfileRecord, string>
   mastery!: Table<MasteryRecord, number>
   notes!: Table<NoteRecord, string>
   activity!: Table<ActivityRecord, number>
   favorites!: Table<FavoriteRecord, number>
+  profileSettings!: Table<ProfileSettingsRecord, string>
 
   constructor() {
     super('pera-pera')
@@ -108,6 +123,16 @@ class PeraPeraDB extends Dexie {
       notes: 'id, profileId, updatedAt',
       activity: '++id, [profileId+date], profileId',
       favorites: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+    })
+    // v5 : ajout des réglages par profil (objectif de kanjis, statut de
+    // sauvegarde en ligne).
+    this.version(5).stores({
+      profiles: 'id',
+      mastery: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      notes: 'id, profileId, updatedAt',
+      activity: '++id, [profileId+date], profileId',
+      favorites: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      profileSettings: 'profileId',
     })
   }
 }

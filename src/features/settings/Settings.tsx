@@ -12,6 +12,7 @@ import { resetNotes } from '../../db/notes'
 import { resetFavorites } from '../../db/favorites'
 import { exportProfileData } from '../../db/profileSync'
 import { deleteProfile } from '../../db/profiles'
+import { getKanjiGoal, setKanjiGoal, getHasCloudBackup, setHasCloudBackup, DEFAULT_KANJI_GOAL } from '../../db/settings'
 import { backupProfile, deleteAccountBackup } from '../profile/cloudSync'
 import type { ItemKind } from '../../db/db'
 import { mockKanjiList, type JlptLevel } from '../kanji/mockKanji'
@@ -68,6 +69,28 @@ export default function Settings() {
   const [pin, setPin] = useState('')
   const [backupBusy, setBackupBusy] = useState(false)
   const [backupResult, setBackupResult] = useState<'ok' | string | null>(null)
+
+  // Une fois qu'une sauvegarde a réussi pour ce profil, on n'invite plus à
+  // (re)créer un code — voir src/db/settings.ts. Réservé au statut connu
+  // localement (pas d'appel serveur juste pour l'afficher).
+  const hasCloudBackup = useLiveQuery(
+    () => (profileId ? getHasCloudBackup(profileId) : Promise.resolve(false)),
+    [profileId],
+    false,
+  )
+
+  // Objectif de kanjis affiché sur le Dashboard, personnalisable — `null`
+  // tant que l'utilisatrice n'a pas commencé à taper, pour que le champ
+  // affiche la vraie valeur enregistrée (kanjiGoal, résolue de façon
+  // asynchrone) plutôt qu'une valeur figée au premier rendu.
+  const kanjiGoal = useLiveQuery(
+    () => (profileId ? getKanjiGoal(profileId) : Promise.resolve(DEFAULT_KANJI_GOAL)),
+    [profileId],
+    DEFAULT_KANJI_GOAL,
+  )
+  const [goalInput, setGoalInput] = useState<string | null>(null)
+  const [goalSaved, setGoalSaved] = useState(false)
+  const goalValue = goalInput ?? String(kanjiGoal)
 
   const [deleteConfirming, setDeleteConfirming] = useState(false)
   const [deletePin, setDeletePin] = useState('')
@@ -132,12 +155,21 @@ export default function Settings() {
     try {
       const payload = await exportProfileData(profileId)
       await backupProfile(profileName, pin, payload)
+      await setHasCloudBackup(profileId, true)
       setBackupResult('ok')
     } catch (err) {
       setBackupResult(err instanceof Error ? err.message : 'Échec de la sauvegarde.')
     } finally {
       setBackupBusy(false)
     }
+  }
+
+  async function handleSaveGoal() {
+    const n = parseInt(goalValue, 10)
+    if (!profileId || !Number.isFinite(n) || n <= 0) return
+    await setKanjiGoal(profileId, n)
+    setGoalInput(null)
+    setGoalSaved(true)
   }
 
   // Le code n'est vérifié que si ce profil a déjà une sauvegarde en ligne
@@ -176,43 +208,90 @@ export default function Settings() {
 
         <section className="settings-card">
           <h2 className="settings-card__title">Retrouver mon profil sur un autre appareil</h2>
+
+          {hasCloudBackup ? (
+            <p className="settings-card__hint">
+              <Check size={15} strokeWidth={2} className="settings-card__hint-icon" />
+              Code déjà enregistré pour {profileName ?? 'ce profil'}. Utilise-le avec "Récupérer un profil" sur l'autre
+              appareil.
+            </p>
+          ) : (
+            <>
+              <p className="settings-card__hint">
+                Choisis un code à 4 chiffres pour {profileName ?? 'ce profil'}, puis sauvegarde. Sur l'autre appareil,
+                choisis "Récupérer un profil" depuis l'écran de sélection, avec le même nom et le même code.
+              </p>
+
+              <div className="pin-row">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  placeholder="Code à 4 chiffres"
+                  className="pin-input"
+                  value={pin}
+                  onChange={(e) => {
+                    setPin(e.target.value.replace(/\D/g, '').slice(0, 4))
+                    setBackupResult(null)
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={!/^\d{4}$/.test(pin) || backupBusy}
+                  onClick={handleBackup}
+                >
+                  <CloudUpload size={16} strokeWidth={1.75} />
+                  {backupBusy ? 'Sauvegarde…' : 'Sauvegarder en ligne'}
+                </button>
+              </div>
+
+              {backupResult === 'ok' && (
+                <p className="reset-done">
+                  <Check size={15} strokeWidth={2} />
+                  Profil sauvegardé — utilise ce nom et ce code sur l'autre appareil.
+                </p>
+              )}
+              {backupResult && backupResult !== 'ok' && <p className="settings-error">{backupResult}</p>}
+            </>
+          )}
+        </section>
+
+        <section className="settings-card">
+          <h2 className="settings-card__title">Objectif</h2>
           <p className="settings-card__hint">
-            Choisis un code à 4 chiffres pour {profileName ?? 'ce profil'}, puis sauvegarde. Sur l'autre appareil, choisis
-            "Récupérer un profil" depuis l'écran de sélection, avec le même nom et le même code.
+            Nombre de kanjis à maîtriser pour atteindre 100% de l'objectif affiché sur le Dashboard.
           </p>
 
           <div className="pin-row">
             <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={4}
-              placeholder="Code à 4 chiffres"
-              className="pin-input"
-              value={pin}
+              type="number"
+              min={1}
+              max={2491}
+              className="pin-input goal-input"
+              value={goalValue}
               onChange={(e) => {
-                setPin(e.target.value.replace(/\D/g, '').slice(0, 4))
-                setBackupResult(null)
+                setGoalInput(e.target.value)
+                setGoalSaved(false)
               }}
             />
             <button
               type="button"
               className="btn-primary"
-              disabled={!/^\d{4}$/.test(pin) || backupBusy}
-              onClick={handleBackup}
+              disabled={!profileId || !Number.isFinite(parseInt(goalValue, 10)) || parseInt(goalValue, 10) <= 0}
+              onClick={handleSaveGoal}
             >
-              <CloudUpload size={16} strokeWidth={1.75} />
-              {backupBusy ? 'Sauvegarde…' : 'Sauvegarder en ligne'}
+              Enregistrer
             </button>
           </div>
 
-          {backupResult === 'ok' && (
+          {goalSaved && (
             <p className="reset-done">
               <Check size={15} strokeWidth={2} />
-              Profil sauvegardé — utilise ce nom et ce code sur l'autre appareil.
+              Objectif mis à jour.
             </p>
           )}
-          {backupResult && backupResult !== 'ok' && <p className="settings-error">{backupResult}</p>}
         </section>
 
         <section className="settings-card">
