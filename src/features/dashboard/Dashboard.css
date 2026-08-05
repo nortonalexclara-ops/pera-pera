@@ -335,9 +335,3 @@
 .word-card__action.active {
   color: var(--color-warm);
 }
-
-.dashboard__training-link {
-  display: flex;
-  justify-content: center;
-  margin-bottom: var(--space-xl);
-}

@@ -11,7 +11,6 @@ import StatsScreen from './features/stats/StatsScreen'
 import Settings from './features/settings/Settings'
 import SessionFlow from './features/kanji/SessionFlow'
 import TestKnowledge from './features/test/TestKnowledge'
-import TrainingPlaceholder from './features/training/TrainingPlaceholder'
 import { useThemeStore } from './features/theme/themeStore'
 
 // Écrans "plein écran" (sans barre de navigation) : sélection de profil,
@@ -29,7 +28,6 @@ export default function App() {
       <Route path="/" element={<ProfileSelector />} />
       <Route path="/session" element={<SessionFlow />} />
       <Route path="/session/test" element={<TestKnowledge />} />
-      <Route path="/training" element={<TrainingPlaceholder />} />
 
       {/* Écrans accessibles depuis la barre d'onglets */}
       <Route element={<MainLayout />}>

@@ -3868,3 +3868,102 @@ message "déjà enregistré".
 
 `npx tsc -b` et `npx tsc -p tsconfig.api.json` clean. Pas encore
 commité/poussé au moment d'écrire ceci.
+
+## Checkpoint — RÉSOLU : "je me retrouve sur le profil d'un autre" au rafraîchissement
+
+Signalement grave ("le site n'est pas du tout utilisable tel quel") :
+active sur le profil Clara, un rafraîchissement de page ramenait sur
+Alex ou "un profil aléatoire". Vérifié qu'aucun code applicatif ne
+choisit jamais un profil tout seul — `ProfileSelector.tsx` exige
+toujours un clic explicite (`handleSelect`), `useProfileStore`
+(`profileStore.ts`) n'a pas de middleware `persist`, `App.tsx` ne fait
+aucune redirection basée sur un profil "mémorisé". La vraie cause est
+côté navigateur, pas côté app : le **bfcache** (back-forward cache) de
+Safari iOS notamment peut RESTAURER une page depuis un instantané gelé
+de son état JS (au lieu de vraiment la recharger) au retour sur l'onglet
+— y compris le store Zustand du profil actif, volontairement en mémoire
+seulement (voir plus haut : "redemander qui apprend à chaque ouverture
+est un choix produit assumé"). Un instantané gelé pris à un moment où
+Alex était encore le profil actif (avant sa suppression) explique
+exactement le symptôme, et "aléatoire" correspond à quel instantané
+précis le navigateur choisit de restaurer selon les cas.
+
+**Fix (`src/main.tsx`)** : écouteur `pageshow` détectant
+`event.persisted === true` (signature d'une restauration bfcache, par
+opposition à un vrai chargement) → `window.location.reload()` forcé,
+qui repart d'un état JS entièrement frais (store réinitialisé,
+`activeProfileId: null`). **Défense en profondeur (`vercel.json`)** :
+en-tête `Cache-Control: no-store` ajouté sur toutes les routes SAUF
+`/assets/*` (bundles Vite au nom haché, immuables, doivent rester
+cachables) — dissuade la formation du bfcache en amont plutôt que de
+seulement s'en remettre après coup. Root-cause plutôt que rustine
+ciblée : cette classe de bug touche potentiellement TOUT état en
+mémoire (pas seulement le profil), donc ce correctif couvre l'ensemble
+de la catégorie, pas juste le symptôme signalé. **Non vérifiable dans ce
+pane de test** (comportement de bfcache propre au vrai navigateur/OS,
+pas reproductible dans un environnement de test automatisé) — technique
+standard et bien établie pour cette classe de bug (`pageshow`/
+`persisted` est l'API web dédiée exactement à ce cas), mais à confirmer
+avec l'utilisatrice une fois déployé.
+
+**Alex/Camille toujours visibles sur certains appareils — clarifié, pas
+un bug.** Confirmé (déjà expliqué une fois, reclarifié suite à
+incompréhension) : profils et données sont 100% locaux par appareil
+(IndexedDB), il n'existe aucune liste de profils partagée entre
+appareils/utilisateurs. Supprimer Alex/Camille sur UN appareil ne les
+retire pas des AUTRES appareils où ils existent déjà localement — il
+n'y a aucun mécanisme pour "supprimer à distance" depuis un autre
+appareil (contradictoire avec l'architecture 100% locale actuelle).
+Le seed automatique étant déjà retiré (checkpoint précédent), c'est un
+nettoyage ponctuel : sur CHAQUE appareil qui les affiche encore, il faut
+répéter Réglages → "Supprimer ce profil" une fois — ensuite, plus aucun
+appareil (neuf ou déjà utilisé) ne les fera réapparaître.
+
+`npx tsc -b` clean. Pas encore commité/poussé.
+
+## Checkpoint — précision bfcache + retrait du lien "Entraînement libre"
+
+**Précision sur le bug de rafraîchissement** : touchait aussi le PC, pas
+seulement mobile — cohérent avec le correctif déjà posé (`pageshow`/
+`event.persisted` est une API standard, le bfcache existe sur desktop
+Chrome/Firefox/Safari aussi, pas seulement Safari iOS ; rien à changer
+au fix lui-même, juste une confirmation que le diagnostic bfcache était
+le bon axe, pas spécifique à une plateforme).
+
+**Retrait de "Envie de t'entraîner librement ?"** — menait vers
+`/training`, un simple écran statique (`TrainingPlaceholder.tsx`,
+aucune fonctionnalité réelle derrière, juste un texte de présentation
+via le composant partagé `FullScreenFlow`). Supprimés : le bouton dans
+`Dashboard.tsx`, la route `/training` et son import dans `App.tsx`, le
+fichier `TrainingPlaceholder.tsx` (dossier `src/features/training/`
+entièrement vide, retiré aussi), et la classe CSS
+`.dashboard__training-link` devenue orpheline. `FullScreenFlow.tsx`
+(composant UI générique partagé) gardé tel quel — pas spécifique à
+l'entraînement, réutilisable pour un futur écran de ce type.
+
+`npx tsc -b` clean.
+
+## Checkpoint — Alex/Camille retirés du code source (pas juste du seed)
+
+Suite au retrait du seed automatique (checkpoint précédent), demande de
+vérifier qu'il n'en reste aucune trace "à la base". Recherche exhaustive
+(`Alex|Camille`) dans tout le dépôt : trouvé un reliquat réel —
+`src/features/profile/mockProfiles.ts` gardait encore un tableau
+`mockProfiles` (`{id:'p1', name:'Alex', ...}`/`{id:'p2', name:'Camille',
+...}`) hérité de la toute première phase mock de l'app, jamais nettoyé.
+Vérifié qu'il n'était plus importé nulle part (seul `avatarGradients`,
+exporté par le même fichier, est réellement utilisé — par
+`MainLayout.tsx` et `ProfileSelector.tsx`) : du code mort, mais du code
+mort qui contenait encore leurs noms en dur. Supprimés : le tableau
+`mockProfiles` et l'interface `MockProfile` désormais inutilisée ; le
+fichier ne contient plus que `avatarGradients` (palette de dégradés,
+sans rapport avec des profils précis).
+
+Seules traces restantes dans tout le dépôt (recherche confirmée) : deux
+commentaires explicatifs (`main.tsx`, `src/db/profiles.ts`) qui
+documentent POURQUOI le seed a été retiré — de la documentation
+historique, pas du code actif. Aucune fonction, aucun tableau, aucune
+route ne peut plus créer ni référencer Alex/Camille, nulle part dans le
+code.
+
+`npx tsc -b` clean. Pas encore commité/poussé.

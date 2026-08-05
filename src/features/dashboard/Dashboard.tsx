@@ -269,13 +269,6 @@ export default function Dashboard() {
               </div>
             </div>
           </motion.div>
-
-          <motion.div className="dashboard__training-link" variants={fadeUp}>
-            <button className="btn-link" onClick={() => navigate('/training')}>
-              Envie de t'entraîner librement ?
-              <ArrowRight size={14} strokeWidth={2} />
-            </button>
-          </motion.div>
         </motion.div>
       </div>
     </PageTransition>
