@@ -8,13 +8,15 @@ export interface ProfileBackupPayload {
   mastery: { kind: ItemKind; itemId: string; masteredAt: number }[]
   activity: { date: string }[]
   notes: { id: string; title: string; text: string; drawingDataUrl: string; createdAt: number; updatedAt: number }[]
+  favorites: { kind: ItemKind; itemId: string; favoritedAt: number }[]
 }
 
 export async function exportProfileData(profileId: string): Promise<ProfileBackupPayload> {
-  const [mastery, activity, notes] = await Promise.all([
+  const [mastery, activity, notes, favorites] = await Promise.all([
     db.mastery.where({ profileId }).toArray(),
     db.activity.where({ profileId }).toArray(),
     db.notes.where({ profileId }).toArray(),
+    db.favorites.where({ profileId }).toArray(),
   ])
   return {
     mastery: mastery.map((m) => ({ kind: m.kind, itemId: m.itemId, masteredAt: m.masteredAt })),
@@ -27,6 +29,7 @@ export async function exportProfileData(profileId: string): Promise<ProfileBacku
       createdAt: n.createdAt,
       updatedAt: n.updatedAt,
     })),
+    favorites: favorites.map((f) => ({ kind: f.kind, itemId: f.itemId, favoritedAt: f.favoritedAt })),
   }
 }
 
@@ -37,10 +40,16 @@ export async function exportProfileData(profileId: string): Promise<ProfileBacku
 // rien à fusionner, et ça évite les doublons si l'utilisateur récupère
 // deux fois de suite.
 export async function importProfileData(profileId: string, payload: ProfileBackupPayload): Promise<void> {
-  await db.transaction('rw', db.mastery, db.activity, db.notes, async () => {
+  // `favorites` n'existait pas dans les sauvegardes créées avant son ajout
+  // au payload — `?? []` pour rester compatible avec une sauvegarde plus
+  // ancienne récupérée maintenant, plutôt que de planter sur un champ
+  // absent.
+  const favorites = payload.favorites ?? []
+  await db.transaction('rw', db.mastery, db.activity, db.notes, db.favorites, async () => {
     await db.mastery.where({ profileId }).delete()
     await db.activity.where({ profileId }).delete()
     await db.notes.where({ profileId }).delete()
+    await db.favorites.where({ profileId }).delete()
 
     if (payload.mastery.length > 0) {
       await db.mastery.bulkAdd(payload.mastery.map((m) => ({ profileId, ...m })))
@@ -53,6 +62,9 @@ export async function importProfileData(profileId: string, payload: ProfileBacku
       // d'origine) — repris tels quels, `id` est déjà la clé primaire de
       // la table `notes` (pas d'auto-incrément à éviter de percuter ici).
       await db.notes.bulkAdd(payload.notes.map((n) => ({ profileId, ...n })))
+    }
+    if (favorites.length > 0) {
+      await db.favorites.bulkAdd(favorites.map((f) => ({ profileId, ...f })))
     }
   })
 }

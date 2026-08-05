@@ -3967,3 +3967,56 @@ route ne peut plus créer ni référencer Alex/Camille, nulle part dans le
 code.
 
 `npx tsc -b` clean. Pas encore commité/poussé.
+
+## Checkpoint — fix scroll desktop (caché sous la barre fixe), favoris ajoutés au backup
+
+**Explorer desktop : le kanji restait caché sous la barre de navigation
+fixe.** Signalé : après avoir déplié une carte, on arrivait "en haut"
+mais sans le kanji/la traduction, juste au niveau des lectures. Cause :
+sur desktop, `.tab-bar` est fixée EN HAUT (`MainLayout.css`, 56px,
+`@media (min-width:780px)`) — `scrollIntoView({block:'start'})` (voir
+checkpoint précédent) alignait bien la ligne sur y=0 de la fenêtre, mais
+cette bande fixe la recouvrait visuellement par-dessus, cachant le
+kanji/la traduction (tout en haut de la ligne) ; seule la partie
+"lectures" du détail, plus bas, restait visible sous la barre. Fixé avec
+`scroll-margin-top: 72px` sur `.explorer-item`, scopé à
+`@media (min-width: 780px)` (mobile a sa barre en BAS, aucune
+compensation nécessaire là) — propriété faite pour exactement ce cas,
+respectée nativement par `scrollIntoView`. Vérifié en navigateur
+(desktop, `behavior:'instant'` pour contourner le souci de compositing
+de ce pane déjà noté) : le kanji est maintenant à `headlineTop: 85`,
+nettement sous les 56px de la barre fixe.
+
+**Favoris ajoutés au payload de sauvegarde/récupération.** En
+investiguant le signalement "mes kanjis maîtrisés n'ont pas été
+récupérés" (voir plus bas), remarqué que `ProfileBackupPayload`
+(`profileSync.ts`) n'incluait que mastery/activity/notes — les favoris
+n'ont jamais fait partie de ce qui est sauvegardé/récupéré, alors que
+c'est une vraie donnée de profil au même titre. Ajouté : export +
+import de `favorites`, avec repli `payload.favorites ?? []` côté import
+pour rester compatible avec une sauvegarde plus ancienne (créée avant
+cet ajout) qui n'aurait pas ce champ.
+
+**"Mes kanjis maîtrisés n'ont pas été récupérés" — code vérifié
+correct, cause probablement le calendrier, pas un bug trouvé.**
+Relu `exportProfileData`/`importProfileData` (`profileSync.ts`) et
+`handleRestore` (`ProfileSelector.tsx`) en détail : la logique est
+correcte — `exportProfileData` capture bien TOUTE la table `mastery` du
+profil, `importProfileData` l'écrit bien intégralement sous le nouvel id
+local. Le test de bout en bout fait juste après le fix de l'import ESM
+(checkpoint précédent : backup → restore → delete-account, tous 200,
+payload conforme) confirme que le mécanisme fonctionne quand il tourne
+sur le code actuel. Hypothèse la plus probable communiquée à
+l'utilisatrice (pas un correctif inventé faute de bug identifié dans le
+code) : la tentative de sauvegarde/récupération a probablement eu lieu
+AVANT le fix de l'import ESM (`./_redis` → `./_redis.js`) qui faisait
+planter `/api/backup` avant même d'écrire quoi que ce soit côté serveur
+— ou alors une sauvegarde plus récente mais plus pauvre (depuis un autre
+appareil) a écrasé une sauvegarde antérieure plus complète, puisqu'une
+sauvegarde REMPLACE entièrement l'enregistrement existant sous ce nom
+(pas de fusion, voir `api/backup.ts`). Recommandation donnée :
+resauvegarder maintenant depuis l'appareil qui a réellement la
+progression à jour, puis récupérer sur l'autre.
+
+`npx tsc -b` et `npx tsc -p tsconfig.api.json` clean. Pas encore
+commité/poussé.

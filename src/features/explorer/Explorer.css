@@ -165,6 +165,21 @@
   overflow: hidden;
 }
 
+/* Sur desktop, la barre d'onglets est fixée EN HAUT (`MainLayout.css`,
+   56px) — sans compensation, `scrollIntoView({block:'start'})` (voir
+   Explorer.tsx) aligne bien la ligne dépliée sur y=0 de la fenêtre, mais
+   cette bande fixe la recouvre visuellement : le kanji et la traduction
+   (tout en haut de la ligne) se retrouvaient cachés derrière, seule la
+   partie "prononciation" du détail restait visible en dessous (signalé
+   par l'utilisatrice). `scroll-margin-top` est fait pour exactement ce
+   cas — `scrollIntoView` le respecte nativement, contrairement à un
+   simple calcul de position. */
+@media (min-width: 780px) {
+  .explorer-item {
+    scroll-margin-top: 72px;
+  }
+}
+
 .explorer-row {
   display: grid;
   grid-template-columns: auto auto auto 1fr auto auto auto auto;
