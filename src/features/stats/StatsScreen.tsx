@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { PenLine } from 'lucide-react'
 import PageTransition from '../../components/ui/PageTransition'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import { mockKanjiList, type JlptLevel } from '../kanji/mockKanji'
@@ -8,7 +7,6 @@ import { mockVocabList } from '../vocab/mockVocab'
 import { mockGrammarList } from '../grammar/mockGrammar'
 import { useProfileStore } from '../profile/profileStore'
 import { getAllMasteredIds } from '../../db/mastery'
-import { mockHardestItems, mockWritingTime, type HardestItemEntry } from './mockStats'
 import './Stats.css'
 
 const listVariants = {
@@ -21,29 +19,7 @@ const fadeUp = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
 }
 
-const KIND_LABELS: Record<HardestItemEntry['kind'], string> = {
-  kanji: 'Kanji',
-  vocab: 'Vocab',
-  grammar: 'Grammaire',
-}
-
 const JLPT_LEVELS: JlptLevel[] = ['N5', 'N4', 'N3', 'N2', 'N1']
-
-// Résout un HardestItemEntry vers { headline, meaning } selon son type —
-// un seul kanji/mot/point de grammaire référencé par id, jamais dupliqué
-// en dur dans mockStats.ts.
-function resolveHardestItem(entry: HardestItemEntry): { headline: string; meaning: string } | null {
-  if (entry.kind === 'kanji') {
-    const k = mockKanjiList.find((k) => k.id === entry.itemId)
-    return k ? { headline: k.character, meaning: k.meanings.join(', ') } : null
-  }
-  if (entry.kind === 'vocab') {
-    const w = mockVocabList.find((w) => w.id === entry.itemId)
-    return w ? { headline: w.word, meaning: w.meanings.join(', ') } : null
-  }
-  const g = mockGrammarList.find((g) => g.id === entry.itemId)
-  return g ? { headline: g.pattern, meaning: g.meaning } : null
-}
 
 export default function StatsScreen() {
   const profileId = useProfileStore((s) => s.activeProfileId)
@@ -77,8 +53,6 @@ export default function StatsScreen() {
 
   const totalMastered = masteredKanji.size
   const totalTarget = mockKanjiList.length
-  const maxMinutes = Math.max(...mockWritingTime.map((d) => d.minutes))
-  const weekTotal = mockWritingTime.reduce((sum, d) => sum + d.minutes, 0)
 
   return (
     <PageTransition>
@@ -143,60 +117,6 @@ export default function StatsScreen() {
                 )
               })}
             </ul>
-          </motion.section>
-
-          <motion.section className="stats-card" variants={fadeUp}>
-            <h2 className="stats-card__title">Le plus difficile en ce moment</h2>
-            <p className="stats-card__hint">Ce que tu rates le plus souvent en révision — kanjis, vocabulaire et grammaire mélangés.</p>
-            <ul className="rank-list">
-              {mockHardestItems.map((entry, i) => {
-                const resolved = resolveHardestItem(entry)
-                if (!resolved) return null
-                return (
-                  <li key={`${entry.kind}-${entry.itemId}`} className="rank-row">
-                    <span className="rank-row__index">{i + 1}</span>
-                    <span className="rank-row__kind-badge">{KIND_LABELS[entry.kind]}</span>
-                    <span className="rank-row__char">{resolved.headline}</span>
-                    <span className="rank-row__meaning">{resolved.meaning}</span>
-                    <div className="rank-row__bar-track">
-                      <motion.div
-                        className="rank-row__bar-fill"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${entry.missRate}%` }}
-                        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                      />
-                    </div>
-                    <span className="rank-row__value">{entry.missRate}%</span>
-                  </li>
-                )
-              })}
-            </ul>
-          </motion.section>
-
-          <motion.section className="stats-card" variants={fadeUp}>
-            <div className="stats-card__head-row">
-              <h2 className="stats-card__title">
-                <PenLine size={16} strokeWidth={1.75} />
-                Temps passé à écrire
-              </h2>
-              <span className="stats-card__total">{weekTotal} min cette semaine</span>
-            </div>
-            <div className="write-chart">
-              {mockWritingTime.map((d) => (
-                <div key={d.day} className="write-chart__col">
-                  <div className="write-chart__track">
-                    <motion.div
-                      className="write-chart__bar"
-                      initial={{ height: 0 }}
-                      animate={{ height: `${(d.minutes / maxMinutes) * 100}%` }}
-                      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                    />
-                  </div>
-                  <span className="write-chart__minutes">{d.minutes}</span>
-                  <span className="write-chart__day">{d.day}</span>
-                </div>
-              ))}
-            </div>
           </motion.section>
         </motion.div>
       </div>

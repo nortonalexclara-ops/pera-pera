@@ -38,10 +38,42 @@ export default function ProfileSelector() {
   const [restoreBusy, setRestoreBusy] = useState(false)
   const [restoreError, setRestoreError] = useState<string | null>(null)
 
+  // Bug WebKit connu (Safari iPadOS/iOS) : après une restauration bfcache
+  // (voir main.tsx), la connexion IndexedDB peut rester "coincée" — toute
+  // NOUVELLE transaction dessus ne résout ni ne rejette jamais, elle reste
+  // juste bloquée indéfiniment. `listProfiles()` (donc `.then`/`.finally`)
+  // ne s'exécute alors jamais, `loaded` ne passe jamais à `true`, et
+  // l'écran reste bloqué sur "Qui apprend aujourd'hui ?" sans rien
+  // d'autre (signalé par l'utilisatrice sur iPad) — pas d'erreur visible
+  // puisque la promesse ne se règle jamais, juste un silence permanent.
+  // Filet de sécurité : si `listProfiles()` n'a pas répondu au bout de 4s,
+  // on considère la connexion figée et on force un vrai rechargement
+  // complet (nouvelle connexion IndexedDB saine), plutôt que de laisser
+  // l'app inutilisable sans qu'aucune action de l'utilisatrice ne puisse
+  // la débloquer.
   useEffect(() => {
+    let cancelled = false
+    const watchdog = setTimeout(() => {
+      if (!cancelled) window.location.reload()
+    }, 4000)
+
     listProfiles()
-      .then(setProfiles)
-      .finally(() => setLoaded(true))
+      .then((result) => {
+        if (cancelled) return
+        clearTimeout(watchdog)
+        setProfiles(result)
+        setLoaded(true)
+      })
+      .catch(() => {
+        if (cancelled) return
+        clearTimeout(watchdog)
+        setLoaded(true)
+      })
+
+    return () => {
+      cancelled = true
+      clearTimeout(watchdog)
+    }
   }, [])
 
   function handleSelect(id: string, name: string, colorIndex: number) {

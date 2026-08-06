@@ -4020,3 +4020,83 @@ progression à jour, puis récupérer sur l'autre.
 
 `npx tsc -b` et `npx tsc -p tsconfig.api.json` clean. Pas encore
 commité/poussé.
+
+## Checkpoint — GRAVE : iPad bloqué sur ProfileSelector, stats inventées supprimées
+
+Signalement très sérieux ("le site n'est pas du tout utilisable",
+troisième fois ce type de retour) : sur iPad, l'écran affiche
+uniquement "Qui apprend aujourd'hui ?" sans rien d'autre (ni profils, ni
+boutons "Nouveau profil"/"Récupérer un profil") — obligée de taper
+`/dashboard` dans l'URL, qui atterrit alors sur un profil "aléatoire".
+
+**Cause identifiée (bug WebKit connu, pas du code applicatif buggé).**
+`ProfileSelector.tsx` : toute la grille de profils (cartes ET boutons
+"Nouveau profil"/"Récupérer un profil") est conditionnée par
+`{loaded && (...)}`, `loaded` passant à `true` seulement via
+`.finally()` sur la promesse de `listProfiles()` (qui lit
+`db.profiles.toArray()`). Bug WebKit documenté : après une restauration
+bfcache (voir checkpoint précédent), la connexion IndexedDB peut rester
+"coincée" — une NOUVELLE transaction dessus ne résout NI ne rejette
+jamais, elle reste bloquée indéfiniment SANS ERREUR visible. Résultat :
+`.then`/`.finally` ne s'exécutent jamais, `loaded` reste `false` pour
+toujours, rien ne s'affiche sauf le titre statique — exactement le
+symptôme décrit. Cohérent avec le fait que taper `/dashboard`
+directement "marche" (differente page, connexion IndexedDB pas
+forcément dans le même état bloqué au moment précis) mais atterrit sur
+un profil vide/désynchronisé.
+
+**Fix (filet de sécurité, `ProfileSelector.tsx`)** : timeout de garde de
+4s sur `listProfiles()` — si la promesse n'a toujours pas répondu passé
+ce délai, `window.location.reload()` forcé (nouvelle connexion IndexedDB
+saine), plutôt que de laisser l'app bloquée sans qu'aucune action de
+l'utilisatrice ne puisse la débloquer elle-même. Complémentaire au fix
+bfcache déjà posé (`main.tsx`, `pageshow`/`persisted`) qui devrait
+EMPÊCHER ce scénario de se produire en premier lieu une fois que le
+nouveau code aura pu tourner au moins une fois — risque "poule et œuf"
+déjà noté : si l'iPad reste coincé à restaurer un instantané ENCORE PLUS
+ANCIEN (d'avant ce fix bfcache), le nouveau code n'a jamais l'occasion
+de s'exécuter. **Recommandation critique donnée à l'utilisatrice** :
+fermer complètement Safari sur l'iPad (pas juste l'onglet — le retirer
+du multitâche) et le rouvrir, pour garantir un chargement vraiment
+neuf qui embarque enfin tous les correctifs récents.
+
+**Stats : fausses données supprimées (pas juste pour un profil vierge —
+pour TOUS les profils, tout le temps).** Signalé : un profil vierge
+affichait déjà "kanjis les plus durs" et "temps passé à écrire". Vérifié
+dans le code : ces deux sections (`StatsScreen.tsx`) n'ont JAMAIS été
+branchées sur de vraies données — `mockHardestItems`/`mockWritingTime`
+(`mockStats.ts`, son propre commentaire documentait déjà "pas de
+tracking réel équivalent... pas demandé pour l'instant") s'affichaient
+identiquement pour TOUT profil, y compris flambant neuf. Contrairement
+aux deux autres sections de cet écran (répartition par module,
+progression par niveau JLPT), déjà branchées sur la vraie table
+`mastery` depuis un chantier précédent. Construire un vrai suivi
+("taux d'erreur par item", "temps passé à dessiner sur le canevas")
+est un chantier à part entière (nouvelles tables, instrumentation de
+`WritingCanvas`/`CardLoopShell`) — pas fait dans l'urgence de ce
+correctif. Choix fait : retirer entièrement les deux sections
+inventées plutôt que continuer à afficher des chiffres qui n'ont jamais
+existé. `mockStats.ts` supprimé (plus aucun import), CSS orpheline
+(`.rank-*`, `.write-chart*`, `.stats-card__head-row`,
+`.stats-card__total`) retirée de `Stats.css`. Vérifié en navigateur :
+Stats n'affiche plus que "Répartition par module" et "Progression par
+niveau JLPT", toutes deux avec des chiffres réels et cohérents pour le
+profil actif.
+
+**"Reset tout" interprété comme "corrige le fond du problème", pas
+"efface mes données"** — l'utilisatrice a la fonction de reset existante
+dans Réglages si elle veut vraiment repartir de zéro sur un profil ;
+rien effacé côté profil ici, juste les DEUX SECTIONS FICTIVES retirées
+de l'écran Stats. À clarifier avec elle si ce n'était pas l'intention.
+
+**Alex/Camille encore visibles — même cause racine que le blocage
+iPad**, pas un nouveau bug : si la liste de profils affichée est un
+instantané bfcache gelé d'avant leur suppression (ou si IndexedDB est
+dans l'état bloqué décrit plus haut), l'UI peut continuer à montrer
+d'anciennes données même après une suppression réelle en base. Une fois
+Safari vraiment fermé/rouvert (voir plus haut), la liste devrait
+refléter l'état réel — sinon, ce sera la première fois qu'un vrai
+signalement pointerait vers autre chose qu'un problème de cache/state
+figé côté navigateur.
+
+`npx tsc -b` clean. Pas encore commité/poussé.
