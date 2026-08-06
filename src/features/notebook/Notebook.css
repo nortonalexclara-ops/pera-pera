@@ -17,16 +17,27 @@
   margin-bottom: var(--space-lg);
 }
 
+/* Hauteur volontairement plus modeste qu'un simple "prend toute la place
+   disponible" (demande utilisatrice : voir les résultats sans défiler,
+   surtout iPad/mobile — quitte à rogner un peu la zone de dessin). `flex:1`
+   permet quand même de profiter d'un écran haut (desktop) sans le
+   plafonner artificiellement. */
 .notebook__canvas-wrap {
   flex: 1;
   display: flex;
-  min-height: 480px;
+  min-height: 300px;
 }
 
+/* Bouton "Reconnaître" — niché dans la même rangée que stylo/gomme/
+   annuler/tout effacer (voir `extraTools` sur WritingCanvas) plutôt que
+   tout en bas de la page sous le canevas : c'était hors champ sans
+   défiler sur iPad/mobile (demande utilisatrice). Même gabarit que les
+   autres outils, teinte accent en permanence (pas seulement au survol)
+   pour rester repérable comme l'action principale de l'écran. */
 .notebook__recognize-btn {
-  width: 100%;
-  justify-content: center;
-  margin-top: var(--space-md);
+  border-color: var(--color-accent);
+  color: var(--color-accent-dark);
+  background: var(--color-accent-soft);
 }
 
 .notebook__results {
@@ -34,7 +45,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-sm);
-  margin: var(--space-lg) 0 0;
+  margin: var(--space-md) 0 0;
   padding: 0;
 }
 
@@ -64,4 +75,24 @@
   font-size: 11px;
   color: var(--color-text-secondary);
   text-align: center;
+}
+
+/* Encore plus compact sur iPad/mobile — c'est là que "voir les résultats
+   sans défiler" était le plus en cause (demande utilisatrice). */
+@media (max-width: 900px) {
+  .notebook__title {
+    font-size: 22px;
+  }
+
+  .notebook__subtitle {
+    margin-bottom: var(--space-sm);
+  }
+
+  .notebook__canvas-wrap {
+    min-height: 220px;
+  }
+
+  .notebook__results {
+    margin-top: var(--space-sm);
+  }
 }

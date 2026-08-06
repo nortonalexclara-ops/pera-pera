@@ -4336,4 +4336,52 @@ réelles : 挨拶する → `<ruby>挨拶<rt>あいさつ</rt></ruby>する` aff
 dans la ligne Explorer ; 学校 (mot simple, kanjis déjà couverts) reste en
 kanji brut sans ruby, comme avant. Aucune erreur console.
 
-`npx tsc -b` clean. Pas encore commité/poussé.
+`npx tsc -b` clean. Commité et poussé.
+
+## Checkpoint — reconnaissance de kanji : vrai bug de la gomme corrigé, bouton dans la barre d'outils, page compactée
+
+Trois demandes sur l'écran de reconnaissance de kanji manuscrit
+(`Notebook.tsx`/`WritingCanvas.tsx`).
+
+**1. Vrai bug trouvé : la gomme n'effaçait que des pixels, jamais les
+données.** Signalement : après avoir effacé des traits, la reconnaissance
+semblait "s'en souvenir" et renvoyait des kanjis plus complexes que ce
+qui restait réellement dessiné. Confirmé en lisant le code : la gomme
+peint en `destination-out` sur le bitmap (`strokeStyle`), mais ne
+touchait jamais `strokesRef` (les points bruts gardés en mémoire pour la
+reconnaissance, voir `onStrokesChange`) — un trait "effacé" à l'écran
+restait donc entier côté données. Corrigé (`eraseFromPenStrokes`,
+`WritingCanvas.tsx`) : à la fin d'un geste de gomme, tout point stylo à
+moins de `ERASER_WIDTH/2` d'un point de la gomme est retiré, et un trait
+est scindé en plusieurs sous-traits aux endroits coupés (pas de trou
+comblé par une ligne fantôme entre les deux morceaux restants). Vérifié
+en conditions réelles, pas juste en lisant le code : 4 traits dessinés
+dans 4 coins bien séparés du canevas, 3 effacés à la gomme, le 4ᵉ laissé
+intact → candidats proposés `["十","乙","丁","力","干"]` (tous très
+simples, 1-3 traits) — **résultat rigoureusement identique** à celui
+obtenu en dessinant CE SEUL 4ᵉ trait depuis un canevas vide. Preuve
+directe que la gomme retire désormais bien les traits effacés du calcul,
+pas seulement de l'affichage.
+
+**2. Bouton "Reconnaître" déplacé dans la barre d'outils.** Il vivait
+sous le canevas, seul, en pleine largeur — hors champ sans défiler sur
+iPad/mobile. Nouveau prop `extraTools` sur `WritingCanvas` (générique,
+ignoré par les autres appelants) : rend un contenu à gauche de la
+rangée stylo/gomme/annuler/tout effacer, dans le même en-tête. Notebook
+y passe son bouton "Reconnaître" (icône seule, teinte accent permanente
+pour rester repérable comme action principale) — même rangée que la
+gomme, à gauche, comme demandé. Nouvelle règle générique
+`.writing-canvas__tool:disabled` (opacité réduite) pour l'état
+"pas assez de traits"/"reconnaissance en cours".
+
+**3. Page compactée pour voir les résultats sans défiler.** `.notebook__canvas-wrap`
+: hauteur plancher réduite (480px → 300px, 220px sous 900px de large,
+seuil qui couvre aussi l'iPad en portrait/paysage, pas seulement le mobile
+étroit à 600px comme ailleurs dans l'app) ; titre/sous-titre resserrés en
+dessous de 900px. Vérifié en conditions réelles à plusieurs tailles :
+iPad portrait (768×1024) et téléphone (390×700), résultats affichés
+après reconnaissance entièrement visibles sans défiler dans les deux cas
+(`resultsBottom <= windowInnerHeight` confirmé par script).
+
+Aucune erreur console à aucune étape. `npx tsc -b` clean. Pas encore
+commité/poussé.

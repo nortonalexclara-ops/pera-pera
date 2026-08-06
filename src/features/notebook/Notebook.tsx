@@ -56,18 +56,24 @@ export default function Notebook() {
         <h1 className="notebook__title">Reconnaissance de kanji</h1>
         <p className="notebook__subtitle">Dessine un kanji, puis appuie sur "Reconnaître" pour voir les candidats les plus proches.</p>
         <div className="notebook__canvas-wrap">
-          <WritingCanvas strokeKey="recognize" title="" grid onStrokesChange={handleStrokesChange} />
+          <WritingCanvas
+            strokeKey="recognize"
+            title=""
+            grid
+            onStrokesChange={handleStrokesChange}
+            extraTools={
+              <button
+                type="button"
+                className="writing-canvas__tool notebook__recognize-btn"
+                disabled={!canRecognize || recognizing}
+                onClick={handleRecognize}
+                title="Reconnaître le kanji"
+              >
+                <ScanSearch size={19} strokeWidth={1.75} />
+              </button>
+            }
+          />
         </div>
-
-        <button
-          type="button"
-          className="btn-primary notebook__recognize-btn"
-          disabled={!canRecognize || recognizing}
-          onClick={handleRecognize}
-        >
-          <ScanSearch size={16} strokeWidth={1.75} />
-          {recognizing ? 'Reconnaissance…' : 'Reconnaître'}
-        </button>
 
         {results && results.length > 0 && (
           <ul className="notebook__results">

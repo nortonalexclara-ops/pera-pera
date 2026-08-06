@@ -709,7 +709,8 @@ rt {
   color: var(--color-text-primary);
 }
 
-.writing-canvas__undo:disabled {
+.writing-canvas__undo:disabled,
+.writing-canvas__tool:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }

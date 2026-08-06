@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Pencil, Eraser, Undo2, Trash2 } from 'lucide-react'
 import { useCanvasGestureGuard } from '../../components/ui/useCanvasGestureGuard'
 
@@ -15,6 +15,12 @@ interface WritingCanvasProps {
   // n'est pas une forme à comparer) — utilisé par la reconnaissance de
   // kanji manuscrit, qui a besoin des points bruts, pas juste du bitmap.
   onStrokesChange?: (strokes: Point[][]) => void
+  // Bouton(s) additionnel(s) affichés dans la même rangée que stylo/gomme/
+  // annuler/tout effacer, à gauche du groupe d'outils (ex. "Reconnaître"
+  // pour le Cahier de reconnaissance) — demande explicite de l'utilisatrice
+  // de ne pas laisser ce bouton tout en bas de la page, hors champ sur
+  // iPad/mobile sans défiler. Ignoré par les autres appelants.
+  extraTools?: ReactNode
 }
 
 type Tool = 'pen' | 'eraser'
@@ -47,6 +53,7 @@ export default function WritingCanvas({
   title = "Entraînement à l'écriture",
   grid = false,
   onStrokesChange,
+  extraTools,
 }: WritingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -132,9 +139,45 @@ export default function WritingCanvas({
     onStrokesChange?.(strokesRef.current.filter((s) => s.tool === 'pen').map((s) => s.points))
   }
 
+  // La gomme n'efface que des pixels (`destination-out`, voir strokeStyle) —
+  // elle ne touchait jusqu'ici jamais aux points bruts des traits stylo
+  // gardés en mémoire. Un trait "effacé" à l'écran restait donc entier côté
+  // données, et la reconnaissance de kanji (qui lit ces points, voir
+  // Notebook.tsx) continuait à "voir" l'encre pourtant retirée visuellement
+  // — bug signalé par l'utilisatrice (kanji reconnu plus complexe que ce
+  // qui restait réellement dessiné). Corrigé en répercutant la gomme sur
+  // les données : tout point stylo à moins de ERASER_WIDTH/2 d'un point de
+  // la gomme est retiré, et un trait est scindé en plusieurs sous-traits
+  // (plutôt que de laisser un simple trou) là où l'effacement l'a coupé en
+  // plusieurs morceaux — sinon les points de part et d'autre du trou se
+  // retrouveraient reliés à tort par une ligne droite fantôme.
+  function eraseFromPenStrokes(eraserPoints: Point[]) {
+    const radiusSq = (ERASER_WIDTH / 2) ** 2
+    const next: Stroke[] = []
+    for (const stroke of strokesRef.current) {
+      if (stroke.tool !== 'pen') continue
+      let current: Point[] = []
+      for (const p of stroke.points) {
+        const erased = eraserPoints.some((ep) => (p.x - ep.x) ** 2 + (p.y - ep.y) ** 2 <= radiusSq)
+        if (erased) {
+          if (current.length > 1) next.push({ tool: 'pen', points: current })
+          current = []
+        } else {
+          current.push(p)
+        }
+      }
+      if (current.length > 1) next.push({ tool: 'pen', points: current })
+    }
+    strokesRef.current = next
+  }
+
   function handlePointerUp() {
     if (!isDrawing.current) return
     isDrawing.current = false
+    const justFinished = strokesRef.current[strokesRef.current.length - 1]
+    if (justFinished?.tool === 'eraser') {
+      eraseFromPenStrokes(justFinished.points)
+    }
     setStrokeCount(strokesRef.current.length)
     notifyStrokes()
   }
@@ -176,8 +219,9 @@ export default function WritingCanvas({
 
   return (
     <div className="writing-canvas">
-      <div className={`writing-canvas__head${title ? '' : ' writing-canvas__head--tools-only'}`}>
+      <div className={`writing-canvas__head${title || extraTools ? '' : ' writing-canvas__head--tools-only'}`}>
         {title && <p className="writing-canvas__title">{title}</p>}
+        {!title && extraTools}
         <div className="writing-canvas__tools">
           <button
             type="button"
