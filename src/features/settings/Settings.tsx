@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Trash2, Check, AlertTriangle, CloudUpload, CheckCheck } from 'lucide-react'
+import { Trash2, Check, AlertTriangle, CloudUpload, CheckCheck, Volume2 } from 'lucide-react'
 import PageTransition from '../../components/ui/PageTransition'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import { useProfileStore } from '../profile/profileStore'
@@ -15,6 +15,13 @@ import { exportProfileData } from '../../db/profileSync'
 import { deleteProfile } from '../../db/profiles'
 import { getKanjiGoal, setKanjiGoal, getHasCloudBackup, setHasCloudBackup, DEFAULT_KANJI_GOAL } from '../../db/settings'
 import { backupProfile, deleteAccountBackup } from '../profile/cloudSync'
+import {
+  isSpeechSupported,
+  listJapaneseVoices,
+  getPreferredVoiceURI,
+  setPreferredVoiceURI,
+  speakJapanese,
+} from '../../utils/speech'
 import type { ItemKind } from '../../db/db'
 import { mockKanjiList, type JlptLevel } from '../kanji/mockKanji'
 import { mockVocabList } from '../vocab/mockVocab'
@@ -297,6 +304,8 @@ export default function Settings() {
           )}
         </section>
 
+        <VoiceSection />
+
         <section className="settings-card">
           <h2 className="settings-card__title">Marquer un niveau comme maîtrisé</h2>
           <p className="settings-card__hint">
@@ -500,5 +509,71 @@ export default function Settings() {
         </section>
       </div>
     </PageTransition>
+  )
+}
+
+// Choix de la voix utilisée par le bouton "écouter la prononciation"
+// (voir SpeakButton.tsx) — un réglage d'appareil/navigateur (les voix
+// installées diffèrent d'un appareil à l'autre), pas une donnée de
+// profil : gardé en local uniquement (voir setPreferredVoiceURI), pas
+// dans la sauvegarde cloud. `voiceschanged` : `getVoices()` peut renvoyer
+// une liste vide au tout premier rendu, le temps que le navigateur la
+// charge de façon asynchrone — sans ça, un appareil avec plusieurs voix
+// japonaises pourrait n'en montrer aucune si Réglages est ouvert tôt.
+function VoiceSection() {
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(() => listJapaneseVoices())
+  const [selected, setSelected] = useState(() => getPreferredVoiceURI() ?? '')
+
+  useEffect(() => {
+    if (!isSpeechSupported()) return
+    function refresh() {
+      setVoices(listJapaneseVoices())
+    }
+    refresh()
+    window.speechSynthesis.addEventListener('voiceschanged', refresh)
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', refresh)
+  }, [])
+
+  if (!isSpeechSupported()) return null
+
+  const currentURI = selected || voices[0]?.voiceURI || ''
+
+  function handleChange(uri: string) {
+    setSelected(uri)
+    setPreferredVoiceURI(uri)
+  }
+
+  return (
+    <section className="settings-card">
+      <h2 className="settings-card__title">Voix de prononciation</h2>
+
+      {voices.length === 0 ? (
+        <p className="settings-card__hint">
+          Aucune voix japonaise trouvée sur cet appareil — la prononciation utilisera la voix par défaut du navigateur.
+          Sur iPad/iPhone : Réglages → Accessibilité → Contenu énoncé → Voix → Japonais, pour en installer une.
+        </p>
+      ) : (
+        <>
+          <p className="settings-card__hint">
+            {voices.length === 1
+              ? "Une seule voix japonaise est installée sur cet appareil."
+              : `${voices.length} voix japonaises disponibles sur cet appareil.`}
+          </p>
+          <div className="pin-row">
+            <select className="bulk-mark-select" value={currentURI} onChange={(e) => handleChange(e.target.value)}>
+              {voices.map((v) => (
+                <option key={v.voiceURI} value={v.voiceURI}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
+            <button type="button" className="btn-primary" onClick={() => speakJapanese('こんにちは、元気ですか')}>
+              <Volume2 size={16} strokeWidth={1.75} />
+              Écouter un exemple
+            </button>
+          </div>
+        </>
+      )}
+    </section>
   )
 }

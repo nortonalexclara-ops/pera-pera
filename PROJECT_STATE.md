@@ -4241,4 +4241,49 @@ parenthèses d'okurigana correctement retirées) ✓. Séance Vocabulaire
 on'yomi "キュウ" + kun'yomi "やすむ" ✓. Aucune erreur console à aucune
 étape.
 
+`npx tsc -b` clean. Commité et poussé.
+
+## Checkpoint — hiragana sur le recto si le mot dépasse son niveau, choix de la voix, audio sur les exemples
+
+Trois demandes suite à l'audio du checkpoint précédent.
+
+**1. Hiragana au recto pour les mots dont le kanji n'est pas encore
+censé être connu.** Signalement concret de l'utilisatrice : 挨拶する
+(saluer) est classé N4 dans le vocabulaire, mais ses kanjis 挨/拶ne sont
+enseignés à AUCUN niveau dans le programme kanjis de l'appli (vérifié :
+absents de `mockKanjiList`) — deviner ce mot au recto revient à deviner
+un kanji jamais vu. Nouveau `src/utils/kanjiLevel.ts` :
+`wordExceedsOwnLevel(word, wordLevel)` compare, pour chaque kanji du
+mot, son propre niveau dans `mockKanjiList` au niveau JLPT du mot lui-même
+— vrai si un kanji est classé à un niveau plus avancé (ex. kanji N2 dans
+un mot N4) OU absent du programme kanjis (cas 挨拶). `VocabCardLoop.tsx`
+l'utilise pour choisir, au recto : kanji brut (comportement normal) si le
+mot ne dépasse pas son niveau, sinon `FuriganaText` (même rendu ruby que
+le dos) pour montrer la lecture avant de deviner. Vérifié en conditions
+réelles : 挨拶 (aisatsu1, N4) → `exceeds: true` (import direct du module
+Vite en console) ; en séance réelle, 凄い (N4, kanji 凄 absent du
+programme) s'affiche bien avec furigana au recto, タンス/レジ (mots sans
+kanji) s'affichent normalement.
+
+**2. Choix de la voix.** Nouvelle section "Voix de prononciation" dans
+Réglages — liste toutes les voix japonaises installées sur l'appareil
+(`listJapaneseVoices`, `speech.ts`), sélecteur + bouton "Écouter un
+exemple" pour prévisualiser. Préférence stockée dans `localStorage`
+(`pera-pera:speech-voice-uri`) — un réglage d'appareil/navigateur, pas
+une donnée de profil, donc jamais dans la sauvegarde cloud. `speech.ts`
+relit cette préférence à chaque lecture (`findJapaneseVoice`), donc le
+changement s'applique immédiatement partout (Explorer, cartes de séance)
+sans recharger la page. Testé en local (environnement de dev Windows) :
+4 voix Microsoft détectées, sélection d'une voix différente confirmée
+appliquée aussi bien au bouton de test qu'aux boutons de prononciation
+d'Explorer et des cartes de séance.
+
+**3. Audio sur les mots/phrases d'exemple des cartes de séance.**
+`SpeakButton` ajouté à côté de chaque exemple (déjà avec furigana via
+`FuriganaText`) dans `VocabCardLoop.tsx` ("Exemples") et
+`KanjiCardLoop.tsx` ("Mots" ET "Phrases") — lit la lecture reconstituée
+du segment complet (`reconstructReading`), pas juste le mot vedette de la
+carte. Vérifié : phrase d'exemple de 凄い → "それはすごいですね。" lu
+correctement (avec la voix choisie à l'étape 2).
+
 `npx tsc -b` clean. Pas encore commité/poussé.

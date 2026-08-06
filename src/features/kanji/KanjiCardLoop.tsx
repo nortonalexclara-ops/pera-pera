@@ -9,6 +9,7 @@ import { useProfileStore } from '../profile/profileStore'
 import { getMasteredIds, setMastered } from '../../db/mastery'
 import { shuffleArray } from '../../utils/shuffle'
 import { toSpokenKanjiReading } from '../../utils/speech'
+import { reconstructReading } from '../../utils/furigana'
 
 const EMPTY_SET: Set<string> = new Set()
 
@@ -166,6 +167,7 @@ export default function KanjiCardLoop({
                   <li key={i} className="example-item">
                     <p className="example__jp">
                       <FuriganaText segments={w.segments} />
+                      <SpeakButton text={reconstructReading(w.segments)} />
                     </p>
                     <button
                       type="button"
@@ -188,6 +190,7 @@ export default function KanjiCardLoop({
                     <li key={i} className="example-item">
                       <p className="example__jp example__jp--sentence">
                         <FuriganaText segments={ex.segments} />
+                        <SpeakButton text={reconstructReading(ex.segments)} />
                       </p>
                       <button
                         type="button"

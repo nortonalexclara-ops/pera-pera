@@ -7,18 +7,41 @@ export function isSpeechSupported(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window
 }
 
-// Mise en cache une fois trouvée seulement (jamais un résultat "rien
-// trouvé") — `getVoices()` peut renvoyer une liste vide tant que le
-// navigateur ne l'a pas chargée de façon asynchrone en arrière-plan ; sans
-// voix japonaise identifiée, `lang: 'ja-JP'` seul sur l'utterance suffit
-// déjà à orienter la plupart des moteurs vers une voix cohérente.
-let cachedJaVoice: SpeechSynthesisVoice | null = null
+// Liste toutes les voix japonaises installées sur l'appareil — peut être
+// vide un court instant après le chargement de la page, le temps que le
+// navigateur charge sa liste de voix de façon asynchrone (voir
+// `onvoiceschanged`, utilisé par le sélecteur de voix dans Réglages).
+export function listJapaneseVoices(): SpeechSynthesisVoice[] {
+  if (!isSpeechSupported()) return []
+  return window.speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().startsWith('ja'))
+}
 
+// Préférence de voix — un choix d'appareil/navigateur (les voix
+// installées diffèrent d'un appareil à l'autre), pas une donnée de
+// profil : gardée en local uniquement, jamais dans la sauvegarde cloud.
+const VOICE_PREF_KEY = 'pera-pera:speech-voice-uri'
+
+export function getPreferredVoiceURI(): string | null {
+  return localStorage.getItem(VOICE_PREF_KEY)
+}
+
+export function setPreferredVoiceURI(voiceURI: string | null): void {
+  if (voiceURI) localStorage.setItem(VOICE_PREF_KEY, voiceURI)
+  else localStorage.removeItem(VOICE_PREF_KEY)
+}
+
+// Relit `getVoices()` à chaque appel plutôt que de mettre en cache : ça
+// reste peu coûteux (appelé seulement au clic sur un bouton "écouter",
+// jamais dans une boucle chaude), et ça permet de refléter immédiatement
+// un changement de préférence dans Réglages sans recharger la page. Sans
+// préférence choisie (ou si la voix préférée n'est plus disponible),
+// repli sur la première voix japonaise trouvée ; sans aucune voix
+// japonaise identifiée, `lang: 'ja-JP'` seul sur l'utterance suffit déjà
+// à orienter la plupart des moteurs vers une voix cohérente.
 function findJapaneseVoice(): SpeechSynthesisVoice | null {
-  if (cachedJaVoice) return cachedJaVoice
-  const voices = window.speechSynthesis.getVoices()
-  cachedJaVoice = voices.find((v) => v.lang?.toLowerCase().startsWith('ja')) ?? null
-  return cachedJaVoice
+  const jaVoices = listJapaneseVoices()
+  const preferredURI = getPreferredVoiceURI()
+  return jaVoices.find((v) => v.voiceURI === preferredURI) ?? jaVoices[0] ?? null
 }
 
 function buildUtterance(text: string): SpeechSynthesisUtterance {

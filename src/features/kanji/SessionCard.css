@@ -229,7 +229,8 @@
 }
 
 .flip-card__mini-word .speak-btn,
-.flip-card__reading-value .speak-btn {
+.flip-card__reading-value .speak-btn,
+.example__jp .speak-btn {
   vertical-align: middle;
   margin-left: 6px;
 }

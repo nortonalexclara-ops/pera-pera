@@ -10,6 +10,7 @@ import { useProfileStore } from '../profile/profileStore'
 import { getMasteredIds, setMastered } from '../../db/mastery'
 import { shuffleArray } from '../../utils/shuffle'
 import { reconstructReading } from '../../utils/furigana'
+import { wordExceedsOwnLevel } from '../../utils/kanjiLevel'
 
 const EMPTY_SET: Set<string> = new Set()
 
@@ -87,7 +88,17 @@ export default function VocabCardLoop({
       renderFront={(vocab: VocabWord) => (
         <>
           <span className="word-type-badge">{TYPE_LABELS[vocab.type]}</span>
-          <span className="flip-card__word">{vocab.word}</span>
+          <span className="flip-card__word">
+            {/* Mot écrit avec au moins un kanji pas encore enseigné à ce
+                niveau (ex. 挨拶 en N4, voir wordExceedsOwnLevel) : hiragana
+                affichés avant de deviner plutôt que de faire deviner un
+                kanji jamais vu. */}
+            {wordExceedsOwnLevel(vocab.word, vocab.jlptLevel) ? (
+              <FuriganaText segments={vocab.wordSegments} />
+            ) : (
+              vocab.word
+            )}
+          </span>
         </>
       )}
       renderBack={(vocab: VocabWord, revealed, toggleReveal) => (
@@ -172,6 +183,7 @@ export default function VocabCardLoop({
               <li key={i} className="example-item">
                 <p className="example__jp example__jp--sentence">
                   <FuriganaText segments={ex.segments} />
+                  <SpeakButton text={reconstructReading(ex.segments)} />
                 </p>
                 <button
                   type="button"
