@@ -4307,4 +4307,33 @@ clic sur le bouton audio d'un mot fréquent NE déclenche PAS la
 navigation vers ce mot (recherche restée sur "人"). Fiche 学校 : exemple
 → "がっこうにいきます。" ✓. Aucune erreur console.
 
+`npx tsc -b` clean. Commité et poussé.
+
+## Checkpoint — hiragana sous les kanjis dans la liste Explorer aussi
+
+Signalement : "parfois les hiragana n'y sont pas alors que le kanji est
+trop difficile pour le niveau", dans le module Vocabulaire.
+
+**Audit complet AVANT de corriger** (script `tsx` temporaire important
+directement `mockVocabList`/`mockKanjiList`/`wordExceedsOwnLevel`, exécuté
+puis supprimé — pas juste une relecture du code) sur les 7351 mots de
+vocabulaire : zéro segment de lecture manquant (`wordSegments` a
+toujours une lecture dès qu'un kanji est présent), zéro incohérence entre
+"kanji absent du programme kanjis" et le signal `wordExceedsOwnLevel`
+(292 mots concernés, tous correctement repérés). Le recto des cartes de
+séance (ajouté au checkpoint précédent) était donc déjà fiable à 100 %
+sur les données actuelles.
+
+**Le vrai trou trouvé : la liste Explorer.** Contrairement au recto des
+cartes de séance, la ligne d'un mot dans Explorer affichait toujours le
+kanji brut, jamais en hiragana — même pour un mot comme 挨拶する (N4,
+kanjis non enseignés à aucun niveau ici). `Explorer.tsx` applique
+maintenant la même règle (`wordExceedsOwnLevel`) directement dans la
+cellule du titre de la ligne : hiragana sous le kanji (via
+`FuriganaText`, même rendu que partout ailleurs) dès que le mot dépasse
+son propre niveau, sinon kanji brut inchangé. Vérifié en conditions
+réelles : 挨拶する → `<ruby>挨拶<rt>あいさつ</rt></ruby>する` affiché
+dans la ligne Explorer ; 学校 (mot simple, kanjis déjà couverts) reste en
+kanji brut sans ruby, comme avant. Aucune erreur console.
+
 `npx tsc -b` clean. Pas encore commité/poussé.

@@ -17,6 +17,7 @@ import { buildExplorerItems, normalizeSearch, type ExplorerItem } from './buildE
 import KanjiPracticeBox from './KanjiPracticeBox'
 import { reconstructReading } from '../../utils/furigana'
 import { toSpokenKanjiReading } from '../../utils/speech'
+import { wordExceedsOwnLevel } from '../../utils/kanjiLevel'
 // Réutilise les classes partagées (meaning-pill, conjugation-grid,
 // grammar-rule, flip-card__label...) déjà définies pour les cartes de
 // session — même motif de reuse que WritingCanvas/ModuleEndCard,
@@ -304,7 +305,17 @@ export default function Explorer() {
                   <span className="explorer-row__index">{i + 1}</span>
                   <span className="explorer-row__kind-badge">{KIND_TO_LABEL[item.kind]}</span>
                   <span className="explorer-row__headline">
-                    {item.headline}
+                    {/* Mot de vocabulaire avec un kanji pas encore enseigné
+                        à ce niveau (ex. 挨拶 en N4, voir wordExceedsOwnLevel
+                        et le même traitement sur le recto des cartes de
+                        séance) : hiragana affichés directement sous le
+                        kanji plutôt que de laisser deviner un kanji jamais
+                        vu. */}
+                    {isVocab(item.data) && wordExceedsOwnLevel(item.data.word, item.data.jlptLevel) ? (
+                      <FuriganaText segments={item.data.wordSegments} />
+                    ) : (
+                      item.headline
+                    )}
                     {isKanji(item.data) && (
                       <SpeakButton
                         text={[...item.data.onyomi, ...item.data.kunyomi].map(toSpokenKanjiReading)}
