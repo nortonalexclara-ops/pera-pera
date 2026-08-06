@@ -226,6 +226,21 @@
   min-width: 40px;
 }
 
+/* Bouton "écouter" niché dans la cellule de grille du titre (pas une
+   colonne à part — voir SpeakButton.tsx) : plus petit que le gabarit
+   habituel (26px) pour rester discret à côté d'un simple caractère. */
+.explorer-row__headline .speak-btn {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.explorer-row__headline .speak-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
 .explorer-row__sub {
   font-size: 12px;
   color: var(--color-text-muted);

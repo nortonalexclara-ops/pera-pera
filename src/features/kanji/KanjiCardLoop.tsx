@@ -1,12 +1,14 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import FuriganaText from '../../components/ui/FuriganaText'
+import SpeakButton from '../../components/ui/SpeakButton'
 import CardLoopShell from './CardLoopShell'
 import type { SeenItem } from '../test/buildTest'
 import { mockKanjiList, type JlptLevel, type Kanji } from './mockKanji'
 import { useProfileStore } from '../profile/profileStore'
 import { getMasteredIds, setMastered } from '../../db/mastery'
 import { shuffleArray } from '../../utils/shuffle'
+import { toSpokenKanjiReading } from '../../utils/speech'
 
 const EMPTY_SET: Set<string> = new Set()
 
@@ -125,11 +127,17 @@ export default function KanjiCardLoop({
             <div className="flip-card__readings">
               <div>
                 <p className="flip-card__label">On&apos;yomi</p>
-                <p className="flip-card__reading-value">{kanji.onyomi.join(' · ')}</p>
+                <p className="flip-card__reading-value">
+                  {kanji.onyomi.join(' · ')}
+                  <SpeakButton text={kanji.onyomi.map(toSpokenKanjiReading)} />
+                </p>
               </div>
               <div>
                 <p className="flip-card__label">Kun&apos;yomi</p>
-                <p className="flip-card__reading-value">{kanji.kunyomi.join(' · ')}</p>
+                <p className="flip-card__reading-value">
+                  {kanji.kunyomi.join(' · ')}
+                  <SpeakButton text={kanji.kunyomi.map(toSpokenKanjiReading)} />
+                </p>
               </div>
             </div>
           </div>

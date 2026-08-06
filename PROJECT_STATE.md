@@ -4189,4 +4189,56 @@ la barre du jour — les deux valeurs cohérentes entre elles. Écran
 Réglages vérifié également : la nouvelle case "Temps passé" apparaît
 correctement dans la liste de réinitialisation.
 
+`npx tsc -b` clean. Commité et poussé.
+
+## Checkpoint — audio (prononciation) sur les kanjis et le vocabulaire
+
+Demande : entendre la prononciation des mots de vocabulaire (au moins) et
+si possible des kanjis, dans Explorer et au dos des cartes de séance.
+
+**Synthèse vocale native du navigateur** (Web Speech API,
+`window.speechSynthesis`) plutôt qu'un fichier audio par kanji/mot à
+héberger ou une API tierce payante — gratuit, aucune clé, fonctionne dès
+que le navigateur a une voix japonaise installée (Safari/iOS et iPadOS,
+où l'app est surtout utilisée, en ont une bonne par défaut). Nouveau
+`src/utils/speech.ts` : `speakJapanese`/`speakJapaneseSequence` (annule
+la lecture en cours avant d'en démarrer une nouvelle, pas d'empilement
+si on tape plusieurs fois vite), et `toSpokenKanjiReading` qui reconstruit
+la prononciation complète à partir du format d'affichage des on'yomi/
+kun'yomi ("おお(きい) (ookii)" → "おおきい" : la romanisation finale est
+retirée, l'okurigana entre parenthèses est gardé mais aplati).
+
+**Ce qui est lu** : pour le vocabulaire, la vraie lecture reconstituée à
+partir des segments furigana (`reconstructReading`, déplacé dans
+`src/utils/furigana.ts`, partagé avec `buildExplorerItems.ts`) — pas le
+kanji brut confié tel quel au moteur de synthèse, pour garantir la bonne
+prononciation même sur un mot à lecture irrégulière. Pour les kanjis,
+tous les on'yomi puis tous les kun'yomi lus à la suite.
+
+**Nouveau composant partagé `SpeakButton`** (`src/components/ui/
+SpeakButton.tsx`) — rendu en `<span role="button">`, pas un vrai
+`<button>` : dans Explorer, il est niché à l'intérieur du `<button>` de
+toute la ligne (même contrainte déjà résolue pour les icônes favori/
+entraînement de cette ligne — un bouton HTML imbriqué dans un autre est
+invalide et se comporte de façon incohérente selon les navigateurs). Ne
+se rend pas du tout si `speechSynthesis` est absent.
+
+**Branché à 3 endroits** : dos de carte Vocabulaire (à côté du mot),
+dos de carte Kanji (à côté de on'yomi et kun'yomi séparément), et
+Explorer (dans la cellule du titre de chaque ligne kanji/vocabulaire —
+pas de nouvelle colonne dans la grille de la ligne, qui a déjà causé des
+régressions mobiles par le passé ; le bouton est niché dans la cellule
+existante du titre plutôt que d'être un nouvel enfant direct de la
+grille).
+
+Vérifié en conditions réelles (pas juste lu le code) : `window.
+speechSynthesis.speak` intercepté en local pour capturer le texte
+réellement envoyé à la synthèse vocale. Explorer : 学校 → "がっこう" ✓,
+clic sur le bouton confirmé sans dépliage de la ligne (stopPropagation
+OK) ; 大 → on'yomi "ダイ"/"タイ" + kun'yomi "おおきい" (romanisation ET
+parenthèses d'okurigana correctement retirées) ✓. Séance Vocabulaire
+(dos de carte) : 茶碗 → "ちゃわん" ✓. Séance Kanjis (dos de carte, 休) :
+on'yomi "キュウ" + kun'yomi "やすむ" ✓. Aucune erreur console à aucune
+étape.
+
 `npx tsc -b` clean. Pas encore commité/poussé.

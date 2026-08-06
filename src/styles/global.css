@@ -174,3 +174,29 @@ a:focus-visible {
   border-color: var(--color-warm);
   color: var(--color-warm);
 }
+
+/* Bouton "écouter la prononciation" (voir SpeakButton.tsx) — même gabarit
+   que les icônes d'action de ligne Explorer (favori, entraînement), pour
+   rester cohérent visuellement partout où il apparaît (Explorer, dos des
+   cartes de séance). inline-flex plutôt qu'une taille fixe : doit aussi
+   pouvoir s'insérer au fil d'une ligne de texte (à côté d'une lecture),
+   pas seulement dans un slot d'icône dédié. */
+.speak-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.speak-btn:hover {
+  color: var(--color-accent-dark);
+  background: var(--color-accent-soft);
+}

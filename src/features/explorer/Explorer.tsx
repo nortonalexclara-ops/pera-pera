@@ -5,6 +5,7 @@ import { Search, Star, ChevronDown, PenLine } from 'lucide-react'
 import ChoiceButtonGroup from '../../components/ui/ChoiceButtonGroup'
 import PageTransition from '../../components/ui/PageTransition'
 import FuriganaText from '../../components/ui/FuriganaText'
+import SpeakButton from '../../components/ui/SpeakButton'
 import type { Kanji } from '../kanji/mockKanji'
 import type { VocabWord } from '../vocab/mockVocab'
 import type { GrammarPoint } from '../grammar/mockGrammar'
@@ -14,6 +15,8 @@ import { getAllFavoriteIds, toggleFavorite as toggleFavoriteDb } from '../../db/
 import type { ItemKind } from '../../db/db'
 import { buildExplorerItems, normalizeSearch, type ExplorerItem } from './buildExplorerItems'
 import KanjiPracticeBox from './KanjiPracticeBox'
+import { reconstructReading } from '../../utils/furigana'
+import { toSpokenKanjiReading } from '../../utils/speech'
 // Réutilise les classes partagées (meaning-pill, conjugation-grid,
 // grammar-rule, flip-card__label...) déjà définies pour les cartes de
 // session — même motif de reuse que WritingCanvas/ModuleEndCard,
@@ -300,7 +303,21 @@ export default function Explorer() {
                       en est une slice à partir de 0. */}
                   <span className="explorer-row__index">{i + 1}</span>
                   <span className="explorer-row__kind-badge">{KIND_TO_LABEL[item.kind]}</span>
-                  <span className="explorer-row__headline">{item.headline}</span>
+                  <span className="explorer-row__headline">
+                    {item.headline}
+                    {isKanji(item.data) && (
+                      <SpeakButton
+                        text={[...item.data.onyomi, ...item.data.kunyomi].map(toSpokenKanjiReading)}
+                        className="explorer-row__speak-btn"
+                      />
+                    )}
+                    {isVocab(item.data) && (
+                      <SpeakButton
+                        text={reconstructReading(item.data.wordSegments)}
+                        className="explorer-row__speak-btn"
+                      />
+                    )}
+                  </span>
                   <span className="explorer-row__sub">{item.subLabel}</span>
                   <span className="explorer-row__meaning">{item.meanings.join(', ')}</span>
                   <span className="explorer-row__practice-slot">

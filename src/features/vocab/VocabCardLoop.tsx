@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import FuriganaText from '../../components/ui/FuriganaText'
+import SpeakButton from '../../components/ui/SpeakButton'
 import CardLoopShell from '../kanji/CardLoopShell'
 import type { JlptLevel } from '../kanji/mockKanji'
 import type { SeenItem } from '../test/buildTest'
@@ -8,6 +9,7 @@ import { mockVocabList, type VocabWord } from './mockVocab'
 import { useProfileStore } from '../profile/profileStore'
 import { getMasteredIds, setMastered } from '../../db/mastery'
 import { shuffleArray } from '../../utils/shuffle'
+import { reconstructReading } from '../../utils/furigana'
 
 const EMPTY_SET: Set<string> = new Set()
 
@@ -97,6 +99,7 @@ export default function VocabCardLoop({
             </span>
             <p className="flip-card__mini-word">
               <FuriganaText segments={vocab.wordSegments} />
+              <SpeakButton text={reconstructReading(vocab.wordSegments)} className="flip-card__speak-btn" />
             </p>
             <div className="flip-card__meanings">
               {vocab.meanings.map((m) => (

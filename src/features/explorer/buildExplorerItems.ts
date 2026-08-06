@@ -1,6 +1,7 @@
 import { mockKanjiList, type Kanji, type JlptLevel } from '../kanji/mockKanji'
 import { mockVocabList, type VocabWord } from '../vocab/mockVocab'
 import { mockGrammarList, type GrammarPoint } from '../grammar/mockGrammar'
+import { reconstructReading } from '../../utils/furigana'
 
 export type ExplorerKind = 'kanji' | 'vocab' | 'grammar'
 
@@ -21,10 +22,6 @@ export interface ExplorerItem {
   // sinon (pas de filtre "par thème" pour vocab/grammaire à ce stade).
   themes: string[]
   data: Kanji | VocabWord | GrammarPoint
-}
-
-function reconstructReading(segments: { text: string; reading?: string }[]): string {
-  return segments.map((s) => s.reading ?? s.text).join('')
 }
 
 // Virgule entre lectures d'un même type (intra on'yomi / intra
