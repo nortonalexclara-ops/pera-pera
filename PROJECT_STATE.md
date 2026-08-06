@@ -4286,4 +4286,25 @@ du segment complet (`reconstructReading`), pas juste le mot vedette de la
 carte. Vérifié : phrase d'exemple de 凄い → "それはすごいですね。" lu
 correctement (avec la voix choisie à l'étape 2).
 
+`npx tsc -b` clean. Commité et poussé.
+
+## Checkpoint — audio sur les mots/phrases d'exemple dans Explorer aussi
+
+Suite immédiate du checkpoint précédent : même bouton `SpeakButton`
+ajouté aux exemples des fiches Explorer (pas seulement aux cartes de
+séance) — "Mots fréquents" et "Exemples" de `KanjiDetail`, "Exemples" de
+`VocabDetail`. Pour "Mots fréquents", le bouton est niché à l'intérieur
+du `<button className="explorer-detail__example-link">` existant (celui
+qui rebondit vers la fiche du mot) — pas un problème d'imbrication
+`<button>`-dans-`<button>` ici (`SpeakButton` est un `<span
+role="button">`, voir checkpoint précédent), et `stopPropagation`
+empêche le clic sur l'icône audio de déclencher aussi la navigation.
+Vérifié en conditions réelles : fiche 人 dépliée dans Explorer, 5
+boutons audio trouvés (3 mots fréquents + 2 exemples), premier
+("人々") → "ひとびと", dernier (phrase) → "ひとがおおいですね。", tous
+deux avec la voix précédemment choisie dans Réglages ; confirmé que le
+clic sur le bouton audio d'un mot fréquent NE déclenche PAS la
+navigation vers ce mot (recherche restée sur "人"). Fiche 学校 : exemple
+→ "がっこうにいきます。" ✓. Aucune erreur console.
+
 `npx tsc -b` clean. Pas encore commité/poussé.

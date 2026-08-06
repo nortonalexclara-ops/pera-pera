@@ -434,6 +434,7 @@ function KanjiDetail({ kanji, onExampleClick }: { kanji: Kanji; onExampleClick: 
             >
               <span className="example__jp">
                 <FuriganaText segments={w.segments} />
+                <SpeakButton text={reconstructReading(w.segments)} />
               </span>
             </button>
             <span className="explorer-detail__example-meaning">{w.meaning}</span>
@@ -447,6 +448,7 @@ function KanjiDetail({ kanji, onExampleClick }: { kanji: Kanji; onExampleClick: 
           <li key={i}>
             <span className="example__jp example__jp--sentence">
               <FuriganaText segments={ex.segments} />
+              <SpeakButton text={reconstructReading(ex.segments)} />
             </span>
             <span className="explorer-detail__example-meaning">{ex.translation}</span>
           </li>
@@ -519,6 +521,7 @@ function VocabDetail({ vocab }: { vocab: VocabWord }) {
           <li key={i}>
             <span className="example__jp example__jp--sentence">
               <FuriganaText segments={ex.segments} />
+              <SpeakButton text={reconstructReading(ex.segments)} />
             </span>
             <span className="explorer-detail__example-meaning">{ex.translation}</span>
           </li>
