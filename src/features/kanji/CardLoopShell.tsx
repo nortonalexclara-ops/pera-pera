@@ -4,6 +4,14 @@ import { Check, RotateCcw, GraduationCap, Info, ChevronLeft } from 'lucide-react
 import WritingCanvas from './WritingCanvas'
 import ModuleEndCard from './ModuleEndCard'
 import { recordActivityToday } from '../../db/activity'
+import { addTimeSpent } from '../../db/timeSpent'
+
+// Plafond par "tranche" flushée (voir flushTimeSpent) — protège contre un
+// onglet resté ouvert en arrière-plan pendant des heures (téléphone
+// verrouillé, onglet oublié) qui gonflerait artificiellement le temps
+// enregistré : au-delà de 10 min sans qu'un flush n'ait eu lieu, on
+// considère le surplus comme de l'inactivité plutôt que de la pratique.
+const MAX_TIME_CHUNK_SECONDS = 600
 
 interface CardLoopShellProps<T> {
   items: T[]
@@ -117,6 +125,36 @@ export default function CardLoopShell<T>({
   const [moduleDone, setModuleDone] = useState(false)
   const backFaceRef = useRef<HTMLDivElement>(null)
 
+  // Temps passé en séance (vrai "temps passé par jour", voir Stats.tsx) —
+  // écrit en base par petites tranches (à chaque carte passée, voir
+  // advance) plutôt qu'en une fois à la sortie : une sortie brutale
+  // (fermeture d'onglet, crash) sans démontage propre ne perdrait alors
+  // que la toute dernière tranche en cours, pas toute la séance. `ref` (pas
+  // state) pour `profileId` : lu depuis le cleanup du useEffect ci-dessous,
+  // qui doit voir la valeur la plus récente même si ce composant ne se
+  // re-rend pas entre-temps.
+  const profileIdRef = useRef(profileId)
+  useEffect(() => {
+    profileIdRef.current = profileId
+  }, [profileId])
+  const chunkStartRef = useRef(Date.now())
+
+  function flushTimeSpent() {
+    const pid = profileIdRef.current
+    const elapsedSeconds = Math.round((Date.now() - chunkStartRef.current) / 1000)
+    chunkStartRef.current = Date.now()
+    if (!pid || elapsedSeconds <= 0) return
+    addTimeSpent(pid, Math.min(elapsedSeconds, MAX_TIME_CHUNK_SECONDS))
+  }
+
+  useEffect(() => {
+    return () => flushTimeSpent()
+    // Volontairement []: ce flush de sortie ne doit se déclencher qu'au
+    // démontage réel du composant, pas à chaque changement de profileId
+    // (déjà suivi séparément via profileIdRef ci-dessus).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Bug signalé : après "Maîtrisé"/"À revoir", la carte suivante
   // s'ouvrait parfois déjà scrollée tout en bas (traduction/exemples
   // hors champ) au lieu de démarrer en haut. `.flip-card__face--back`
@@ -167,6 +205,7 @@ export default function CardLoopShell<T>({
   function advance(decision: 'mastered' | 'review') {
     onAdvance?.(item, decision)
     if (profileId) recordActivityToday(profileId)
+    flushTimeSpent()
     if (isLast) {
       setModuleDone(true)
     } else {

@@ -16,15 +16,17 @@ export interface ProfileBackupPayload {
   notes: { id: string; title: string; text: string; drawingDataUrl: string; createdAt: number; updatedAt: number }[]
   favorites: { kind: ItemKind; itemId: string; favoritedAt: number }[]
   kanjiGoal: number
+  timeSpent: { date: string; seconds: number }[]
 }
 
 export async function exportProfileData(profileId: string): Promise<ProfileBackupPayload> {
-  const [mastery, activity, notes, favorites, kanjiGoal] = await Promise.all([
+  const [mastery, activity, notes, favorites, kanjiGoal, timeSpent] = await Promise.all([
     db.mastery.where({ profileId }).toArray(),
     db.activity.where({ profileId }).toArray(),
     db.notes.where({ profileId }).toArray(),
     db.favorites.where({ profileId }).toArray(),
     getKanjiGoal(profileId),
+    db.timeSpent.where({ profileId }).toArray(),
   ])
   return {
     mastery: mastery.map((m) => ({ kind: m.kind, itemId: m.itemId, masteredAt: m.masteredAt })),
@@ -39,6 +41,7 @@ export async function exportProfileData(profileId: string): Promise<ProfileBacku
     })),
     favorites: favorites.map((f) => ({ kind: f.kind, itemId: f.itemId, favoritedAt: f.favoritedAt })),
     kanjiGoal,
+    timeSpent: timeSpent.map((t) => ({ date: t.date, seconds: t.seconds })),
   }
 }
 
@@ -55,11 +58,13 @@ export async function importProfileData(profileId: string, payload: ProfileBacku
   // ou d'écrire `undefined` sur un champ absent.
   const favorites = payload.favorites ?? []
   const kanjiGoal = payload.kanjiGoal ?? DEFAULT_KANJI_GOAL
-  await db.transaction('rw', db.mastery, db.activity, db.notes, db.favorites, async () => {
+  const timeSpent = payload.timeSpent ?? []
+  await db.transaction('rw', db.mastery, db.activity, db.notes, db.favorites, db.timeSpent, async () => {
     await db.mastery.where({ profileId }).delete()
     await db.activity.where({ profileId }).delete()
     await db.notes.where({ profileId }).delete()
     await db.favorites.where({ profileId }).delete()
+    await db.timeSpent.where({ profileId }).delete()
 
     if (payload.mastery.length > 0) {
       await db.mastery.bulkAdd(payload.mastery.map((m) => ({ profileId, ...m })))
@@ -75,6 +80,9 @@ export async function importProfileData(profileId: string, payload: ProfileBacku
     }
     if (favorites.length > 0) {
       await db.favorites.bulkAdd(favorites.map((f) => ({ profileId, ...f })))
+    }
+    if (timeSpent.length > 0) {
+      await db.timeSpent.bulkAdd(timeSpent.map((t) => ({ profileId, ...t })))
     }
   })
   // Hors de la transaction ci-dessus : `setKanjiGoal` fait son propre

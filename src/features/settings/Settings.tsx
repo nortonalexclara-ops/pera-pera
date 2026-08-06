@@ -10,6 +10,7 @@ import { resetMastery, bulkMarkMastered, getMasteredIds } from '../../db/mastery
 import { resetActivity } from '../../db/activity'
 import { resetNotes } from '../../db/notes'
 import { resetFavorites } from '../../db/favorites'
+import { resetTimeSpent } from '../../db/timeSpent'
 import { exportProfileData } from '../../db/profileSync'
 import { deleteProfile } from '../../db/profiles'
 import { getKanjiGoal, setKanjiGoal, getHasCloudBackup, setHasCloudBackup, DEFAULT_KANJI_GOAL } from '../../db/settings'
@@ -36,7 +37,7 @@ function itemIdsFor(kind: ItemKind, level: JlptLevel): string[] {
   return mockGrammarList.filter((g) => g.jlptLevel === level).map((g) => g.id)
 }
 
-type ResetOption = 'kanji' | 'vocab' | 'grammar' | 'streak' | 'notes' | 'favorites'
+type ResetOption = 'kanji' | 'vocab' | 'grammar' | 'streak' | 'notes' | 'favorites' | 'timeSpent'
 
 const RESET_OPTIONS: { key: ResetOption; label: string; description: string }[] = [
   { key: 'kanji', label: 'Progression Kanjis', description: 'Retire "Maîtrisé" de tous les kanjis de ce profil.' },
@@ -45,6 +46,7 @@ const RESET_OPTIONS: { key: ResetOption; label: string; description: string }[] 
   { key: 'streak', label: 'Série (jours de suite)', description: 'Remet le compteur "jours de suite" à zéro.' },
   { key: 'notes', label: 'Notes personnelles', description: 'Supprime toutes les notes du Cahier de notes.' },
   { key: 'favorites', label: 'Favoris', description: 'Retire tous les kanjis/mots/points de grammaire mis en favori.' },
+  { key: 'timeSpent', label: 'Temps passé', description: 'Efface l\'historique du temps passé en séance jour par jour.' },
 ]
 
 /**
@@ -142,6 +144,7 @@ export default function Settings() {
     if (selected.has('streak')) await resetActivity(profileId)
     if (selected.has('notes')) await resetNotes(profileId)
     if (selected.has('favorites')) await resetFavorites(profileId)
+    if (selected.has('timeSpent')) await resetTimeSpent(profileId)
     setSelected(new Set())
     setConfirming(false)
     setBusy(false)

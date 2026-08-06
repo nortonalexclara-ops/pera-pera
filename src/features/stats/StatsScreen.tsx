@@ -7,6 +7,7 @@ import { mockVocabList } from '../vocab/mockVocab'
 import { mockGrammarList } from '../grammar/mockGrammar'
 import { useProfileStore } from '../profile/profileStore'
 import { getAllMasteredIds } from '../../db/mastery'
+import { getTimeSpentByDay } from '../../db/timeSpent'
 import './Stats.css'
 
 const listVariants = {
@@ -20,6 +21,16 @@ const fadeUp = {
 }
 
 const JLPT_LEVELS: JlptLevel[] = ['N5', 'N4', 'N3', 'N2', 'N1']
+
+// Format court "12 min" / "1h05" — les séances dépassent rarement l'heure,
+// mais on ne veut pas afficher "90 min" si ça arrive.
+function formatDuration(seconds: number): string {
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes} min`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return `${h}h${String(m).padStart(2, '0')}`
+}
 
 export default function StatsScreen() {
   const profileId = useProfileStore((s) => s.activeProfileId)
@@ -38,6 +49,17 @@ export default function StatsScreen() {
   const masteredKanji = masteredIds?.kanji ?? new Set<string>()
   const masteredVocab = masteredIds?.vocab ?? new Set<string>()
   const masteredGrammar = masteredIds?.grammar ?? new Set<string>()
+
+  // Vrai temps passé en séance, cumulé jour par jour côté CardLoopShell
+  // (voir src/db/timeSpent.ts) — remplace le "temps passé à écrire"
+  // jusqu'ici inventé et identique pour tout profil (voir PROJECT_STATE.md).
+  const timeSpentByDay = useLiveQuery(
+    () => (profileId ? getTimeSpentByDay(profileId, 7) : Promise.resolve([])),
+    [profileId],
+    [],
+  )
+  const maxDaySeconds = Math.max(1, ...timeSpentByDay.map((d) => d.seconds))
+  const weekTotalSeconds = timeSpentByDay.reduce((sum, d) => sum + d.seconds, 0)
 
   const moduleBreakdown = [
     { label: 'Kanjis', mastered: masteredKanji.size, total: mockKanjiList.length },
@@ -66,6 +88,37 @@ export default function StatsScreen() {
         </div>
 
         <motion.div variants={listVariants} initial="hidden" animate="visible">
+          <motion.section className="stats-card" variants={fadeUp}>
+            <div className="stats-card__head-row">
+              <h2 className="stats-card__title">Temps passé (7 derniers jours)</h2>
+              <span className="stats-card__total">{formatDuration(weekTotalSeconds)}</span>
+            </div>
+            {weekTotalSeconds === 0 ? (
+              <p className="stats-card__hint">Pas encore de séance cette semaine sur ce profil.</p>
+            ) : (
+              <div className="time-chart">
+                {timeSpentByDay.map((d) => {
+                  const dayLabel = new Date(`${d.date}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'short' })
+                  const heightPercent = Math.max(4, Math.round((d.seconds / maxDaySeconds) * 100))
+                  return (
+                    <div key={d.date} className="time-chart__col">
+                      <span className="time-chart__value">{d.seconds > 0 ? formatDuration(d.seconds) : ''}</span>
+                      <div className="time-chart__track">
+                        <motion.div
+                          className="time-chart__bar"
+                          initial={{ height: 0 }}
+                          animate={{ height: `${heightPercent}%` }}
+                          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                        />
+                      </div>
+                      <span className="time-chart__day">{dayLabel}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </motion.section>
+
           <motion.section className="stats-card" variants={fadeUp}>
             <h2 className="stats-card__title">Répartition par module</h2>
             <ul className="module-breakdown">

@@ -38,11 +38,17 @@ export async function createProfile(name: string): Promise<ProfileRecord> {
 // Settings.tsx, api/delete-account.ts). Transaction unique pour ne pas
 // laisser des données orphelines si une étape échoue en cours de route.
 export async function deleteProfile(profileId: string): Promise<void> {
-  await db.transaction('rw', db.profiles, db.mastery, db.notes, db.activity, db.favorites, async () => {
-    await db.profiles.delete(profileId)
-    await db.mastery.where({ profileId }).delete()
-    await db.notes.where({ profileId }).delete()
-    await db.activity.where({ profileId }).delete()
-    await db.favorites.where({ profileId }).delete()
-  })
+  await db.transaction(
+    'rw',
+    [db.profiles, db.mastery, db.notes, db.activity, db.favorites, db.timeSpent, db.profileSettings],
+    async () => {
+      await db.profiles.delete(profileId)
+      await db.mastery.where({ profileId }).delete()
+      await db.notes.where({ profileId }).delete()
+      await db.activity.where({ profileId }).delete()
+      await db.favorites.where({ profileId }).delete()
+      await db.timeSpent.where({ profileId }).delete()
+      await db.profileSettings.delete(profileId)
+    },
+  )
 }

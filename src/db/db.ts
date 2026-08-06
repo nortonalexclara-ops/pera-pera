@@ -83,6 +83,19 @@ export interface ProfileSettingsRecord {
   hasCloudBackup: boolean
 }
 
+// Une ligne par jour où le profil a passé du temps en séance (Kanjis/
+// Vocabulaire/Grammaire/Révisions — voir CardLoopShell), `seconds` cumulé
+// au fil de la journée (voir `src/db/timeSpent.ts`). Table séparée de
+// `activity` : celle-ci ne sait dire QUE "a pratiqué ce jour-là" (pour le
+// streak), pas COMBIEN de temps — remplace le "temps passé à écrire"
+// jusqu'ici inventé (voir Stats.tsx, retiré) par une vraie mesure.
+export interface TimeSpentRecord {
+  id?: number
+  profileId: string
+  date: string
+  seconds: number
+}
+
 class PeraPeraDB extends Dexie {
   profiles!: Table<ProfileRecord, string>
   mastery!: Table<MasteryRecord, number>
@@ -90,6 +103,7 @@ class PeraPeraDB extends Dexie {
   activity!: Table<ActivityRecord, number>
   favorites!: Table<FavoriteRecord, number>
   profileSettings!: Table<ProfileSettingsRecord, string>
+  timeSpent!: Table<TimeSpentRecord, number>
 
   constructor() {
     super('pera-pera')
@@ -133,6 +147,17 @@ class PeraPeraDB extends Dexie {
       activity: '++id, [profileId+date], profileId',
       favorites: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
       profileSettings: 'profileId',
+    })
+    // v6 : ajout du suivi du temps passé en séance (vrai "temps passé par
+    // jour" par profil, voir Stats.tsx).
+    this.version(6).stores({
+      profiles: 'id',
+      mastery: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      notes: 'id, profileId, updatedAt',
+      activity: '++id, [profileId+date], profileId',
+      favorites: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      profileSettings: 'profileId',
+      timeSpent: '++id, [profileId+date], profileId',
     })
   }
 }

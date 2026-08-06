@@ -4145,3 +4145,48 @@ inutile de réafficher l'invitation à en créer une).
 
 `npx tsc -b` et `npx tsc -p tsconfig.api.json` clean. Pas encore
 commité/poussé.
+
+## Checkpoint — vrai "temps passé par jour" par profil dans Stats
+
+Demande : voir le temps passé par jour dans Stats, à jour pour chaque
+profil — la section "Temps passé à écrire" retirée plus tôt (voir
+checkpoint plus haut, "Fix blocage iPad...") était inventée et n'avait
+jamais eu de vraie mesure derrière. Cette fois, vraie instrumentation
+plutôt qu'un nouvel affichage vide de sens.
+
+**Nouvelle table `timeSpent`** (`profileId, date, seconds` — v6 du
+schéma Dexie dans `db.ts`, migration additive). Écrite depuis
+`CardLoopShell.tsx` (le squelette partagé par les 4 boucles de cartes :
+Kanjis/Vocabulaire/Grammaire/Révisions), qui mesure le temps écoulé
+depuis le dernier "flush" et l'ajoute à la ligne du jour à chaque carte
+passée (`advance()`) ET au démontage du composant (retour au dashboard
+en cours de séance) — pas seulement à la toute fin, pour ne perdre au
+pire que la dernière tranche en cours en cas de sortie brutale. Chaque
+tranche est plafonnée à 10 min (`MAX_TIME_CHUNK_SECONDS`) pour ne pas
+gonfler artificiellement le total si un onglet reste ouvert en arrière-
+plan sans qu'aucune carte ne soit passée.
+
+**Écran Stats** : nouvelle section "Temps passé (7 derniers jours)" en
+première position — histogramme à 7 barres (une par jour, aujourd'hui
+inclus, jours sans séance à 0) + total de la semaine dans l'en-tête.
+Message dédié ("Pas encore de séance cette semaine sur ce profil.") si
+le total est à zéro plutôt qu'un histogramme plat.
+
+**Cohérence avec le reste de l'app** : `timeSpent` ajouté partout où les
+autres tables par-profil le sont déjà — suppression de profil
+(`deleteProfile`, qui nettoyait au passage un oubli préexistant :
+`profileSettings` n'était jamais supprimé non plus), sauvegarde/
+restauration cloud (`ProfileBackupPayload.timeSpent`, avec repli `[]`
+pour une sauvegarde plus ancienne qui n'aurait pas ce champ), et nouvelle
+option "Temps passé" dans "Réinitialiser mes données" (Réglages).
+
+Vérifié en conditions réelles (pas juste lu le code) : séance Kanjis
+réelle en local (deux cartes, quelques secondes d'attente réelle entre
+chaque flip et décision), lecture directe d'IndexedDB confirmant les
+secondes cumulées (58s après deux cartes), puis vérification de l'écran
+Stats affichant bien "1 min" à la fois dans le total de l'en-tête et sur
+la barre du jour — les deux valeurs cohérentes entre elles. Écran
+Réglages vérifié également : la nouvelle case "Temps passé" apparaît
+correctement dans la liste de réinitialisation.
+
+`npx tsc -b` clean. Pas encore commité/poussé.

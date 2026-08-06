@@ -3,7 +3,7 @@ import { db } from './db'
 // Format local 'YYYY-MM-DD' (pas UTC — un utilisateur qui pratique après
 // minuit locale mais avant minuit UTC ne doit pas voir sa série cassée à
 // tort).
-function toLocalDateStr(d: Date): string {
+export function toLocalDateStr(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
