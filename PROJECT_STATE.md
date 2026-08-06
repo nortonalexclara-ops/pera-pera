@@ -4100,3 +4100,48 @@ signalement pointerait vers autre chose qu'un problème de cache/state
 figé côté navigateur.
 
 `npx tsc -b` clean. Pas encore commité/poussé.
+
+## Checkpoint — audit complet backup/restore : notes/mastery/favoris confirmés OK, objectif+statut backup ajoutés
+
+Signalement : "quand je récupère un profil les notes ne sont pas
+enregistrées etc". Plutôt que corriger à l'aveugle, test de bout en bout
+COMPLET sur le vrai site déployé (pas juste du code lu) :
+
+**Test 1 (curl, payload réaliste ~200KB puis ~1.5MB avec 8 notes+dessins)**
+— backup puis restore via l'API réelle : aucune perte, aucune troncature,
+même avec plusieurs notes contenant de vrais dessins (PNG base64,
+dimensions à l'échelle d'un iPad Retina). Écarte l'hypothèse d'une
+limite de taille de payload silencieuse.
+
+**Test 2 (navigateur réel, sur https://pera-pera-eight.vercel.app
+directement, pas juste en local)** — création d'un profil "DiagSyncTest"
+avec une vraie note (titre+texte+trait dessiné via PointerEvent), un
+favori, sauvegarde en ligne réelle, puis la base IndexedDB locale est
+entièrement effacée (`indexedDB.deleteDatabase`) pour simuler un
+appareil neuf, et récupération via le vrai formulaire "Récupérer un
+profil". Résultat : note restaurée avec titre/texte/dessin identiques
+(taille du dessin quasi inchangée, confirmé non tronqué), favori
+restauré. **Le mécanisme de sauvegarde/récupération des notes
+fonctionne correctement sur le code actuellement déployé** — donnée de
+diagnostic solide, pas une supposition. Hypothèse la plus probable pour
+le signalement de l'utilisatrice : tentative antérieure au fix de
+l'import ESM (`./_redis` → `./_redis.js`, checkpoint précédent) qui
+faisait planter `/api/backup` avant même d'écrire quoi que ce soit.
+Test nettoyé après coup (`delete-account` sur le profil de diagnostic).
+
+**Vrai écart trouvé et corrigé pendant ce test** : après restauration,
+la bannière "crée un code à 4 chiffres" réapparaissait sur le Dashboard
+— `profileSettings` (objectif de kanjis, statut `hasCloudBackup`,
+ajoutés au checkpoint précédent) n'étaient PAS inclus dans
+`ProfileBackupPayload`. Corrigé (`profileSync.ts`) : `kanjiGoal` fait
+maintenant partie du payload exporté/importé (avec repli
+`DEFAULT_KANJI_GOAL` pour une sauvegarde plus ancienne qui n'aurait pas
+ce champ). `hasCloudBackup`, lui, reste volontairement HORS du payload —
+c'est un statut LOCAL à l'appareil ("ce profil a-t-il déjà été
+sauvegardé DEPUIS ICI"), pas une vraie donnée de profil à faire voyager
+— `ProfileSelector.tsx` le pose directement à `true` juste après une
+récupération réussie (on vient de prouver qu'une sauvegarde existe,
+inutile de réafficher l'invitation à en créer une).
+
+`npx tsc -b` et `npx tsc -p tsconfig.api.json` clean. Pas encore
+commité/poussé.

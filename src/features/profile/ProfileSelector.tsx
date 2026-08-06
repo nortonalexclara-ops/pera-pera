@@ -6,6 +6,7 @@ import { avatarGradients } from './mockProfiles'
 import { useProfileStore } from './profileStore'
 import { listProfiles, createProfile } from '../../db/profiles'
 import { importProfileData } from '../../db/profileSync'
+import { setHasCloudBackup } from '../../db/settings'
 import { restoreProfile } from './cloudSync'
 import type { ProfileRecord } from '../../db/db'
 import AmbientGlow from '../../components/ui/AmbientGlow'
@@ -106,6 +107,10 @@ export default function ProfileSelector() {
       const result = await restoreProfile(restoreName, restorePin)
       const record = await createProfile(result.displayName)
       await importProfileData(record.id, result.payload)
+      // On vient de prouver qu'une sauvegarde en ligne existe pour ce
+      // profil (on est en train de la récupérer) — pas la peine de
+      // réafficher la bannière/le formulaire "crée un code" juste après.
+      await setHasCloudBackup(record.id, true)
       setProfiles((prev) => [...prev, record])
       setRestoring(false)
       setRestoreName('')

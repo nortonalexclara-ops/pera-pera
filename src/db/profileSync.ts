@@ -1,22 +1,30 @@
 import { db } from './db'
 import type { ItemKind } from './db'
+import { getKanjiGoal, setKanjiGoal, DEFAULT_KANJI_GOAL } from './settings'
 
 // Forme envoyée/reçue par /api/backup et /api/restore — tout ce qui
 // définit la progression d'un profil, sans son id local (qui diffère
-// forcément d'un appareil à l'autre, voir importProfileData).
+// forcément d'un appareil à l'autre, voir importProfileData). PAS
+// `hasCloudBackup` (voir `profileSettings`) : c'est un statut LOCAL à
+// l'appareil ("ce profil a-t-il déjà été sauvegardé DEPUIS ICI"), pas
+// une donnée de profil à faire voyager — `ProfileSelector.tsx` le pose
+// à `true` directement après une récupération réussie plutôt que de le
+// faire transiter par ce payload.
 export interface ProfileBackupPayload {
   mastery: { kind: ItemKind; itemId: string; masteredAt: number }[]
   activity: { date: string }[]
   notes: { id: string; title: string; text: string; drawingDataUrl: string; createdAt: number; updatedAt: number }[]
   favorites: { kind: ItemKind; itemId: string; favoritedAt: number }[]
+  kanjiGoal: number
 }
 
 export async function exportProfileData(profileId: string): Promise<ProfileBackupPayload> {
-  const [mastery, activity, notes, favorites] = await Promise.all([
+  const [mastery, activity, notes, favorites, kanjiGoal] = await Promise.all([
     db.mastery.where({ profileId }).toArray(),
     db.activity.where({ profileId }).toArray(),
     db.notes.where({ profileId }).toArray(),
     db.favorites.where({ profileId }).toArray(),
+    getKanjiGoal(profileId),
   ])
   return {
     mastery: mastery.map((m) => ({ kind: m.kind, itemId: m.itemId, masteredAt: m.masteredAt })),
@@ -30,6 +38,7 @@ export async function exportProfileData(profileId: string): Promise<ProfileBacku
       updatedAt: n.updatedAt,
     })),
     favorites: favorites.map((f) => ({ kind: f.kind, itemId: f.itemId, favoritedAt: f.favoritedAt })),
+    kanjiGoal,
   }
 }
 
@@ -40,11 +49,12 @@ export async function exportProfileData(profileId: string): Promise<ProfileBacku
 // rien à fusionner, et ça évite les doublons si l'utilisateur récupère
 // deux fois de suite.
 export async function importProfileData(profileId: string, payload: ProfileBackupPayload): Promise<void> {
-  // `favorites` n'existait pas dans les sauvegardes créées avant son ajout
-  // au payload — `?? []` pour rester compatible avec une sauvegarde plus
-  // ancienne récupérée maintenant, plutôt que de planter sur un champ
-  // absent.
+  // `favorites`/`kanjiGoal` n'existaient pas dans les sauvegardes créées
+  // avant leur ajout au payload — repli pour rester compatible avec une
+  // sauvegarde plus ancienne récupérée maintenant, plutôt que de planter
+  // ou d'écrire `undefined` sur un champ absent.
   const favorites = payload.favorites ?? []
+  const kanjiGoal = payload.kanjiGoal ?? DEFAULT_KANJI_GOAL
   await db.transaction('rw', db.mastery, db.activity, db.notes, db.favorites, async () => {
     await db.mastery.where({ profileId }).delete()
     await db.activity.where({ profileId }).delete()
@@ -67,4 +77,8 @@ export async function importProfileData(profileId: string, payload: ProfileBacku
       await db.favorites.bulkAdd(favorites.map((f) => ({ profileId, ...f })))
     }
   })
+  // Hors de la transaction ci-dessus : `setKanjiGoal` fait son propre
+  // lire-modifier-écrire sur `profileSettings`, pas besoin d'atomicité
+  // avec le reste (rien ne dépend de son ordre relatif aux autres tables).
+  await setKanjiGoal(profileId, kanjiGoal)
 }
