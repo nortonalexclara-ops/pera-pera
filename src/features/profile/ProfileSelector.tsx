@@ -184,7 +184,7 @@ export default function ProfileSelector() {
                 />
                 {isDuplicateName(newName) && (
                   <p className="profile-card__warning">
-                    Un profil "{newName.trim()}" existe déjà sur cet appareil — celui-ci sera séparé.
+                    Ce nom est déjà utilisé par un profil actif sur cet appareil (pas supprimé) — celui-ci sera séparé.
                   </p>
                 )}
                 <button type="button" className="profile-card__confirm" onClick={handleCreate} title="Créer ce profil">
@@ -219,7 +219,8 @@ export default function ProfileSelector() {
                 />
                 {isDuplicateName(restoreName) && (
                   <p className="profile-card__warning">
-                    Un profil "{restoreName.trim()}" existe déjà ici — la récupération en créera un second, séparé.
+                    Ce nom est déjà utilisé par un profil actif sur cet appareil (pas supprimé) — la récupération en
+                    créera un second, séparé.
                   </p>
                 )}
                 <input
