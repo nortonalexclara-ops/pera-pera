@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -20,9 +20,17 @@ import PageTransition from '../../components/ui/PageTransition'
 import SessionModeToggle, { type SessionMode } from './SessionModeToggle'
 import RecommendedSessionPanel from './RecommendedSessionPanel'
 import CustomSessionBuilder from './CustomSessionBuilder'
+import PinOnboardingModal from './PinOnboardingModal'
+import { consumePinOnboardingFlag } from '../profile/pinOnboarding'
 import './Dashboard.css'
 
-const EMPTY_MASTERED: Record<ItemKind, Set<string>> = { kanji: new Set(), vocab: new Set(), grammar: new Set() }
+const EMPTY_MASTERED: Record<ItemKind, Set<string>> = {
+  kanji: new Set(),
+  vocab: new Set(),
+  grammar: new Set(),
+  hiragana: new Set(),
+  katakana: new Set(),
+}
 
 // Taille cible d'une séance recommandée — pas un objectif de progression
 // (voir mockGoal pour ça), juste "combien de cartes proposer aujourd'hui"
@@ -64,6 +72,19 @@ export default function Dashboard() {
     if (profileId) localStorage.setItem(backupBannerKey, '1')
     setBackupBannerDismissed(true)
   }
+
+  // Fenêtre "protège ta progression" (voir PinOnboardingModal.tsx) —
+  // affichée une seule fois, juste après la création d'un tout nouveau
+  // profil (demande explicite de l'utilisatrice : le bandeau discret
+  // ci-dessus passait trop facilement inaperçu). `consumePinOnboardingFlag`
+  // retire le marqueur dès qu'il est lu, donc même un aller-retour rapide
+  // sur cet écran ne la redéclenche jamais une deuxième fois.
+  const [showPinOnboarding, setShowPinOnboarding] = useState(false)
+  useEffect(() => {
+    if (profileId && consumePinOnboardingFlag(profileId)) {
+      setShowPinOnboarding(true)
+    }
+  }, [profileId])
 
   // Le nombre de kanjis maîtrisés vient réellement de la base (persisté par
   // profil). `useLiveQuery` se réabonne automatiquement : cocher
@@ -157,6 +178,7 @@ export default function Dashboard() {
 
   return (
     <PageTransition>
+      {showPinOnboarding && <PinOnboardingModal onDismiss={() => setShowPinOnboarding(false)} />}
       <div className="dashboard">
         <div className="dashboard__header">
           <AmbientGlow top={-90} left={-60} size={260} color="var(--color-warm-glow)" />

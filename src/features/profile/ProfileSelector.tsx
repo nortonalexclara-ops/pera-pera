@@ -5,6 +5,7 @@ import { Plus, Check, CloudDownload } from 'lucide-react'
 import { avatarGradients } from './mockProfiles'
 import { useProfileStore } from './profileStore'
 import { listProfiles, createProfile } from '../../db/profiles'
+import { markPinOnboardingPending } from './pinOnboarding'
 import { importProfileData } from '../../db/profileSync'
 import { setHasCloudBackup } from '../../db/settings'
 import { restoreProfile } from './cloudSync'
@@ -98,6 +99,12 @@ export default function ProfileSelector() {
   async function handleCreate() {
     try {
       const record = await createProfile(newName)
+      // Déclenche la fenêtre "protège ta progression" (voir
+      // PinOnboardingModal.tsx) au prochain passage sur le Dashboard —
+      // seulement pour un TOUT NOUVEAU profil, jamais après une
+      // récupération (voir handleRestore, qui suppose déjà un code connu
+      // ailleurs).
+      markPinOnboardingPending(record.id)
       setProfiles((prev) => [...prev, record])
       setCreating(false)
       setNewName('')

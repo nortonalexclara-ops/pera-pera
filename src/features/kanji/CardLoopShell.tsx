@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { Check, RotateCcw, GraduationCap, Info, ChevronLeft } from 'lucide-react'
+import { Check, RotateCcw, GraduationCap, Info, ChevronLeft, ChevronRight } from 'lucide-react'
 import WritingCanvas from './WritingCanvas'
 import ModuleEndCard from './ModuleEndCard'
 import { recordActivityToday } from '../../db/activity'
@@ -120,6 +120,11 @@ export default function CardLoopShell<T>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemsReady])
   const [index, setIndex] = useState(0)
+  // Le plus loin déjà atteint via une vraie décision (advance) — permet à
+  // "revenir à la carte d'après" (voir goForward) de rejouer une carte déjà
+  // vue sans jamais avancer sur une carte pas encore décidée (ce qui
+  // reviendrait à sauter une carte sans lui donner de décision).
+  const [maxIndexSeen, setMaxIndexSeen] = useState(0)
   const [phase, setPhase] = useState<'front' | 'back'>('front')
   const [revealed, setRevealed] = useState<Set<number>>(new Set())
   const [moduleDone, setModuleDone] = useState(false)
@@ -209,7 +214,11 @@ export default function CardLoopShell<T>({
     if (isLast) {
       setModuleDone(true)
     } else {
-      setIndex((i) => i + 1)
+      setIndex((i) => {
+        const next = i + 1
+        setMaxIndexSeen((m) => Math.max(m, next))
+        return next
+      })
       setPhase('front')
       setRevealed(new Set())
     }
@@ -218,6 +227,17 @@ export default function CardLoopShell<T>({
   function goBack() {
     if (index === 0) return
     setIndex((i) => i - 1)
+    setPhase('front')
+    setRevealed(new Set())
+  }
+
+  // Rejoue une carte déjà vue (voir maxIndexSeen) — pour "revenir en
+  // arrière voir une carte puis revenir à la carte d'après" (demande
+  // explicite de l'utilisatrice) sans avoir à re-décider "Maîtrisé"/"À
+  // revoir" sur chaque carte entre les deux.
+  function goForward() {
+    if (index >= maxIndexSeen) return
+    setIndex((i) => i + 1)
     setPhase('front')
     setRevealed(new Set())
   }
@@ -237,21 +257,23 @@ export default function CardLoopShell<T>({
   return (
     <>
       <div className="session__card-col">
-        {(renderCounter || total > 1) && (
+        {renderCounter && (
           <div className="session__top-row">
-            <button
-              type="button"
-              className="session__back-btn"
-              onClick={goBack}
-              disabled={index === 0}
-              title="Élément précédent"
-            >
-              <ChevronLeft size={16} strokeWidth={2} />
-            </button>
-            {renderCounter && <div className="session__level-counter">{renderCounter(index, total)}</div>}
+            <div className="session__level-counter">{renderCounter(index, total)}</div>
           </div>
         )}
         <div className={`flip-card${phase === 'back' ? ' is-flipped' : ''}`}>
+          {total > 1 && (
+            <button
+              type="button"
+              className="session__nav-btn session__nav-btn--prev"
+              onClick={goBack}
+              disabled={index === 0}
+              title="Carte précédente"
+            >
+              <ChevronLeft size={20} strokeWidth={2} />
+            </button>
+          )}
           <div className="flip-card__inner">
             <button type="button" className="flip-card__face flip-card__face--front" onClick={() => setPhase('back')}>
               {renderFront(item)}
@@ -262,6 +284,17 @@ export default function CardLoopShell<T>({
               {renderBack(item, revealed, toggleReveal)}
             </div>
           </div>
+          {total > 1 && (
+            <button
+              type="button"
+              className="session__nav-btn session__nav-btn--next"
+              onClick={goForward}
+              disabled={index >= maxIndexSeen}
+              title="Carte suivante"
+            >
+              <ChevronRight size={20} strokeWidth={2} />
+            </button>
+          )}
         </div>
 
         {phase === 'back' && (

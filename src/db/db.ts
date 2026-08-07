@@ -20,7 +20,7 @@ export interface ProfileRecord {
   createdAt: number
 }
 
-export type ItemKind = 'kanji' | 'vocab' | 'grammar'
+export type ItemKind = 'kanji' | 'vocab' | 'grammar' | 'hiragana' | 'katakana'
 
 export interface MasteryRecord {
   id?: number

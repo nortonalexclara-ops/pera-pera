@@ -1,0 +1,21 @@
+.kana-setup {
+  position: relative;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.kana-setup__title {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+
+.kana-setup__subtitle {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  margin-bottom: var(--space-xl);
+}
+
+.kana-setup__card {
+  padding: var(--space-lg);
+}

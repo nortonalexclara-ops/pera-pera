@@ -10,7 +10,13 @@ import { useProfileStore } from '../profile/profileStore'
 import { getAllMasteredIds, setMastered } from '../../db/mastery'
 import type { ItemKind } from '../../db/db'
 
-const EMPTY_MASTERED: Record<ItemKind, Set<string>> = { kanji: new Set(), vocab: new Set(), grammar: new Set() }
+const EMPTY_MASTERED: Record<ItemKind, Set<string>> = {
+  kanji: new Set(),
+  vocab: new Set(),
+  grammar: new Set(),
+  hiragana: new Set(),
+  katakana: new Set(),
+}
 
 interface RevisionCardLoopProps {
   level: JlptLevel | null

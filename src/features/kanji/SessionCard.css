@@ -75,8 +75,7 @@
 .session__top-row {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  align-self: center;
+  justify-content: center;
 }
 
 .session__level-counter {
@@ -89,27 +88,47 @@
   padding: 8px 20px;
 }
 
-/* Retour à l'élément précédent — grisé (pas caché) au tout premier élément
-   pour ne pas faire sauter la mise en page. */
-.session__back-btn {
+/* Navigation carte précédente/suivante — déplacées du haut de l'écran
+   (trop près du "Retour au dashboard" de l'en-tête, source de confusion
+   signalée par l'utilisatrice) au milieu des bords gauche/droit de la
+   carte elle-même, façon flèches de carrousel. "Suivante" ne sert que
+   pour rejouer une carte déjà vue après être revenu en arrière (voir
+   goForward, CardLoopShell.tsx) — jamais pour avancer sur une carte pas
+   encore décidée, donc grisée dès qu'on est déjà au plus loin atteint.
+   Légèrement à cheval sur le bord de la carte plutôt que dessus, pour ne
+   jamais couvrir son contenu (kanji/mot au recto, texte au verso). */
+.session__nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   flex-shrink: 0;
   border-radius: 50%;
   border: 1px solid var(--color-border);
-  background: var(--color-bg);
+  background: var(--color-surface);
   color: var(--color-text-secondary);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
 }
 
-.session__back-btn:hover:not(:disabled) {
+.session__nav-btn--prev {
+  left: -16px;
+}
+
+.session__nav-btn--next {
+  right: -16px;
+}
+
+.session__nav-btn:hover:not(:disabled) {
   color: var(--color-text-primary);
 }
 
-.session__back-btn:disabled {
+.session__nav-btn:disabled {
   opacity: 0.35;
   cursor: default;
 }
@@ -824,10 +843,19 @@ rt {
   /* "Le titre et la flèche pour retourner à la carte d'avant" (demande
      utilisateur) — rétréci pour laisser plus de hauteur à la carte
      elle-même et à la colonne d'écriture, qui se partagent le reste de
-     l'écran. */
-  .session__back-btn {
-    width: 28px;
-    height: 28px;
+     l'écran. Décalage réduit aussi (moins de marge disponible de part et
+     d'autre de la carte sur un écran étroit). */
+  .session__nav-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .session__nav-btn--prev {
+    left: -8px;
+  }
+
+  .session__nav-btn--next {
+    right: -8px;
   }
 
   .session__level-counter {

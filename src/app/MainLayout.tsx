@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { Home, BookOpen, ScanSearch, StickyNote, BarChart3, Settings, Sun, Moon } from 'lucide-react'
+import { Home, BookOpen, ScanSearch, StickyNote, BarChart3, Settings, Sun, Moon, Type } from 'lucide-react'
 import { useProfileStore } from '../features/profile/profileStore'
 import { avatarGradients } from '../features/profile/mockProfiles'
 import { useThemeStore } from '../features/theme/themeStore'
@@ -8,6 +8,7 @@ import './MainLayout.css'
 const TABS = [
   { to: '/dashboard', label: 'Dashboard', icon: Home },
   { to: '/explorer', label: 'Explorer', icon: BookOpen },
+  { to: '/kana', label: 'Kana', icon: Type },
   { to: '/notebook', label: 'Kanji', icon: ScanSearch },
   { to: '/notes', label: 'Notes', icon: StickyNote },
   { to: '/stats', label: 'Stats', icon: BarChart3 },

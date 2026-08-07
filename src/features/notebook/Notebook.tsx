@@ -64,12 +64,13 @@ export default function Notebook() {
             extraTools={
               <button
                 type="button"
-                className="writing-canvas__tool notebook__recognize-btn"
+                className="notebook__recognize-btn"
                 disabled={!canRecognize || recognizing}
                 onClick={handleRecognize}
                 title="Reconnaître le kanji"
               >
-                <ScanSearch size={19} strokeWidth={1.75} />
+                <ScanSearch size={17} strokeWidth={1.75} />
+                {recognizing ? 'Reconnaissance…' : 'Reconnaître le kanji'}
               </button>
             }
           />

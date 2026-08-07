@@ -4502,4 +4502,93 @@ apparaît en tapant un nom existant, disparaît pour un nom différent,
 aucun débordement horizontal dans la carte étroite (140px). Aucune erreur
 console.
 
-`npx tsc -b` clean. Pas encore commité/poussé.
+`npx tsc -b` clean. Commité et poussé.
+
+## Checkpoint — navigation carte carrousel, fix hauteur mobile Cahier, fenêtre code secret, module Hiragana/Katakana
+
+Gros lot, cinq demandes dans le même message.
+
+**1. Navigation précédent/suivant repensée dans les cartes de séance.**
+La flèche "précédente" vivait juste en dessous de l'en-tête, trop près du
+"Retour au dashboard" (confusion signalée). Déplacée au milieu du bord
+GAUCHE de la carte elle-même (façon flèches de carrousel), et nouvelle
+flèche "suivante" en miroir au bord DROIT — pour "revenir à la carte
+d'après" après être allé voir une carte précédente, sans avoir à
+re-décider "Maîtrisé"/"À revoir" sur chaque carte entre les deux.
+Nouveau `maxIndexSeen` (`CardLoopShell.tsx`) : borne jusqu'où "suivante"
+peut aller (jamais au-delà de ce qui a déjà été décidé une fois), pour ne
+jamais sauter une carte sans lui donner de vraie décision. Vérifié en
+conditions réelles (kanjis ET kana, même composant partagé) : précédent
+grisé à la première carte, suivant grisé une fois revenu au plus loin
+déjà atteint, aucun débordement horizontal même à 320px de large.
+
+**2. Écran de reconnaissance de kanji : vraie cause de "ça ne marche
+toujours pas sur tous les appareils" + bouton explicite.** `.notebook`
+utilisait `100vh` pour son budget de hauteur — sur mobile (Safari iOS en
+tête), `vh` compte la hauteur maximale (barres du navigateur repliées),
+qui ne correspond pas à ce qui est réellement visible la plupart du
+temps : le budget calculé restait trop optimiste, forçant quand même à
+défiler malgré le premier correctif. Passé à `dvh` (repli sur `vh`
+d'abord). Bouton "Reconnaître" doté de son texte complet ("Reconnaître le
+kanji", pas juste une icône) — nouveau style pilule plutôt que le gabarit
+rond des autres outils, avec repli en escalier (`flex-wrap`) sous 600px
+de large pour ne jamais chevaucher/déborder à côté des icônes stylo/
+gomme/annuler/tout effacer. Bug trouvé et corrigé PENDANT la vérification
+(pas juste en écrivant le code) : le repli ciblait d'abord la mauvaise
+classe CSS (`--tools-only`, qui ne s'applique plus dès qu'il y a un
+`extraTools`) — repéré en mesurant les rects réels à 375px (tenait tout
+juste, 8px de marge) puis confirmé cassé/corrigé à 320px.
+
+**3. Fenêtre "Protège ta progression" à la création d'un profil.**
+Proposé puis implémenté (demande explicite : "propose-moi quelque
+chose") : une fenêtre modale (nouveau composant, l'app n'en avait aucune
+jusqu'ici — jugé plus efficace qu'un bandeau discret et ignorable pour un
+choix aux vraies conséquences si oublié) apparaît une seule fois, juste
+après "Nouveau profil" (jamais après une récupération, qui suppose déjà
+un code connu ailleurs) — voir `pinOnboarding.ts` (marqueur localStorage
+posé à la création, consommé — et retiré — au premier passage sur le
+Dashboard). "Configurer maintenant" → Réglages, "Plus tard" → fermeture
+simple, ne réapparaît jamais ensuite. Vérifié en conditions réelles :
+apparaît à la création, absente après avoir cliqué "Plus tard" y compris
+après rechargement complet + re-sélection du même profil.
+
+**4. Nouveau module Hiragana/Katakana** — même mécanique que Kanjis
+(carte à retourner, mastery/reviewMarks persistés, mode Nouveaux/
+Mélange/À revoir, entraînement à l'écriture, audio) mais sans niveau
+JLPT (les syllabaires n'en ont pas) ni clés/exemples/tracé animé.
+**Périmètre assumé pour ce premier jet** (à faire évoluer si besoin) :
+71 caractères par alphabet (gojuon + dakuten + handakuten, 142 au
+total) — sans les combinaisons ゃゅょ (kya, sha...), qui recombinent des
+caractères déjà couverts plutôt que d'en être de nouveaux ; sans tracé
+animé (contrairement aux kanjis, aucune source de données de traits
+disponible pour les kana) ; pas intégré à Explorer ni aux Stats (leur
+modèle suppose un niveau JLPT que les kana n'ont pas).
+- `ItemKind` étendu (`db.ts`) : `'hiragana' | 'katakana'` — mastery/
+  favoris/reviewMarks/sauvegarde cloud déjà génériques dessus, AUCUN
+  changement nécessaire là ; juste les `Record<ItemKind, Set>` littéraux
+  à compléter (`favorites.ts`, `mastery.ts`, `Dashboard.tsx`,
+  `Explorer.tsx`, `RevisionCardLoop.tsx` — TypeScript a lui-même signalé
+  chacun, aucun oublié).
+- Nouveau `src/features/kana/` : `mockKana.ts` (table compacte
+  hiragana+katakana+romaji, dérive les deux alphabets d'une même source
+  pour qu'ils restent en phase), `KanaCardLoop.tsx` (mastery suit le
+  script propre à chaque caractère, pas un kind fixe — pratiquer les
+  deux alphabets ensemble garde un suivi séparé), `KanaSetup.tsx` (choix
+  alphabet + contenu, écran séparé de la séance personnalisée
+  Kanjis/Vocabulaire/Grammaire — celle-ci suppose un niveau JLPT partout,
+  que le kana n'a pas), `KanaSession.tsx` (écran de pratique).
+- Nouvel onglet "Kana" dans la barre de navigation, nouvelles routes
+  `/kana` et `/session/kana`, nouvelles options de réinitialisation
+  "Progression Hiragana"/"Progression Katakana" dans Réglages.
+
+Vérifié en conditions réelles, pas juste en lisant le code : séance
+"Les deux" alphabets + Mélange, carte マ/ベ/ニ/ぺ mélangées ensemble,
+マîtrisé et à revoir posés sur des kana katakana → confirmé en base avec
+`kind:"katakana"` correct sur chacun (pas un kind générique fourre-tout) ;
+navigation précédent/suivant testée dans ce contexte aussi (composant
+partagé avec Kanjis) ; mode "À revoir" relancé → seule la carte
+explicitement marquée réapparaît ; réglages affiche bien "Progression
+Hiragana"/"Progression Katakana". Aucune erreur console à aucune étape.
+
+`npx tsc -b` et `npx tsc -p tsconfig.api.json` clean. Pas encore
+commité/poussé.

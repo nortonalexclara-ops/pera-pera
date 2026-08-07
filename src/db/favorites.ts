@@ -27,7 +27,13 @@ export async function getFavoriteIds(profileId: string, kind: ItemKind): Promise
 // `getAllMasteredIds` (voir src/db/mastery.ts), utilisé par Explorer qui
 // affiche les trois types de contenu mélangés.
 export async function getAllFavoriteIds(profileId: string): Promise<Record<ItemKind, Set<string>>> {
-  const empty = { kanji: new Set<string>(), vocab: new Set<string>(), grammar: new Set<string>() }
+  const empty = {
+    kanji: new Set<string>(),
+    vocab: new Set<string>(),
+    grammar: new Set<string>(),
+    hiragana: new Set<string>(),
+    katakana: new Set<string>(),
+  }
   if (!profileId) return empty
   const rows = await db.favorites.where({ profileId }).toArray()
   for (const row of rows) empty[row.kind].add(row.itemId)

@@ -44,12 +44,24 @@ function itemIdsFor(kind: ItemKind, level: JlptLevel): string[] {
   return mockGrammarList.filter((g) => g.jlptLevel === level).map((g) => g.id)
 }
 
-type ResetOption = 'kanji' | 'vocab' | 'grammar' | 'streak' | 'notes' | 'favorites' | 'timeSpent' | 'reviewMarks'
+type ResetOption =
+  | 'kanji'
+  | 'vocab'
+  | 'grammar'
+  | 'hiragana'
+  | 'katakana'
+  | 'streak'
+  | 'notes'
+  | 'favorites'
+  | 'timeSpent'
+  | 'reviewMarks'
 
 const RESET_OPTIONS: { key: ResetOption; label: string; description: string }[] = [
   { key: 'kanji', label: 'Progression Kanjis', description: 'Retire "Maîtrisé" de tous les kanjis de ce profil.' },
   { key: 'vocab', label: 'Progression Vocabulaire', description: 'Retire "Maîtrisé" de tous les mots de ce profil.' },
   { key: 'grammar', label: 'Progression Grammaire', description: 'Retire "Maîtrisé" de tous les points de grammaire de ce profil.' },
+  { key: 'hiragana', label: 'Progression Hiragana', description: 'Retire "Maîtrisé" de tous les hiragana de ce profil.' },
+  { key: 'katakana', label: 'Progression Katakana', description: 'Retire "Maîtrisé" de tous les katakana de ce profil.' },
   { key: 'streak', label: 'Série (jours de suite)', description: 'Remet le compteur "jours de suite" à zéro.' },
   { key: 'notes', label: 'Notes personnelles', description: 'Supprime toutes les notes du Cahier de notes.' },
   { key: 'favorites', label: 'Favoris', description: 'Retire tous les kanjis/mots/points de grammaire mis en favori.' },
@@ -148,6 +160,8 @@ export default function Settings() {
     if (selected.has('kanji')) kinds.push('kanji')
     if (selected.has('vocab')) kinds.push('vocab')
     if (selected.has('grammar')) kinds.push('grammar')
+    if (selected.has('hiragana')) kinds.push('hiragana')
+    if (selected.has('katakana')) kinds.push('katakana')
     if (kinds.length > 0) await resetMastery(profileId, kinds)
     if (selected.has('streak')) await resetActivity(profileId)
     if (selected.has('notes')) await resetNotes(profileId)

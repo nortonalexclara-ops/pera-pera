@@ -58,7 +58,13 @@ export async function countMastered(profileId: string, kind: ItemKind): Promise<
 // utilisé par l'écran Stats pour dériver plusieurs répartitions (par
 // module, par niveau JLPT) sans une requête séparée par sous-ensemble.
 export async function getAllMasteredIds(profileId: string): Promise<Record<ItemKind, Set<string>>> {
-  const empty = { kanji: new Set<string>(), vocab: new Set<string>(), grammar: new Set<string>() }
+  const empty = {
+    kanji: new Set<string>(),
+    vocab: new Set<string>(),
+    grammar: new Set<string>(),
+    hiragana: new Set<string>(),
+    katakana: new Set<string>(),
+  }
   if (!profileId) return empty
   const rows = await db.mastery.where({ profileId }).toArray()
   for (const row of rows) empty[row.kind].add(row.itemId)

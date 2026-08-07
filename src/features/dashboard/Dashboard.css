@@ -335,3 +335,78 @@
 .word-card__action.active {
   color: var(--color-warm);
 }
+
+/* Fenêtre "protège ta progression" (voir PinOnboardingModal.tsx) — au-
+   dessus de tout, y compris la barre de navigation (z-index: 20). */
+.pin-onboarding__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.pin-onboarding__card {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  padding: var(--space-xl) var(--space-lg) var(--space-lg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  text-align: center;
+}
+
+.pin-onboarding__close {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.pin-onboarding__close:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+}
+
+.pin-onboarding__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: var(--space-md);
+  border-radius: 50%;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.pin-onboarding__title {
+  font-size: 19px;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+
+.pin-onboarding__text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-lg);
+}
+
+.pin-onboarding__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+}

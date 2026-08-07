@@ -2,7 +2,19 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  /* `vh` compte la hauteur MAXIMALE possible de la fenêtre, barres du
+     navigateur repliées — sur mobile (Safari iOS en tête), ces barres ne
+     sont repliées qu'une partie du temps, donc `100vh` surestime souvent
+     la place réellement visible : le budget de hauteur calculé ici
+     paraissait suffisant en théorie mais restait trop grand une fois les
+     barres du navigateur dépliées, forçant quand même à défiler pour
+     voir les résultats (signalé : "ça ne le fait pas encore pour tous
+     les appareils"). `dvh` (hauteur dynamique, recalculée avec la
+     fenêtre réellement visible) est la valeur qui reflète ce qui est
+     vraiment affiché — repli sur `vh` d'abord pour les navigateurs qui
+     ne la connaissent pas encore. */
   min-height: calc(100vh - 160px);
+  min-height: calc(100dvh - 160px);
 }
 
 .notebook__title {
@@ -28,16 +40,34 @@
   min-height: 300px;
 }
 
-/* Bouton "Reconnaître" — niché dans la même rangée que stylo/gomme/
-   annuler/tout effacer (voir `extraTools` sur WritingCanvas) plutôt que
-   tout en bas de la page sous le canevas : c'était hors champ sans
-   défiler sur iPad/mobile (demande utilisatrice). Même gabarit que les
-   autres outils, teinte accent en permanence (pas seulement au survol)
-   pour rester repérable comme l'action principale de l'écran. */
+/* Bouton "Reconnaître le kanji" — niché dans la même rangée que stylo/
+   gomme/annuler/tout effacer (voir `extraTools` sur WritingCanvas) plutôt
+   que tout en bas de la page sous le canevas : c'était hors champ sans
+   défiler sur iPad/mobile (demande utilisatrice). Avec son texte complet
+   (pas juste une icône, demande utilisatrice : "plus long et plus
+   explicite") plutôt que le gabarit rond des autres outils, teinte accent
+   en permanence (pas seulement au survol) pour rester repérable comme
+   l'action principale de l'écran. */
 .notebook__recognize-btn {
-  border-color: var(--color-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-pill);
   color: var(--color-accent-dark);
   background: var(--color-accent-soft);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 8px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.notebook__recognize-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .notebook__results {
@@ -94,5 +124,24 @@
 
   .notebook__results {
     margin-top: var(--space-sm);
+  }
+}
+
+/* Le bouton "Reconnaître le kanji" (texte complet, plus large que les
+   icônes rondes stylo/gomme/annuler/tout effacer à côté) ne tient plus
+   forcément sur la même ligne qu'elles en dessous d'une certaine largeur
+   — passe sur sa propre ligne plutôt que de déborder ou chevaucher la
+   rangée d'outils. Seuil plus étroit que le bloc ci-dessus (qui concerne
+   la hauteur, pas cette histoire de largeur) : à ~900px de large (iPad
+   compris) tout tient très bien côte à côte, seul un téléphone étroit en
+   a besoin. Cible `.writing-canvas__head` tout court (pas `--tools-only`
+   : ce modificateur ne s'applique qu'en l'absence de `extraTools`, or ce
+   bouton EST le extraTools de cette rangée) — restreint à `.notebook`
+   pour ne pas toucher les cartes de séance, qui utilisent la même classe
+   de base sans ce bouton. */
+@media (max-width: 600px) {
+  .notebook .writing-canvas__head {
+    flex-wrap: wrap;
+    row-gap: var(--space-sm);
   }
 }

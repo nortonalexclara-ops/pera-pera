@@ -30,8 +30,23 @@ const KIND_OPTIONS = ['Tous', 'Kanjis', 'Vocabulaire', 'Grammaire']
 const MASTERY_OPTIONS = ['Tous', 'Non maîtrisés', 'Maîtrisés']
 const KIND_TO_LABEL: Record<string, string> = { kanji: 'Kanjis', vocab: 'Vocabulaire', grammar: 'Grammaire' }
 const TYPE_LABELS: Record<string, string> = { nom: 'Nom', verbe: 'Verbe', adjectif: 'Adjectif', expression: 'Expression' }
-const EMPTY_MASTERED: Record<ItemKind, Set<string>> = { kanji: new Set(), vocab: new Set(), grammar: new Set() }
-const EMPTY_FAVORITES: Record<ItemKind, Set<string>> = { kanji: new Set(), vocab: new Set(), grammar: new Set() }
+// Explorer ne liste que kanji/vocab/grammar (voir buildExplorerItems) —
+// hiragana/katakana quand même présents dans ces Record pour satisfaire
+// ItemKind, jamais peuplés ici.
+const EMPTY_MASTERED: Record<ItemKind, Set<string>> = {
+  kanji: new Set(),
+  vocab: new Set(),
+  grammar: new Set(),
+  hiragana: new Set(),
+  katakana: new Set(),
+}
+const EMPTY_FAVORITES: Record<ItemKind, Set<string>> = {
+  kanji: new Set(),
+  vocab: new Set(),
+  grammar: new Set(),
+  hiragana: new Set(),
+  katakana: new Set(),
+}
 // Sans plafond, ~10 000 résultats sans filtre devenaient ~10 000 <li> montés
 // d'un coup — c'était la vraie cause du chargement lent signalé, pas
 // `buildExplorerItems` (déjà mémoïsé). On affiche par paliers plutôt que de
