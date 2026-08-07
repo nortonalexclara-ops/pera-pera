@@ -88,7 +88,8 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   padding: var(--space-sm) var(--space-md);
-  min-width: 76px;
+  min-width: 92px;
+  max-width: 140px;
   cursor: pointer;
 }
 
@@ -102,7 +103,7 @@
 }
 
 .notebook__result-meaning {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--color-text-secondary);
   text-align: center;
 }

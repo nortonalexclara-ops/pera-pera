@@ -81,12 +81,25 @@ export default function WritingCanvas({
       const ctx = canvas.getContext('2d')
       ctx?.scale(dpr, dpr)
       size.current = { w: rect.width, h: rect.height }
+      // Changer canvas.width/height vide TOUJOURS le bitmap, même si les
+      // dimensions affichées ne bougent presque pas — un simple changement
+      // de mise en page ailleurs sur la page (ex. la liste de résultats de
+      // reconnaissance qui apparaît/disparaît juste en dessous, voir
+      // Notebook.tsx) suffit à déclencher ce `ResizeObserver` et effaçait
+      // silencieusement tout ce qui venait d'être dessiné — alors que
+      // `strokesRef` (les données) restait intact, d'où la confusion :
+      // le trait semblait avoir disparu, mais était toujours compté dans
+      // la reconnaissance. Rejoue systématiquement les traits déjà
+      // enregistrés après chaque redimensionnement, pas seulement au
+      // premier montage.
+      redrawFromStrokes()
     }
 
     resize()
     const observer = new ResizeObserver(resize)
     observer.observe(wrap)
     return () => observer.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function pointerPos(e: React.PointerEvent<HTMLCanvasElement>) {
@@ -192,13 +205,15 @@ export default function WritingCanvas({
     notifyStrokes()
   }
 
-  // Retire juste le dernier trait tracé — rejoue tous les traits restants
-  // depuis un canevas vide plutôt que de tenter un retrait ciblé, seul moyen
-  // fiable une fois l'encre/la gomme compositées sur le bitmap.
-  function undo() {
-    if (strokesRef.current.length === 0) return
-    strokesRef.current = strokesRef.current.slice(0, -1)
-    setStrokeCount(strokesRef.current.length)
+  // Vide le bitmap puis rejoue tous les traits de `strokesRef` dans l'ordre
+  // — seul moyen fiable de refléter l'état courant une fois l'encre/la
+  // gomme compositées sur le canevas (pas de retrait/redessin ciblé
+  // possible). Utilisé par `undo` (un trait en moins) et par le
+  // redimensionnement du canevas (voir l'effet plus haut) — les deux
+  // remettent le bitmap à zéro d'une façon ou d'une autre et doivent
+  // repartir de la même source de vérité (`strokesRef`), jamais de ce qui
+  // restait affiché juste avant.
+  function redrawFromStrokes() {
     const ctx = canvasRef.current?.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, size.current.w, size.current.h)
@@ -207,6 +222,14 @@ export default function WritingCanvas({
         drawSegment(ctx, stroke.tool, stroke.points[i - 1], stroke.points[i])
       }
     }
+  }
+
+  // Retire juste le dernier trait tracé.
+  function undo() {
+    if (strokesRef.current.length === 0) return
+    strokesRef.current = strokesRef.current.slice(0, -1)
+    setStrokeCount(strokesRef.current.length)
+    redrawFromStrokes()
     notifyStrokes()
   }
 

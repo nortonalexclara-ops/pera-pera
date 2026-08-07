@@ -4590,5 +4590,52 @@ partagé avec Kanjis) ; mode "À revoir" relancé → seule la carte
 explicitement marquée réapparaît ; réglages affiche bien "Progression
 Hiragana"/"Progression Katakana". Aucune erreur console à aucune étape.
 
-`npx tsc -b` et `npx tsc -p tsconfig.api.json` clean. Pas encore
-commité/poussé.
+`npx tsc -b` et `npx tsc -p tsconfig.api.json` clean. Commité et poussé.
+
+## Checkpoint — vraie cause de "mon tracé disparaît" en reconnaissance de kanji
+
+Signalement : après avoir cliqué "Reconnaître" (les candidats
+s'affichent en dessous), le tracé sur le canevas disparaît ; et quand on
+recommence à dessiner ensuite, le tout premier trait redessiné disparaît
+lui aussi (en même temps que les candidats se retirent), obligeant à le
+retracer.
+
+**Vraie cause trouvée (pas un correctif à l'aveugle)** : changer
+`canvas.width`/`canvas.height` en JS vide TOUJOURS le bitmap d'un
+`<canvas>`, même si les dimensions affichées ne bougent presque pas.
+`WritingCanvas.tsx` fait exactement ça dans son `ResizeObserver` dès que
+`.writing-canvas__surface` change de taille — et faire apparaître ou
+disparaître la liste de résultats juste en dessous (`.notebook__results`)
+change la mise en page de toute la page, donc la taille réellement
+disponible pour le canevas, donc déclenche ce `ResizeObserver` :
+1. Clic sur "Reconnaître" → les résultats apparaissent → mise en page
+   changée → `ResizeObserver` se déclenche → bitmap vidé → tracé
+   visuellement effacé (mais `strokesRef`, les données, restait intact
+   en mémoire — d'où la confusion : la reconnaissance "voyait" encore le
+   tracé pourtant invisible à l'écran).
+2. Nouveau trait dessiné → `notifyStrokes()` vide les résultats déjà
+   affichés (n'importe quel nouveau trait invalide l'ancien résultat,
+   comportement voulu) → les résultats disparaissent → mise en page
+   change À NOUVEAU → `ResizeObserver` se redéclenche → bitmap revidé →
+   le trait qu'on venait de tracer disparaît à son tour.
+
+**Corrigé** : nouveau `redrawFromStrokes()` (`WritingCanvas.tsx`, extrait
+de la logique déjà utilisée par `undo`) — vide le bitmap PUIS rejoue
+tous les traits de `strokesRef.current` dans l'ordre. Appelé après
+CHAQUE redimensionnement du canevas (pas seulement au montage initial),
+donc un redimensionnement causé par un changement de mise en page
+ailleurs sur la page ne perd plus jamais ce qui était déjà dessiné.
+
+**Taille de police de la traduction française augmentée** aussi
+(demande utilisatrice) — `.notebook__result-meaning` : 11px → 14px, avec
+un peu plus de largeur sur chaque vignette de résultat pour accueillir
+le texte plus grand sans lui faire prendre trop de lignes.
+
+Vérifié en conditions réelles, pas juste en lisant le code : comptage
+direct des pixels d'encre sur le bitmap réel (`getImageData`) avant/
+après clic sur "Reconnaître" (584 → 584, inchangé — confirme que le
+tracé survit) puis après un second trait (584 → 1218, la somme des deux
+— confirme que le PREMIER trait n'a pas disparu quand les résultats se
+sont effacés). Taille de police confirmée à 14px via `getComputedStyle`.
+
+`npx tsc -b` clean. Pas encore commité/poussé.
