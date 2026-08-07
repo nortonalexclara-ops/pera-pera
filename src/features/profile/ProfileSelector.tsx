@@ -82,6 +82,19 @@ export default function ProfileSelector() {
     navigate('/dashboard')
   }
 
+  // "Nouveau profil"/"Récupérer un profil" créent toujours un enregistrement
+  // séparé, même si un profil du même nom existe déjà sur cet appareil (les
+  // profils sont distingués par id, pas par nom) — repéré après coup par
+  // l'utilisatrice ("il y a deux profils Kurara différents"), qui avait
+  // sans le savoir récupéré deux fois (ou créé puis récupéré) sous le même
+  // nom, avec la confusion "lequel a mes vraies données ?" qui va avec.
+  // Prévenu ici plutôt que bloqué : averti mais toujours libre de continuer
+  // (deux personnes du même foyer peuvent légitimement partager un prénom).
+  function isDuplicateName(name: string): boolean {
+    const trimmed = name.trim().toLowerCase()
+    return trimmed !== '' && profiles.some((p) => p.name.trim().toLowerCase() === trimmed)
+  }
+
   async function handleCreate() {
     try {
       const record = await createProfile(newName)
@@ -169,6 +182,11 @@ export default function ProfileSelector() {
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                 />
+                {isDuplicateName(newName) && (
+                  <p className="profile-card__warning">
+                    Un profil "{newName.trim()}" existe déjà sur cet appareil — celui-ci sera séparé.
+                  </p>
+                )}
                 <button type="button" className="profile-card__confirm" onClick={handleCreate} title="Créer ce profil">
                   <Check size={16} strokeWidth={2} />
                 </button>
@@ -199,6 +217,11 @@ export default function ProfileSelector() {
                   maxLength={20}
                   onChange={(e) => setRestoreName(e.target.value)}
                 />
+                {isDuplicateName(restoreName) && (
+                  <p className="profile-card__warning">
+                    Un profil "{restoreName.trim()}" existe déjà ici — la récupération en créera un second, séparé.
+                  </p>
+                )}
                 <input
                   type="text"
                   inputMode="numeric"

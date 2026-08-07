@@ -101,6 +101,16 @@
   outline-offset: 1px;
 }
 
+/* Avertissement de nom en doublon (voir isDuplicateName) — teinte "warm"
+   plutôt que le rouge de `.profile-selector__error` : un simple avis à
+   prendre en compte avant de continuer, pas un blocage. */
+.profile-card__warning {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--color-warm);
+  text-align: center;
+}
+
 .profile-card__confirm {
   display: flex;
   align-items: center;

@@ -4475,4 +4475,31 @@ caractères), 一月 → 2 panneaux, 毎年 → 2 panneaux — tous avec le bon
 tracé affiché.
 
 Aucune erreur console à aucune étape. `npx tsc -b` et
-`npx tsc -p tsconfig.api.json` clean. Pas encore commité/poussé.
+`npx tsc -p tsconfig.api.json` clean. Commité et poussé.
+
+## Checkpoint — avertissement de nom de profil en doublon
+
+Suite directe du checkpoint précédent : l'utilisatrice a remarqué "deux
+profils Kurara différents avec des couleurs différentes" sur le même
+appareil. Explication (confirmée en lisant le code, pas une supposition) :
+les profils sont distingués par un `id` interne, jamais par leur nom —
+rien n'empêchait "Nouveau profil" ou "Récupérer un profil" de créer un
+DEUXIÈME enregistrement séparé sous un nom déjà pris sur cet appareil.
+Les couleurs différentes s'expliquent pareil : `colorIndex` est juste le
+nombre de profils déjà présents au moment de la création de celui-ci, pas
+un choix lié au nom — donc forcément différent entre deux créations à des
+moments différents. Cause plausible du "rien n'est enregistré" du
+checkpoint précédent : l'utilisatrice a probablement consulté le MAUVAIS
+des deux Kurara (celui resté vide) sans le savoir.
+
+Corrigé (`ProfileSelector.tsx`) : un avertissement discret (pas bloquant
+— deux personnes du même foyer peuvent légitimement partager un prénom)
+apparaît sous le champ nom dès qu'il correspond à un profil déjà présent
+sur cet appareil, dans les DEUX formulaires ("Nouveau profil" ET
+"Récupérer un profil") : "Un profil "X" existe déjà sur cet appareil —
+celui-ci sera séparé." Vérifié en conditions réelles : avertissement
+apparaît en tapant un nom existant, disparaît pour un nom différent,
+aucun débordement horizontal dans la carte étroite (140px). Aucune erreur
+console.
+
+`npx tsc -b` clean. Pas encore commité/poussé.
