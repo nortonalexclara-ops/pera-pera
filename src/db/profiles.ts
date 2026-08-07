@@ -40,7 +40,16 @@ export async function createProfile(name: string): Promise<ProfileRecord> {
 export async function deleteProfile(profileId: string): Promise<void> {
   await db.transaction(
     'rw',
-    [db.profiles, db.mastery, db.notes, db.activity, db.favorites, db.timeSpent, db.profileSettings],
+    [
+      db.profiles,
+      db.mastery,
+      db.notes,
+      db.activity,
+      db.favorites,
+      db.timeSpent,
+      db.profileSettings,
+      db.reviewMarks,
+    ],
     async () => {
       await db.profiles.delete(profileId)
       await db.mastery.where({ profileId }).delete()
@@ -49,6 +58,7 @@ export async function deleteProfile(profileId: string): Promise<void> {
       await db.favorites.where({ profileId }).delete()
       await db.timeSpent.where({ profileId }).delete()
       await db.profileSettings.delete(profileId)
+      await db.reviewMarks.where({ profileId }).delete()
     },
   )
 }

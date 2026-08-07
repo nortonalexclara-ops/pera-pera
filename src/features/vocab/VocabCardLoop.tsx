@@ -7,16 +7,16 @@ import type { JlptLevel } from '../kanji/mockKanji'
 import type { SeenItem } from '../test/buildTest'
 import { mockVocabList, type VocabWord } from './mockVocab'
 import { useProfileStore } from '../profile/profileStore'
-import { getMasteredIds, setMastered } from '../../db/mastery'
+import { getMasteredIds, setMastered, getReviewIds } from '../../db/mastery'
 import { shuffleArray } from '../../utils/shuffle'
 import { reconstructReading } from '../../utils/furigana'
-import { wordExceedsOwnLevel } from '../../utils/kanjiLevel'
+import { wordExceedsOwnLevel, wordHasUnmasteredKanji, kanjisInWord } from '../../utils/kanjiLevel'
 
 const EMPTY_SET: Set<string> = new Set()
 
 interface VocabCardLoopProps {
   level: JlptLevel | null
-  contentMode?: 'new' | 'mix'
+  contentMode?: 'new' | 'mix' | 'review'
   limit?: number
   continueLabel: string
   onDone: () => void
@@ -50,9 +50,28 @@ export default function VocabCardLoop({
     [profileId],
     EMPTY_SET,
   )
+  const reviewIds = useLiveQuery(
+    () => (profileId ? getReviewIds(profileId, 'vocab') : Promise.resolve(EMPTY_SET)),
+    [profileId],
+    EMPTY_SET,
+  )
+  // Kanjis déjà maîtrisés par ce profil — sert à afficher les hiragana au
+  // recto d'un mot dont un kanji n'est pas encore maîtrisé PAR CE PROFIL
+  // (voir plus bas), en plus du critère déjà en place sur le niveau
+  // "officiel" du kanji dans le programme (voir wordExceedsOwnLevel).
+  const masteredKanjiIds = useLiveQuery(
+    () => (profileId ? getMasteredIds(profileId, 'kanji') : Promise.resolve(EMPTY_SET)),
+    [profileId],
+    EMPTY_SET,
+  )
 
   const levelFiltered = level ? mockVocabList.filter((w) => w.jlptLevel === level) : mockVocabList
-  const contentFiltered = contentMode === 'new' ? levelFiltered.filter((w) => !masteredIds.has(w.id)) : levelFiltered
+  const contentFiltered =
+    contentMode === 'new'
+      ? levelFiltered.filter((w) => !masteredIds.has(w.id))
+      : contentMode === 'review'
+        ? levelFiltered.filter((w) => reviewIds.has(w.id))
+        : levelFiltered
 
   // Voir KanjiCardLoop pour le détail : mode "Mélange" mélangé aléatoirement
   // (demande utilisatrice), mémoïsé sur `level` seul.
@@ -61,9 +80,12 @@ export default function VocabCardLoop({
   const vocabList = typeof limit === 'number' ? orderedContent.slice(0, limit) : orderedContent
 
   const allMastered = contentMode === 'new' && levelFiltered.length > 0 && contentFiltered.length === 0
-  // Voir KanjiCardLoop : en 'new', attendre la vraie valeur de masteredIds
-  // avant de laisser CardLoopShell figer sa file de session.
-  const itemsReady = contentMode !== 'new' || masteredIds !== EMPTY_SET
+  const noneToReview = contentMode === 'review' && contentFiltered.length === 0
+  // Voir KanjiCardLoop : en 'new'/'review', attendre la vraie valeur de
+  // masteredIds/reviewIds avant de laisser CardLoopShell figer sa file de
+  // session.
+  const itemsReady =
+    (contentMode !== 'new' || masteredIds !== EMPTY_SET) && (contentMode !== 'review' || reviewIds !== EMPTY_SET)
 
   return (
     <CardLoopShell
@@ -81,19 +103,49 @@ export default function VocabCardLoop({
       emptyDescription={
         allMastered
           ? `Tu as déjà maîtrisé tous les mots de vocabulaire${level ? ` ${level}` : ''} disponibles pour l'instant — bravo !`
-          : `Aucun mot de vocabulaire ${level} dans le contenu disponible pour l'instant.`
+          : noneToReview
+            ? `Aucun mot de vocabulaire${level ? ` ${level}` : ''} marqué "À revoir" pour l'instant.`
+            : `Aucun mot de vocabulaire ${level} dans le contenu disponible pour l'instant.`
       }
       doneTitle="Vocabulaire passé en revue"
       doneDescription={`Tu as revu les ${vocabList.length} mots du jour.`}
+      renderWritingExtra={(vocab: VocabWord) => {
+        const kanjis = kanjisInWord(vocab.word).filter((k) => k.strokePaths.length > 0)
+        if (kanjis.length === 0) return null
+        return (
+          <>
+            {kanjis.map((kanji) => (
+              <div key={kanji.id} className="stroke-order-panel">
+                <p className="flip-card__label">Ordre des traits — {kanji.character}</p>
+                <div className="stroke-order__steps">
+                  {kanji.strokePaths.map((_, i) => (
+                    <div key={i} className="stroke-order__step">
+                      <svg viewBox="0 0 109 109">
+                        {kanji.strokePaths.slice(0, i + 1).map((d, j) => (
+                          <path key={j} d={d} />
+                        ))}
+                      </svg>
+                      <span className="stroke-order__step-number">{i + 1}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
+        )
+      }}
       renderFront={(vocab: VocabWord) => (
         <>
           <span className="word-type-badge">{TYPE_LABELS[vocab.type]}</span>
           <span className="flip-card__word">
-            {/* Mot écrit avec au moins un kanji pas encore enseigné à ce
-                niveau (ex. 挨拶 en N4, voir wordExceedsOwnLevel) : hiragana
-                affichés avant de deviner plutôt que de faire deviner un
-                kanji jamais vu. */}
-            {wordExceedsOwnLevel(vocab.word, vocab.jlptLevel) ? (
+            {/* Hiragana au recto plutôt que de faire deviner un kanji pas
+                encore enseigné à ce niveau (ex. 挨拶 en N4, voir
+                wordExceedsOwnLevel) OU pas encore maîtrisé PAR CE PROFIL
+                précisément (ex. 明るい en N5 si "明" n'a pas encore été
+                coché "Maîtrisé" dans le module Kanjis — demande explicite
+                de l'utilisatrice, voir wordHasUnmasteredKanji). */}
+            {wordExceedsOwnLevel(vocab.word, vocab.jlptLevel) ||
+            wordHasUnmasteredKanji(vocab.word, masteredKanjiIds) ? (
               <FuriganaText segments={vocab.wordSegments} />
             ) : (
               vocab.word

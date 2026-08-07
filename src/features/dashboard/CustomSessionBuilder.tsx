@@ -21,7 +21,7 @@ export default function CustomSessionBuilder({
   onStart: (
     modules: string[],
     level: string,
-    contentModes: Partial<Record<'Kanjis' | 'Vocabulaire' | 'Grammaire', 'new' | 'mix'>>,
+    contentModes: Partial<Record<'Kanjis' | 'Vocabulaire' | 'Grammaire', 'new' | 'mix' | 'review'>>,
   ) => void
 }) {
   const [level, setLevel] = useState<string | null>(null)

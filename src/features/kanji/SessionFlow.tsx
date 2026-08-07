@@ -12,16 +12,17 @@ import './SessionCard.css'
 
 const DEFAULT_MODULES = ['Kanjis']
 
-type ContentMode = 'new' | 'mix'
+type ContentMode = 'new' | 'mix' | 'review'
 
 interface SessionLocationState {
   modules?: string[]
   level?: JlptLevel
   // 'new' pour un module = ne montrer que ce qui n'est pas encore
   // "Maîtrisé" par le profil actif ; absent/'mix' = comportement historique
-  // (tout le contenu du niveau). Envoyé par la séance recommandée
+  // (tout le contenu du niveau) ; 'review' = uniquement les cartes
+  // marquées "À revoir". Envoyé par la séance recommandée
   // ('new' sur Kanjis/Vocabulaire/Grammaire) et par la séance personnalisée
-  // (reflète le choix Nouveaux/Mélange par module).
+  // (reflète le choix Nouveaux/Mélange/À revoir par module).
   contentModes?: Partial<Record<'Kanjis' | 'Vocabulaire' | 'Grammaire', ContentMode>>
   // Plafonne la taille de chaque module — seule la séance recommandée
   // l'utilise, pour proposer un lot raisonnable plutôt que tout le niveau.

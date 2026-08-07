@@ -4383,5 +4383,96 @@ iPad portrait (768×1024) et téléphone (390×700), résultats affichés
 après reconnaissance entièrement visibles sans défiler dans les deux cas
 (`resultsBottom <= windowInnerHeight` confirmé par script).
 
-Aucune erreur console à aucune étape. `npx tsc -b` clean. Pas encore
-commité/poussé.
+Aucune erreur console à aucune étape. `npx tsc -b` clean. Commité et
+poussé.
+
+## Checkpoint — vrai bug de récupération de profil trouvé, audio grammaire, mode "À revoir", hiragana+tracé personnalisés en vocabulaire
+
+Cinq demandes/signalements dans le même message.
+
+**1. "Je récupère Kurara avec son code mais rien n'est enregistré" —
+vraie cause racine trouvée.** Pas un bug de la mécanique backup/restore
+elle-même (déjà auditée à fond aux checkpoints précédents, RAS côté
+serveur). Le vrai trou : une fois `hasCloudBackup` vrai pour un profil,
+Réglages retirait ENTIÈREMENT le formulaire de sauvegarde (demande d'une
+session précédente : "pas de possibilité de créer un nouveau code") — au
+sens strict, ça voulait dire qu'il devenait impossible de RESAUVEGARDER
+après la première fois, quelle que soit la progression accumulée depuis.
+Si Kurara a sauvegardé tôt (par exemple juste après avoir créé son
+profil) puis beaucoup progressé sans jamais pouvoir remettre à jour, la
+sauvegarde restée en ligne est cette version ancienne/vide — une
+récupération plus tard "fonctionne" (aucune erreur) mais restaure cette
+progression périmée, donnant exactement l'impression de "rien
+d'enregistré". Corrigé (`Settings.tsx`) : le formulaire (code + bouton)
+reste maintenant TOUJOURS disponible, y compris quand une sauvegarde
+existe déjà — le même code doit être ressaisi pour confirmer une mise à
+jour (le serveur refuse déjà un code différent sous le même nom, voir
+`api/backup.ts`), donc aucun risque de créer accidentellement un
+second code différent. Bouton relabellisé "Mettre à jour la sauvegarde"
+quand une sauvegarde existe déjà. Vérifié en conditions réelles sur la
+prod déployée (pas juste en local) : backup initial vide → restore vide
+✓, second backup (même nom+code) AVEC progression + reviewMarks →
+restore renvoie bien la version mise à jour (pas l'ancienne) ✓, restore
+avec mauvais code → 403 ✓, backup avec un code différent sous le même
+nom → 403 ✓. Profil de diagnostic nettoyé après coup.
+**Action recommandée pour Kurara** une fois ce correctif déployé : sur
+l'appareil qui a sa vraie progression à jour, aller dans Réglages et
+cliquer "Mettre à jour la sauvegarde" avec son code habituel, PUIS
+retenter "Récupérer un profil" sur l'autre appareil.
+
+**2. Audio sur les cartes de grammaire.** Même bouton `SpeakButton` déjà
+utilisé pour kanjis/vocabulaire, ajouté dans `GrammarCardLoop.tsx` : à
+côté du motif (ex. "〜てください", romanisé different — le "〜" n'est
+qu'un espace réservé typographique jamais prononcé, retiré avant l'envoi
+à la synthèse vocale via `spokenPattern`) et à côté de chaque phrase
+d'exemple. Vérifié : "〜ことができます" → lu "ことができます" ✓, phrase
+d'exemple lue correctement ✓.
+
+**3. Mode de séance "À revoir".** Jusqu'ici, marquer une carte "À
+revoir" en séance ne laissait AUCUNE trace exploitable : `mastery` ne
+sait dire QUE "maîtrisé" (présent) ou pas (absent) — impossible de
+distinguer "jamais vu" de "vu et mis à revoir". Nouvelle table
+`reviewMarks` (v7 du schéma, voir `db.ts`) + `setMastered` (`mastery.ts`)
+qui la tient à jour : marquer "à revoir" y ajoute l'item (et le retire de
+`mastery` si besoin), marquer "maîtrisé" l'en retire. Nouvelle option
+"À revoir" dans le sélecteur Nouveaux/Mélange de la séance personnalisée
+(Kanjis/Vocabulaire/Grammaire — pas Révisions, qui a déjà sa propre
+logique cross-module), filtrant sur cette nouvelle table. `reviewMarks`
+intégré partout où les autres tables par-profil le sont déjà :
+suppression de profil, sauvegarde/récupération cloud, et nouvelle option
+"Cartes 'À revoir'" dans Réglages → Réinitialiser mes données. Vérifié
+en conditions réelles : carte 手 marquée "à revoir", carte 白 marquée
+"maîtrisé" en séance N5 Kanjis, contenu vérifié directement dans
+IndexedDB (reviewMarks contient bien seulement 手, mastery seulement 白) ;
+nouvelle séance personnalisée N5 Kanjis + "À revoir" → "1 / 1 kanjis N5"
+et c'est bien 手 qui s'affiche, exactement comme attendu.
+
+**4. "Je dois connaître les mots mais pas les kanjis ?" (明るい/赤い/青い
+en N5).** Ces kanjis sont bien classés N5 dans le programme — le critère
+"dépasse son propre niveau" (checkpoint précédent) ne les repère donc
+pas. Mais rien ne garantit qu'un profil précis les ait DÉJÀ étudiés
+individuellement dans le module Kanjis à un instant donné. Nouveau
+`wordHasUnmasteredKanji` (`kanjiLevel.ts`) : vrai si un kanji du mot
+n'est pas encore coché "Maîtrisé" par CE PROFIL, peu importe son niveau
+JLPT officiel. Combiné en OR avec `wordExceedsOwnLevel` existant, sur le
+recto des cartes de séance vocabulaire ET dans la liste Explorer.
+Vérifié en conditions réelles (profil neuf, un seul kanji maîtrisé) :
+円 (kanji pas encore maîtrisé) → hiragana affichés au recto ; après avoir
+maîtrisé plusieurs kanjis via une séance réelle, un mot dont tous les
+kanjis sont maîtrisés (ex. レジ, un mot sans kanji) reste en écriture
+normale, comme attendu.
+
+**5. Tracé des kanjis dans le module Vocabulaire.** Nouveau
+`kanjisInWord` (`kanjiLevel.ts`) : les kanjis uniques (dans l'ordre,
+dédupliqués) qui composent un mot, avec leur fiche complète. Branché sur
+`renderWritingExtra` de `VocabCardLoop.tsx` (jusqu'ici inutilisé côté
+vocabulaire) — réutilise exactement le même panneau "Ordre des traits"
+déjà construit pour les cartes Kanjis, un par kanji du mot (mots à
+plusieurs kanjis : plusieurs panneaux empilés, ex. 入り口 → 2 panneaux
+入/口). Vérifié en séance réelle : 円 → 1 panneau ("円"), 入り口 → 2
+panneaux, 朝ご飯 → 2 panneaux (dédupliqué correctement malgré 3
+caractères), 一月 → 2 panneaux, 毎年 → 2 panneaux — tous avec le bon
+tracé affiché.
+
+Aucune erreur console à aucune étape. `npx tsc -b` et
+`npx tsc -p tsconfig.api.json` clean. Pas encore commité/poussé.

@@ -1,19 +1,28 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import FuriganaText from '../../components/ui/FuriganaText'
+import SpeakButton from '../../components/ui/SpeakButton'
 import CardLoopShell from '../kanji/CardLoopShell'
 import type { JlptLevel } from '../kanji/mockKanji'
 import type { SeenItem } from '../test/buildTest'
 import { mockGrammarList, type GrammarPoint } from './mockGrammar'
 import { useProfileStore } from '../profile/profileStore'
-import { getMasteredIds, setMastered } from '../../db/mastery'
+import { getMasteredIds, setMastered, getReviewIds } from '../../db/mastery'
 import { shuffleArray } from '../../utils/shuffle'
+import { reconstructReading } from '../../utils/furigana'
+
+// "〜" n'est qu'un espace réservé typographique ("insère le radical ici",
+// ex. "〜てください") — jamais destiné à être prononcé, retiré avant de
+// confier le motif à la synthèse vocale (voir SpeakButton).
+function spokenPattern(pattern: string): string {
+  return pattern.replace(/〜/g, '')
+}
 
 const EMPTY_SET: Set<string> = new Set()
 
 interface GrammarCardLoopProps {
   level: JlptLevel | null
-  contentMode?: 'new' | 'mix'
+  contentMode?: 'new' | 'mix' | 'review'
   limit?: number
   continueLabel: string
   onDone: () => void
@@ -34,9 +43,19 @@ export default function GrammarCardLoop({
     [profileId],
     EMPTY_SET,
   )
+  const reviewIds = useLiveQuery(
+    () => (profileId ? getReviewIds(profileId, 'grammar') : Promise.resolve(EMPTY_SET)),
+    [profileId],
+    EMPTY_SET,
+  )
 
   const levelFiltered = level ? mockGrammarList.filter((g) => g.jlptLevel === level) : mockGrammarList
-  const contentFiltered = contentMode === 'new' ? levelFiltered.filter((g) => !masteredIds.has(g.id)) : levelFiltered
+  const contentFiltered =
+    contentMode === 'new'
+      ? levelFiltered.filter((g) => !masteredIds.has(g.id))
+      : contentMode === 'review'
+        ? levelFiltered.filter((g) => reviewIds.has(g.id))
+        : levelFiltered
 
   // Voir KanjiCardLoop pour le détail : mode "Mélange" mélangé aléatoirement
   // (demande utilisatrice), mémoïsé sur `level` seul.
@@ -45,9 +64,12 @@ export default function GrammarCardLoop({
   const grammarList = typeof limit === 'number' ? orderedContent.slice(0, limit) : orderedContent
 
   const allMastered = contentMode === 'new' && levelFiltered.length > 0 && contentFiltered.length === 0
-  // Voir KanjiCardLoop : en 'new', attendre la vraie valeur de masteredIds
-  // avant de laisser CardLoopShell figer sa file de session.
-  const itemsReady = contentMode !== 'new' || masteredIds !== EMPTY_SET
+  const noneToReview = contentMode === 'review' && contentFiltered.length === 0
+  // Voir KanjiCardLoop : en 'new'/'review', attendre la vraie valeur de
+  // masteredIds/reviewIds avant de laisser CardLoopShell figer sa file de
+  // session.
+  const itemsReady =
+    (contentMode !== 'new' || masteredIds !== EMPTY_SET) && (contentMode !== 'review' || reviewIds !== EMPTY_SET)
 
   return (
     <CardLoopShell
@@ -65,7 +87,9 @@ export default function GrammarCardLoop({
       emptyDescription={
         allMastered
           ? `Tu as déjà maîtrisé tous les points de grammaire${level ? ` ${level}` : ''} disponibles pour l'instant — bravo !`
-          : `Aucun point de grammaire ${level} dans le contenu disponible pour l'instant.`
+          : noneToReview
+            ? `Aucun point de grammaire${level ? ` ${level}` : ''} marqué "À revoir" pour l'instant.`
+            : `Aucun point de grammaire ${level} dans le contenu disponible pour l'instant.`
       }
       doneTitle="Grammaire passée en revue"
       doneDescription={`Tu as revu les ${grammarList.length} points de grammaire du jour.`}
@@ -79,7 +103,10 @@ export default function GrammarCardLoop({
         <>
           <div className="flip-card__back-head">
             <span className="word-type-badge">Grammaire</span>
-            <p className="flip-card__mini-word">{point.pattern}</p>
+            <p className="flip-card__mini-word">
+              {point.pattern}
+              <SpeakButton text={spokenPattern(point.pattern)} />
+            </p>
             <div className="flip-card__meanings">
               <span className="meaning-pill">{point.meaning}</span>
             </div>
@@ -102,6 +129,7 @@ export default function GrammarCardLoop({
               <li key={i} className="example-item">
                 <p className="example__jp example__jp--sentence">
                   <FuriganaText segments={ex.segments} />
+                  <SpeakButton text={reconstructReading(ex.segments)} />
                 </p>
                 <button
                   type="button"

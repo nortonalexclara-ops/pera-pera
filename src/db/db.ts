@@ -96,6 +96,23 @@ export interface TimeSpentRecord {
   seconds: number
 }
 
+// Un kanji/mot/point de grammaire marqué "À revoir" en séance (voir
+// setMastered) — jusqu'ici, cette décision ne laissait aucune trace :
+// `mastery` ne sait dire QUE "maîtrisé" (présent) ou pas (absent), donc
+// impossible de distinguer "jamais vu" de "vu et mis à revoir". Table
+// séparée plutôt qu'un statut sur `mastery` : un item peut passer de
+// "à revoir" à "maîtrisé" (et inversement), les deux tables restent
+// mutuellement exclusives par construction (voir setMastered). Sert au
+// mode "À revoir" de la séance personnalisée (Kanjis/Vocabulaire/
+// Grammaire), demande explicite de l'utilisatrice.
+export interface ReviewMarkRecord {
+  id?: number
+  profileId: string
+  kind: ItemKind
+  itemId: string
+  markedAt: number
+}
+
 class PeraPeraDB extends Dexie {
   profiles!: Table<ProfileRecord, string>
   mastery!: Table<MasteryRecord, number>
@@ -104,6 +121,7 @@ class PeraPeraDB extends Dexie {
   favorites!: Table<FavoriteRecord, number>
   profileSettings!: Table<ProfileSettingsRecord, string>
   timeSpent!: Table<TimeSpentRecord, number>
+  reviewMarks!: Table<ReviewMarkRecord, number>
 
   constructor() {
     super('pera-pera')
@@ -158,6 +176,18 @@ class PeraPeraDB extends Dexie {
       favorites: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
       profileSettings: 'profileId',
       timeSpent: '++id, [profileId+date], profileId',
+    })
+    // v7 : ajout du marquage "À revoir" (indépendant de mastery — voir
+    // ReviewMarkRecord), pour un mode de séance dédié.
+    this.version(7).stores({
+      profiles: 'id',
+      mastery: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      notes: 'id, profileId, updatedAt',
+      activity: '++id, [profileId+date], profileId',
+      favorites: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      profileSettings: 'profileId',
+      timeSpent: '++id, [profileId+date], profileId',
+      reviewMarks: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
     })
   }
 }

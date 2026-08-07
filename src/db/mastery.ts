@@ -10,10 +10,36 @@ export async function setMastered(profileId: string, kind: ItemKind, itemId: str
   if (!profileId) return
   const existing = await db.mastery.where({ profileId, kind, itemId }).first()
   if (decision === 'mastered') {
-    if (existing) return
-    await db.mastery.add({ profileId, kind, itemId, masteredAt: Date.now() })
-  } else if (existing?.id !== undefined) {
-    await db.mastery.delete(existing.id)
+    if (!existing) await db.mastery.add({ profileId, kind, itemId, masteredAt: Date.now() })
+    // Un item maîtrisé n'a plus de raison de rester marqué "à revoir" —
+    // voir ReviewMarkRecord (db.ts) : les deux tables restent mutuellement
+    // exclusives.
+    await db.reviewMarks.where({ profileId, kind, itemId }).delete()
+    return
+  }
+  if (existing?.id !== undefined) await db.mastery.delete(existing.id)
+  const existingReview = await db.reviewMarks.where({ profileId, kind, itemId }).first()
+  if (existingReview?.id !== undefined) {
+    await db.reviewMarks.update(existingReview.id, { markedAt: Date.now() })
+  } else {
+    await db.reviewMarks.add({ profileId, kind, itemId, markedAt: Date.now() })
+  }
+}
+
+export async function getReviewIds(profileId: string, kind: ItemKind): Promise<Set<string>> {
+  if (!profileId) return new Set()
+  const rows = await db.reviewMarks.where({ profileId, kind }).toArray()
+  return new Set(rows.map((r) => r.itemId))
+}
+
+export async function resetReviewMarks(profileId: string, kinds?: ItemKind[]): Promise<void> {
+  if (!profileId) return
+  if (!kinds || kinds.length === 0) {
+    await db.reviewMarks.where({ profileId }).delete()
+    return
+  }
+  for (const kind of kinds) {
+    await db.reviewMarks.where({ profileId, kind }).delete()
   }
 }
 

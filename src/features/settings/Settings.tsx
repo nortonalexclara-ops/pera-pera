@@ -6,7 +6,7 @@ import { Trash2, Check, AlertTriangle, CloudUpload, CheckCheck, Volume2 } from '
 import PageTransition from '../../components/ui/PageTransition'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import { useProfileStore } from '../profile/profileStore'
-import { resetMastery, bulkMarkMastered, getMasteredIds } from '../../db/mastery'
+import { resetMastery, bulkMarkMastered, getMasteredIds, resetReviewMarks } from '../../db/mastery'
 import { resetActivity } from '../../db/activity'
 import { resetNotes } from '../../db/notes'
 import { resetFavorites } from '../../db/favorites'
@@ -44,7 +44,7 @@ function itemIdsFor(kind: ItemKind, level: JlptLevel): string[] {
   return mockGrammarList.filter((g) => g.jlptLevel === level).map((g) => g.id)
 }
 
-type ResetOption = 'kanji' | 'vocab' | 'grammar' | 'streak' | 'notes' | 'favorites' | 'timeSpent'
+type ResetOption = 'kanji' | 'vocab' | 'grammar' | 'streak' | 'notes' | 'favorites' | 'timeSpent' | 'reviewMarks'
 
 const RESET_OPTIONS: { key: ResetOption; label: string; description: string }[] = [
   { key: 'kanji', label: 'Progression Kanjis', description: 'Retire "Maîtrisé" de tous les kanjis de ce profil.' },
@@ -54,6 +54,7 @@ const RESET_OPTIONS: { key: ResetOption; label: string; description: string }[] 
   { key: 'notes', label: 'Notes personnelles', description: 'Supprime toutes les notes du Cahier de notes.' },
   { key: 'favorites', label: 'Favoris', description: 'Retire tous les kanjis/mots/points de grammaire mis en favori.' },
   { key: 'timeSpent', label: 'Temps passé', description: 'Efface l\'historique du temps passé en séance jour par jour.' },
+  { key: 'reviewMarks', label: 'Cartes "À revoir"', description: 'Retire la marque "À revoir" de tous les kanjis/mots/points de grammaire.' },
 ]
 
 /**
@@ -152,6 +153,7 @@ export default function Settings() {
     if (selected.has('notes')) await resetNotes(profileId)
     if (selected.has('favorites')) await resetFavorites(profileId)
     if (selected.has('timeSpent')) await resetTimeSpent(profileId)
+    if (selected.has('reviewMarks')) await resetReviewMarks(profileId)
     setSelected(new Set())
     setConfirming(false)
     setBusy(false)
@@ -219,53 +221,65 @@ export default function Settings() {
         <section className="settings-card">
           <h2 className="settings-card__title">Retrouver mon profil sur un autre appareil</h2>
 
-          {hasCloudBackup ? (
+          {hasCloudBackup && (
             <p className="settings-card__hint">
               <Check size={15} strokeWidth={2} className="settings-card__hint-icon" />
               Code déjà enregistré pour {profileName ?? 'ce profil'}. Utilise-le avec "Récupérer un profil" sur l'autre
               appareil.
             </p>
-          ) : (
-            <>
-              <p className="settings-card__hint">
-                Choisis un code à 4 chiffres pour {profileName ?? 'ce profil'}, puis sauvegarde. Sur l'autre appareil,
-                choisis "Récupérer un profil" depuis l'écran de sélection, avec le même nom et le même code.
-              </p>
-
-              <div className="pin-row">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={4}
-                  placeholder="Code à 4 chiffres"
-                  className="pin-input"
-                  value={pin}
-                  onChange={(e) => {
-                    setPin(e.target.value.replace(/\D/g, '').slice(0, 4))
-                    setBackupResult(null)
-                  }}
-                />
-                <button
-                  type="button"
-                  className="btn-primary"
-                  disabled={!/^\d{4}$/.test(pin) || backupBusy}
-                  onClick={handleBackup}
-                >
-                  <CloudUpload size={16} strokeWidth={1.75} />
-                  {backupBusy ? 'Sauvegarde…' : 'Sauvegarder en ligne'}
-                </button>
-              </div>
-
-              {backupResult === 'ok' && (
-                <p className="reset-done">
-                  <Check size={15} strokeWidth={2} />
-                  Profil sauvegardé — utilise ce nom et ce code sur l'autre appareil.
-                </p>
-              )}
-              {backupResult && backupResult !== 'ok' && <p className="settings-error">{backupResult}</p>}
-            </>
           )}
+
+          {/* La sauvegarde est un instantané, pas une synchronisation
+              continue — sans un moyen de la remettre à jour, une
+              sauvegarde faite tôt (ex. juste après avoir créé le profil)
+              devient de plus en plus périmée à mesure que la vraie
+              progression avance ailleurs, et une récupération plus tard
+              donne l'impression que "rien n'est enregistré" alors que la
+              sauvegarde elle-même a fonctionné — juste avec une
+              progression bien plus ancienne que celle attendue (bug
+              signalé par l'utilisatrice, retracé à cette impossibilité de
+              remettre à jour). Le même code déjà choisi doit être ressaisi
+              pour confirmer que c'est bien la même personne qui met à
+              jour, pas quelqu'un qui tente de réutiliser ce nom avec un
+              autre code (déjà refusé côté serveur, voir api/backup.ts). */}
+          <p className="settings-card__hint">
+            {hasCloudBackup
+              ? `Tu as progressé depuis ? Ressaisis le même code pour mettre à jour la sauvegarde de ${profileName ?? 'ce profil'} avec ta progression actuelle.`
+              : `Choisis un code à 4 chiffres pour ${profileName ?? 'ce profil'}, puis sauvegarde. Sur l'autre appareil, choisis "Récupérer un profil" depuis l'écran de sélection, avec le même nom et le même code.`}
+          </p>
+
+          <div className="pin-row">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={4}
+              placeholder="Code à 4 chiffres"
+              className="pin-input"
+              value={pin}
+              onChange={(e) => {
+                setPin(e.target.value.replace(/\D/g, '').slice(0, 4))
+                setBackupResult(null)
+              }}
+            />
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!/^\d{4}$/.test(pin) || backupBusy}
+              onClick={handleBackup}
+            >
+              <CloudUpload size={16} strokeWidth={1.75} />
+              {backupBusy ? 'Sauvegarde…' : hasCloudBackup ? 'Mettre à jour la sauvegarde' : 'Sauvegarder en ligne'}
+            </button>
+          </div>
+
+          {backupResult === 'ok' && (
+            <p className="reset-done">
+              <Check size={15} strokeWidth={2} />
+              {hasCloudBackup ? 'Sauvegarde mise à jour.' : 'Profil sauvegardé — utilise ce nom et ce code sur l\'autre appareil.'}
+            </p>
+          )}
+          {backupResult && backupResult !== 'ok' && <p className="settings-error">{backupResult}</p>}
         </section>
 
         <section className="settings-card">
