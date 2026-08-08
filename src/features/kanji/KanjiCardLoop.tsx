@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Bookmark } from 'lucide-react'
 import FuriganaText from '../../components/ui/FuriganaText'
 import SpeakButton from '../../components/ui/SpeakButton'
 import CardLoopShell from './CardLoopShell'
@@ -7,9 +8,10 @@ import type { SeenItem } from '../test/buildTest'
 import { mockKanjiList, type JlptLevel, type Kanji } from './mockKanji'
 import { useProfileStore } from '../profile/profileStore'
 import { getMasteredIds, setMastered, getReviewIds } from '../../db/mastery'
+import { toggleSavedWord, getSavedWordTexts } from '../../db/savedWords'
 import { shuffleArray } from '../../utils/shuffle'
 import { toSpokenKanjiReading } from '../../utils/speech'
-import { reconstructReading } from '../../utils/furigana'
+import { reconstructReading, reconstructText } from '../../utils/furigana'
 
 const EMPTY_SET: Set<string> = new Set()
 
@@ -48,11 +50,19 @@ export default function KanjiCardLoop({
     [profileId],
     EMPTY_SET,
   )
+  // Mots exemples déjà sauvegardés ("Mots", pas "Phrases" — voir plus bas)
+  // — se re-lit tout seul via useLiveQuery dès que toggleSavedWord touche
+  // la table, pour que l'icône marque-page reflète l'état réel.
+  const savedWordTexts = useLiveQuery(
+    () => (profileId ? getSavedWordTexts(profileId) : Promise.resolve(EMPTY_SET)),
+    [profileId],
+    EMPTY_SET,
+  )
 
   const levelFiltered = level ? mockKanjiList.filter((k) => k.jlptLevel === level) : mockKanjiList
   const contentFiltered =
     contentMode === 'new'
-      ? levelFiltered.filter((k) => !masteredIds.has(k.id))
+      ? levelFiltered.filter((k) => !masteredIds.has(k.id) && !reviewIds.has(k.id))
       : contentMode === 'review'
         ? levelFiltered.filter((k) => reviewIds.has(k.id))
         : levelFiltered
@@ -179,21 +189,43 @@ export default function KanjiCardLoop({
             <div className="examples-col">
               <p className="flip-card__label">Mots</p>
               <ul className="example-list">
-                {kanji.frequentWords.map((w, i) => (
-                  <li key={i} className="example-item">
-                    <p className="example__jp">
-                      <FuriganaText segments={w.segments} />
-                      <SpeakButton text={reconstructReading(w.segments)} />
-                    </p>
-                    <button
-                      type="button"
-                      className={`example__translation${revealed.has(i) ? ' is-revealed' : ''}`}
-                      onClick={() => toggleReveal(i)}
-                    >
-                      {revealed.has(i) ? w.meaning : 'Toucher pour révéler'}
-                    </button>
-                  </li>
-                ))}
+                {kanji.frequentWords.map((w, i) => {
+                  const text = reconstructText(w.segments)
+                  const isSaved = savedWordTexts.has(text)
+                  return (
+                    <li key={i} className="example-item">
+                      <div className="example-item__row">
+                        <p className="example__jp">
+                          <FuriganaText segments={w.segments} />
+                          <SpeakButton text={reconstructReading(w.segments)} />
+                        </p>
+                        {/* "Si je vois un mot que j'aime pendant la séance"
+                            (demande utilisatrice) — sur les mots exemples
+                            d'un kanji, pas sur le kanji lui-même. Consultable
+                            ensuite depuis Notes (voir NotesList.tsx). */}
+                        <button
+                          type="button"
+                          className={`example-save-btn${isSaved ? ' is-saved' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (profileId)
+                              toggleSavedWord(profileId, text, reconstructReading(w.segments), w.meaning, kanji.character)
+                          }}
+                          title={isSaved ? 'Retirer de ma liste de mots à revoir' : 'Ajouter à ma liste de mots à revoir'}
+                        >
+                          <Bookmark size={16} strokeWidth={2} fill={isSaved ? 'currentColor' : 'none'} />
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        className={`example__translation${revealed.has(i) ? ' is-revealed' : ''}`}
+                        onClick={() => toggleReveal(i)}
+                      >
+                        {revealed.has(i) ? w.meaning : 'Toucher pour révéler'}
+                      </button>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
 

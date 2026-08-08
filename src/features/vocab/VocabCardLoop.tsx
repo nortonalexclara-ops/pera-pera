@@ -64,11 +64,10 @@ export default function VocabCardLoop({
     [profileId],
     EMPTY_SET,
   )
-
   const levelFiltered = level ? mockVocabList.filter((w) => w.jlptLevel === level) : mockVocabList
   const contentFiltered =
     contentMode === 'new'
-      ? levelFiltered.filter((w) => !masteredIds.has(w.id))
+      ? levelFiltered.filter((w) => !masteredIds.has(w.id) && !reviewIds.has(w.id))
       : contentMode === 'review'
         ? levelFiltered.filter((w) => reviewIds.has(w.id))
         : levelFiltered

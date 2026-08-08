@@ -15,7 +15,7 @@ import { getAllFavoriteIds, toggleFavorite as toggleFavoriteDb } from '../../db/
 import type { ItemKind } from '../../db/db'
 import { buildExplorerItems, normalizeSearch, type ExplorerItem } from './buildExplorerItems'
 import KanjiPracticeBox from './KanjiPracticeBox'
-import { reconstructReading } from '../../utils/furigana'
+import { reconstructReading, reconstructText } from '../../utils/furigana'
 import { toSpokenKanjiReading } from '../../utils/speech'
 import { wordExceedsOwnLevel, wordHasUnmasteredKanji } from '../../utils/kanjiLevel'
 // Réutilise les classes partagées (meaning-pill, conjugation-grid,
@@ -65,13 +65,6 @@ function isVocab(data: ExplorerItem['data']): data is VocabWord {
 }
 function isGrammar(data: ExplorerItem['data']): data is GrammarPoint {
   return 'pattern' in data && 'rule' in data
-}
-
-// Texte brut (sans furigana) d'un mot segmenté — sert à rebondir vers sa
-// propre fiche (ex. 安全 depuis la liste "Mots fréquents" de 安), pas à
-// l'affichage (voir FuriganaText pour ça).
-function segmentsToText(segments: { text: string }[]): string {
-  return segments.map((s) => s.text).join('')
 }
 
 export default function Explorer() {
@@ -457,7 +450,7 @@ function KanjiDetail({ kanji, onExampleClick }: { kanji: Kanji; onExampleClick: 
             <button
               type="button"
               className="explorer-detail__example-link"
-              onClick={() => onExampleClick(segmentsToText(w.segments))}
+              onClick={() => onExampleClick(reconstructText(w.segments))}
               title="Ouvrir ce mot dans Explorer"
             >
               <span className="example__jp">

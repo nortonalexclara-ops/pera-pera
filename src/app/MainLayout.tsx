@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Home, BookOpen, ScanSearch, StickyNote, BarChart3, Settings, Sun, Moon, Type } from 'lucide-react'
 import { useProfileStore } from '../features/profile/profileStore'
 import { avatarGradients } from '../features/profile/mockProfiles'
@@ -17,11 +18,29 @@ const TABS = [
 
 export default function MainLayout() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const contentRef = useRef<HTMLElement>(null)
   const activeProfileName = useProfileStore((s) => s.activeProfileName)
   const activeProfileColorIndex = useProfileStore((s) => s.activeProfileColorIndex)
   const [from, to] = avatarGradients[(activeProfileColorIndex ?? 0) % avatarGradients.length]
   const theme = useThemeStore((s) => s.theme)
   const toggleTheme = useThemeStore((s) => s.toggleTheme)
+
+  // Signalé sur iPhone : en changeant de page (ex. vers Reconnaissance de
+  // kanji), on arrivait parfois déjà scrollé en bas de la nouvelle page
+  // (le texte du haut hors champ) au lieu de démarrer en haut. `<Outlet/>`
+  // change le contenu DANS le même `<main>` sans jamais réinitialiser le
+  // défilement tout seul. `.main-layout` n'a qu'un `min-height: 100vh`
+  // (pas de hauteur fixe) : sur une page dont le contenu dépasse l'écran,
+  // c'est la fenêtre elle-même qui défile (`window`/`document`), pas
+  // `.main-layout__content` (son `overflow-y: auto` ne s'active jamais
+  // vraiment puisque sa hauteur grandit avec son contenu). On réinitialise
+  // donc le scroll de la fenêtre — et, par précaution, celui du conteneur
+  // lui-même au cas où une page future serait mise en page différemment.
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    contentRef.current?.scrollTo(0, 0)
+  }, [location.pathname])
 
   return (
     <div className="main-layout">
@@ -59,7 +78,7 @@ export default function MainLayout() {
         ))}
       </nav>
 
-      <main className="main-layout__content">
+      <main className="main-layout__content" ref={contentRef}>
         <Outlet />
       </main>
     </div>

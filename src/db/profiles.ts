@@ -49,6 +49,7 @@ export async function deleteProfile(profileId: string): Promise<void> {
       db.timeSpent,
       db.profileSettings,
       db.reviewMarks,
+      db.savedWords,
     ],
     async () => {
       await db.profiles.delete(profileId)
@@ -59,6 +60,7 @@ export async function deleteProfile(profileId: string): Promise<void> {
       await db.timeSpent.where({ profileId }).delete()
       await db.profileSettings.delete(profileId)
       await db.reviewMarks.where({ profileId }).delete()
+      await db.savedWords.where({ profileId }).delete()
     },
   )
 }

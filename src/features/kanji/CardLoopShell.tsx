@@ -271,7 +271,7 @@ export default function CardLoopShell<T>({
               disabled={index === 0}
               title="Carte précédente"
             >
-              <ChevronLeft size={20} strokeWidth={2} />
+              <ChevronLeft size={28} strokeWidth={2} />
             </button>
           )}
           <div className="flip-card__inner">
@@ -292,7 +292,7 @@ export default function CardLoopShell<T>({
               disabled={index >= maxIndexSeen}
               title="Carte suivante"
             >
-              <ChevronRight size={20} strokeWidth={2} />
+              <ChevronRight size={28} strokeWidth={2} />
             </button>
           )}
         </div>

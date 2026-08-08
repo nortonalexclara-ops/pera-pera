@@ -90,46 +90,49 @@
 
 /* Navigation carte précédente/suivante — déplacées du haut de l'écran
    (trop près du "Retour au dashboard" de l'en-tête, source de confusion
-   signalée par l'utilisatrice) au milieu des bords gauche/droit de la
-   carte elle-même, façon flèches de carrousel. "Suivante" ne sert que
-   pour rejouer une carte déjà vue après être revenu en arrière (voir
-   goForward, CardLoopShell.tsx) — jamais pour avancer sur une carte pas
-   encore décidée, donc grisée dès qu'on est déjà au plus loin atteint.
-   Légèrement à cheval sur le bord de la carte plutôt que dessus, pour ne
-   jamais couvrir son contenu (kanji/mot au recto, texte au verso). */
+   signalée par l'utilisatrice) sur toute la hauteur des bords gauche/
+   droit de la carte elle-même, façon rails de carrousel (demande
+   utilisatrice : bouton plus grand, en rectangle, faisant toute la
+   longueur de la carte). "Suivante" ne sert que pour rejouer une carte
+   déjà vue après être revenu en arrière (voir goForward,
+   CardLoopShell.tsx) — jamais pour avancer sur une carte pas encore
+   décidée, donc grisée dès qu'on est déjà au plus loin atteint. Fond
+   transparent par défaut (seule la flèche se voit, pas de bloc plein qui
+   couperait visuellement la carte en trois) — un fond apparaît juste au
+   survol/tap pour matérialiser toute la zone cliquable. */
 .session__nav-btn {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
+  bottom: 0;
   z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  box-shadow: var(--shadow-sm);
+  width: 56px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .session__nav-btn--prev {
-  left: -16px;
+  left: 0;
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
 }
 
 .session__nav-btn--next {
-  right: -16px;
+  right: 0;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
 }
 
 .session__nav-btn:hover:not(:disabled) {
+  background: var(--color-bg);
   color: var(--color-text-primary);
 }
 
 .session__nav-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: default;
 }
 
@@ -265,6 +268,42 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
   padding: 4px 12px;
+}
+
+/* Marque-page sur un mot exemple d'un kanji (liste "Mots" uniquement, pas
+   "Phrases" — voir KanjiCardLoop.tsx) — "si je vois un mot que j'aime
+   pendant la séance" (demande utilisatrice), consultable ensuite depuis
+   Notes (voir NotesList.tsx). `.example-item__row` met le texte JP et le
+   bouton côte à côte SANS toucher `.example-item`/`.example__jp` (classes
+   partagées avec Vocabulaire/Grammaire, qui n'ont pas ce bouton). */
+.example-item__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.example-save-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-top: 6px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.example-save-btn:hover {
+  color: var(--color-accent-dark);
+}
+
+.example-save-btn.is-saved {
+  color: var(--color-accent-dark);
 }
 
 /* Dos de la carte — kanji/mot/motif centré en haut, traduction centrée
@@ -840,22 +879,11 @@ rt {
     gap: var(--space-sm);
   }
 
-  /* "Le titre et la flèche pour retourner à la carte d'avant" (demande
-     utilisateur) — rétréci pour laisser plus de hauteur à la carte
-     elle-même et à la colonne d'écriture, qui se partagent le reste de
-     l'écran. Décalage réduit aussi (moins de marge disponible de part et
-     d'autre de la carte sur un écran étroit). */
+  /* Bandes de navigation resserrées sur petit écran (moins de largeur
+     disponible de part et d'autre du contenu de la carte), mais toujours
+     pleine hauteur et toujours plus larges qu'un simple bouton rond. */
   .session__nav-btn {
-    width: 30px;
-    height: 30px;
-  }
-
-  .session__nav-btn--prev {
-    left: -8px;
-  }
-
-  .session__nav-btn--next {
-    right: -8px;
+    width: 40px;
   }
 
   .session__level-counter {

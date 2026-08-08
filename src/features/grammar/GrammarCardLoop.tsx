@@ -52,7 +52,7 @@ export default function GrammarCardLoop({
   const levelFiltered = level ? mockGrammarList.filter((g) => g.jlptLevel === level) : mockGrammarList
   const contentFiltered =
     contentMode === 'new'
-      ? levelFiltered.filter((g) => !masteredIds.has(g.id))
+      ? levelFiltered.filter((g) => !masteredIds.has(g.id) && !reviewIds.has(g.id))
       : contentMode === 'review'
         ? levelFiltered.filter((g) => reviewIds.has(g.id))
         : levelFiltered

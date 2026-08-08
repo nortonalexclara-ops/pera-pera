@@ -63,7 +63,7 @@ export default function KanaCardLoop({ scripts, contentMode = 'mix', continueLab
   const scriptFiltered = useMemo(() => ALL_KANA.filter((k) => scripts.includes(k.script)), [scripts.join(',')])
   const contentFiltered =
     contentMode === 'new'
-      ? scriptFiltered.filter((k) => !masteredIds.has(k.id))
+      ? scriptFiltered.filter((k) => !masteredIds.has(k.id) && !reviewIds.has(k.id))
       : contentMode === 'review'
         ? scriptFiltered.filter((k) => reviewIds.has(k.id))
         : scriptFiltered

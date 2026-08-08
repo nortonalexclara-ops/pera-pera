@@ -153,7 +153,16 @@ export default function TestKnowledge() {
   }
 
   const promptText = question.direction === 'jp-to-fr' ? question.item.prompt : question.item.meanings[0]
-  const promptHint = question.direction === 'jp-to-fr' ? 'Quelle est la traduction ?' : 'Écris ce mot en japonais'
+  // "Écris ce mot..." n'a plus de sens maintenant que le test est
+  // quasi-toujours en QCM (demande utilisatrice) — ne s'affiche que sur le
+  // repli "write" (pool à un seul item, voir buildQuestions), le reste du
+  // temps c'est "clique sur la bonne réponse" qui décrit vraiment l'action.
+  const promptHint =
+    question.direction === 'jp-to-fr'
+      ? 'Quelle est la traduction ?'
+      : question.mode === 'qcm'
+        ? 'Quel est ce mot en japonais ?'
+        : 'Écris ce mot en japonais'
   const writePlaceholder = question.direction === 'jp-to-fr' ? 'Traduction en français' : 'Mot en japonais ou lecture'
   const correctOptionForQcm = question.direction === 'jp-to-fr' ? question.item.meanings[0] : question.item.prompt
 

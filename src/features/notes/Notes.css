@@ -17,6 +17,77 @@
   max-width: 480px;
 }
 
+/* Mots sauvegardés en séance (voir VocabCardLoop.tsx) — bloc à part,
+   au-dessus des notes libres : ce n'est pas une note comme les autres
+   (pas de titre/texte/dessin à éditer), juste une liste à parcourir puis
+   cliquer pour retrouver la fiche complète dans Explorer. */
+.saved-words {
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.saved-words__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-sm);
+}
+
+.saved-words__list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.saved-words__item {
+  display: flex;
+  align-items: stretch;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.saved-words__word {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 8px 6px 8px 16px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.saved-words__meaning {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.saved-words__remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.saved-words__remove:hover {
+  color: var(--color-danger);
+}
+
 .notes-list__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));

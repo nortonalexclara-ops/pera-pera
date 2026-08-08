@@ -121,6 +121,29 @@ a:focus-visible {
   box-shadow: none;
 }
 
+/* Action secondaire mise en avant (ex. "Tester mes connaissances" à côté
+   de "Commencer") — plus visible qu'un `.btn-link` (contour, pas juste du
+   texte) mais sans rivaliser avec `.btn-primary` (pas de fond plein). */
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  color: var(--color-accent-dark);
+  border: 1.5px solid var(--color-accent);
+  border-radius: var(--radius-pill);
+  padding: 13px 24px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.btn-outline:hover {
+  background: var(--color-accent-soft);
+  transform: translateY(-1px);
+}
+
 /* Action destructive (ex. réinitialiser des données) — même gabarit que
    `.btn-primary`, teinte danger plutôt qu'accent, pour rester cohérent
    visuellement sans faire passer une suppression pour une action neutre. */

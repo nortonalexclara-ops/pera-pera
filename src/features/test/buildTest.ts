@@ -189,17 +189,18 @@ export function buildTestPoolFromSeen(seenItems: SeenItem[]): TestItem[] {
 }
 
 /**
- * Une question par item du pool, mélangé, avec un sens (JP→FR / FR→JP) et
- * un format de réponse (écrire / QCM) tirés au sort pour chacune — "plusieurs
- * genres de test" plutôt qu'un format unique répété.
+ * Une question par item du pool, mélangée, avec un sens (JP→FR / FR→JP)
+ * tiré au sort pour chacune. Toujours en QCM (demande explicite de
+ * l'utilisatrice : écrire la réponse est trop pénible) — seul repli sur
+ * "write" quand le pool n'a qu'un seul item, où un QCM n'a pas de sens
+ * (impossible de construire ne serait-ce qu'un leurre).
  */
 export function buildQuestions(pool: TestItem[]): TestQuestion[] {
   const shuffledPool = shuffle(pool)
 
   return shuffledPool.map((item) => {
     const direction: Direction = Math.random() < 0.5 ? 'jp-to-fr' : 'fr-to-jp'
-    // QCM impossible/dénué de sens avec moins de 2 items dans le pool.
-    const mode: Mode = pool.length >= 2 && Math.random() < 0.5 ? 'qcm' : 'write'
+    const mode: Mode = pool.length >= 2 ? 'qcm' : 'write'
 
     const correctAnswer =
       direction === 'jp-to-fr'

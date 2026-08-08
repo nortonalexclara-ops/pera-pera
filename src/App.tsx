@@ -13,6 +13,7 @@ import SessionFlow from './features/kanji/SessionFlow'
 import TestKnowledge from './features/test/TestKnowledge'
 import KanaSetup from './features/kana/KanaSetup'
 import KanaSession from './features/kana/KanaSession'
+import KanaTest from './features/kana/KanaTest'
 import { useThemeStore } from './features/theme/themeStore'
 
 // Écrans "plein écran" (sans barre de navigation) : sélection de profil,
@@ -31,6 +32,7 @@ export default function App() {
       <Route path="/session" element={<SessionFlow />} />
       <Route path="/session/test" element={<TestKnowledge />} />
       <Route path="/session/kana" element={<KanaSession />} />
+      <Route path="/session/kana/test" element={<KanaTest />} />
 
       {/* Écrans accessibles depuis la barre d'onglets */}
       <Route element={<MainLayout />}>

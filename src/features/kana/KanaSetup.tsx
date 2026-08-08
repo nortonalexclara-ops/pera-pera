@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ListChecks } from 'lucide-react'
 import ChoiceButtonGroup from '../../components/ui/ChoiceButtonGroup'
 import PageTransition from '../../components/ui/PageTransition'
 import AmbientGlow from '../../components/ui/AmbientGlow'
-import { CONTENT_OPTIONS, CONTENT_TO_MODE } from '../dashboard/sessionOptions'
+import { CONTENT_OPTIONS, CONTENT_TO_MODE, DEFAULT_CONTENT_OPTION } from '../dashboard/sessionOptions'
 import type { KanaScript } from './mockKana'
 // Réutilise les classes déjà construites pour la séance personnalisée
 // (étiquettes, bouton principal) — même esprit d'écran, pas de nouveau
@@ -32,12 +32,19 @@ const SCRIPT_TO_VALUE: Record<string, KanaScript[]> = {
 export default function KanaSetup() {
   const navigate = useNavigate()
   const [script, setScript] = useState(SCRIPT_OPTIONS[0])
-  const [content, setContent] = useState(CONTENT_OPTIONS[1])
+  const [content, setContent] = useState(DEFAULT_CONTENT_OPTION)
 
   function handleStart() {
     navigate('/session/kana', {
       state: { scripts: SCRIPT_TO_VALUE[script], contentMode: CONTENT_TO_MODE[content] },
     })
+  }
+
+  // Test QCM direct sur le syllabaire choisi, sans passer par une séance
+  // d'apprentissage au préalable (demande explicite de l'utilisatrice :
+  // "hiragana > test" ou "katakana > test" sélectionnable directement).
+  function handleTest() {
+    navigate('/session/kana/test', { state: { scripts: SCRIPT_TO_VALUE[script] } })
   }
 
   return (
@@ -60,6 +67,10 @@ export default function KanaSetup() {
           <button type="button" className="btn-primary hero-card__cta" onClick={handleStart}>
             Commencer
             <ArrowRight size={17} strokeWidth={2} />
+          </button>
+          <button type="button" className="btn-outline hero-card__cta" onClick={handleTest}>
+            Tester mes connaissances
+            <ListChecks size={17} strokeWidth={2} />
           </button>
         </div>
       </div>

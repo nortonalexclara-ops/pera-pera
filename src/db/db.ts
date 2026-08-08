@@ -113,6 +113,30 @@ export interface ReviewMarkRecord {
   markedAt: number
 }
 
+// Mot exemple sauvegardé pendant une séance de Kanjis ("j'aime ce mot, je
+// veux le revoir après" — voir la liste "Mots" de KanjiCardLoop.tsx)
+// — distinct de `FavoriteRecord` (marqué depuis Explorer, sert de filtre
+// de recherche) : celui-ci alimente une liste dédiée affichée dans Notes,
+// pensée pour être parcourue après coup. Stocké en texte plutôt qu'en
+// `kind`/`itemId` (contrairement à mastery/favorites/reviewMarks) : ces
+// mots exemples sont des extraits intégrés à la fiche du kanji
+// (`Kanji.frequentWords`, voir mockKanji.ts), sans identifiant de
+// catalogue propre à référencer.
+export interface SavedWordRecord {
+  id?: number
+  profileId: string
+  word: string
+  reading: string
+  meaning: string
+  // Caractère du kanji dont ce mot est un exemple d'usage — beaucoup de
+  // ces mots (illustratifs, choisis pour montrer le kanji en contexte)
+  // n'ont pas de fiche à eux dans le catalogue de vocabulaire. Sert de
+  // repli fiable pour "cliquer et arriver sur la fiche" (voir
+  // NotesList.tsx) : le kanji, lui, existe toujours dans Explorer.
+  kanjiChar: string
+  savedAt: number
+}
+
 class PeraPeraDB extends Dexie {
   profiles!: Table<ProfileRecord, string>
   mastery!: Table<MasteryRecord, number>
@@ -122,6 +146,7 @@ class PeraPeraDB extends Dexie {
   profileSettings!: Table<ProfileSettingsRecord, string>
   timeSpent!: Table<TimeSpentRecord, number>
   reviewMarks!: Table<ReviewMarkRecord, number>
+  savedWords!: Table<SavedWordRecord, number>
 
   constructor() {
     super('pera-pera')
@@ -188,6 +213,21 @@ class PeraPeraDB extends Dexie {
       profileSettings: 'profileId',
       timeSpent: '++id, [profileId+date], profileId',
       reviewMarks: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+    })
+    // v8 : ajout des mots exemples sauvegardés en séance (voir
+    // SavedWordRecord), liste dédiée affichée dans Notes. Index sur
+    // [profileId+word] (pas [profileId+kind+itemId], voir SavedWordRecord)
+    // pour retrouver/dédoublonner par le texte du mot lui-même.
+    this.version(8).stores({
+      profiles: 'id',
+      mastery: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      notes: 'id, profileId, updatedAt',
+      activity: '++id, [profileId+date], profileId',
+      favorites: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      profileSettings: 'profileId',
+      timeSpent: '++id, [profileId+date], profileId',
+      reviewMarks: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      savedWords: '++id, [profileId+word], profileId',
     })
   }
 }

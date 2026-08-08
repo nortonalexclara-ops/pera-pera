@@ -18,10 +18,11 @@ export interface ProfileBackupPayload {
   kanjiGoal: number
   timeSpent: { date: string; seconds: number }[]
   reviewMarks: { kind: ItemKind; itemId: string; markedAt: number }[]
+  savedWords: { word: string; reading: string; meaning: string; kanjiChar: string; savedAt: number }[]
 }
 
 export async function exportProfileData(profileId: string): Promise<ProfileBackupPayload> {
-  const [mastery, activity, notes, favorites, kanjiGoal, timeSpent, reviewMarks] = await Promise.all([
+  const [mastery, activity, notes, favorites, kanjiGoal, timeSpent, reviewMarks, savedWords] = await Promise.all([
     db.mastery.where({ profileId }).toArray(),
     db.activity.where({ profileId }).toArray(),
     db.notes.where({ profileId }).toArray(),
@@ -29,6 +30,7 @@ export async function exportProfileData(profileId: string): Promise<ProfileBacku
     getKanjiGoal(profileId),
     db.timeSpent.where({ profileId }).toArray(),
     db.reviewMarks.where({ profileId }).toArray(),
+    db.savedWords.where({ profileId }).toArray(),
   ])
   return {
     mastery: mastery.map((m) => ({ kind: m.kind, itemId: m.itemId, masteredAt: m.masteredAt })),
@@ -45,6 +47,13 @@ export async function exportProfileData(profileId: string): Promise<ProfileBacku
     kanjiGoal,
     timeSpent: timeSpent.map((t) => ({ date: t.date, seconds: t.seconds })),
     reviewMarks: reviewMarks.map((r) => ({ kind: r.kind, itemId: r.itemId, markedAt: r.markedAt })),
+    savedWords: savedWords.map((s) => ({
+      word: s.word,
+      reading: s.reading,
+      meaning: s.meaning,
+      kanjiChar: s.kanjiChar,
+      savedAt: s.savedAt,
+    })),
   }
 }
 
@@ -63,9 +72,10 @@ export async function importProfileData(profileId: string, payload: ProfileBacku
   const kanjiGoal = payload.kanjiGoal ?? DEFAULT_KANJI_GOAL
   const timeSpent = payload.timeSpent ?? []
   const reviewMarks = payload.reviewMarks ?? []
+  const savedWords = payload.savedWords ?? []
   await db.transaction(
     'rw',
-    [db.mastery, db.activity, db.notes, db.favorites, db.timeSpent, db.reviewMarks],
+    [db.mastery, db.activity, db.notes, db.favorites, db.timeSpent, db.reviewMarks, db.savedWords],
     async () => {
       await db.mastery.where({ profileId }).delete()
       await db.activity.where({ profileId }).delete()
@@ -73,6 +83,7 @@ export async function importProfileData(profileId: string, payload: ProfileBacku
       await db.favorites.where({ profileId }).delete()
       await db.timeSpent.where({ profileId }).delete()
       await db.reviewMarks.where({ profileId }).delete()
+      await db.savedWords.where({ profileId }).delete()
 
       if (payload.mastery.length > 0) {
         await db.mastery.bulkAdd(payload.mastery.map((m) => ({ profileId, ...m })))
@@ -94,6 +105,9 @@ export async function importProfileData(profileId: string, payload: ProfileBacku
       }
       if (reviewMarks.length > 0) {
         await db.reviewMarks.bulkAdd(reviewMarks.map((r) => ({ profileId, ...r })))
+      }
+      if (savedWords.length > 0) {
+        await db.savedWords.bulkAdd(savedWords.map((s) => ({ profileId, ...s })))
       }
     },
   )

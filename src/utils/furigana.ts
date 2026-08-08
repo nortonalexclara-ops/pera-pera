@@ -10,3 +10,11 @@ import type { FuriganaSegment } from '../components/ui/FuriganaText'
 export function reconstructReading(segments: FuriganaSegment[]): string {
   return segments.map((s) => s.reading ?? s.text).join('')
 }
+
+// Texte brut (kanji/kana, sans la lecture) d'un mot segmenté — sert à
+// identifier un mot de façon stable (ex. sauvegarde d'un mot exemple en
+// séance, voir KanjiCardLoop.tsx) et à rebondir vers sa propre fiche
+// Explorer, pas à l'affichage (voir FuriganaText pour ça).
+export function reconstructText(segments: FuriganaSegment[]): string {
+  return segments.map((s) => s.text).join('')
+}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import ChoiceButtonGroup from '../../components/ui/ChoiceButtonGroup'
-import { LEVEL_OPTIONS, CONTENT_OPTIONS, CONTENT_TO_MODE, VOCAB_TYPE_OPTIONS } from './sessionOptions'
+import { LEVEL_OPTIONS, CONTENT_OPTIONS, CONTENT_TO_MODE, DEFAULT_CONTENT_OPTION, VOCAB_TYPE_OPTIONS } from './sessionOptions'
 
 const MODULE_OPTIONS = ['Kanjis', 'Vocabulaire', 'Grammaire', 'Révisions']
 
@@ -27,10 +27,10 @@ export default function CustomSessionBuilder({
   const [level, setLevel] = useState<string | null>(null)
   const [modules, setModules] = useState<Set<string>>(new Set())
 
-  const [kanjiContent, setKanjiContent] = useState(CONTENT_OPTIONS[1])
-  const [vocabContent, setVocabContent] = useState(CONTENT_OPTIONS[1])
+  const [kanjiContent, setKanjiContent] = useState(DEFAULT_CONTENT_OPTION)
+  const [vocabContent, setVocabContent] = useState(DEFAULT_CONTENT_OPTION)
   const [vocabTypes, setVocabTypes] = useState<Set<string>>(new Set(VOCAB_TYPE_OPTIONS))
-  const [grammarContent, setGrammarContent] = useState(CONTENT_OPTIONS[1])
+  const [grammarContent, setGrammarContent] = useState(DEFAULT_CONTENT_OPTION)
 
   function toggleModule(opt: string) {
     setModules((prev) => {
