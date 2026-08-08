@@ -43,6 +43,21 @@
   border-top: 1px solid var(--color-border);
   padding: var(--space-sm) var(--space-xs);
   padding-bottom: max(var(--space-sm), env(safe-area-inset-bottom));
+  /* Bug WebKit connu (iOS/iPadOS Safari) : un élément `position: fixed`
+     qui a un frère `overflow-y: auto` (ici `.main-layout__content`, voir
+     plus haut) peut "rester en retard" pendant un défilement inertiel et
+     sembler disparaître ou se décaler jusqu'à l'arrêt du défilement —
+     signalé par l'utilisatrice ("quand je descends sur iPad la barre
+     disparaît"), déjà en partie contourné par le passage en `fixed`
+     (voir le commentaire de la version bureau/tablette plus bas) mais
+     pas totalement. Correctif standard pour cette classe de bug :
+     forcer cet élément sur son propre calque de composition GPU plutôt
+     que de le laisser repeindre avec le reste de la page à chaque frame
+     de défilement — la translation est nulle (0), seul l'effet de
+     "calque séparé" est recherché. */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
 }
 
 .tab-bar__profile {

@@ -100,15 +100,52 @@ export default function KanaCardLoop({ scripts, contentMode = 'mix', continueLab
       }
       doneTitle="Caractères passés en revue"
       doneDescription={`Tu as revu les ${kanaList.length} caractères du jour.`}
+      renderWritingExtra={(kana: Kana) =>
+        kana.strokePaths.length > 0 && (
+          <div className="stroke-order-panel">
+            <p className="flip-card__label">Ordre des traits</p>
+            <div className="stroke-order__steps">
+              {kana.strokePaths.map((_, i) => (
+                <div key={i} className="stroke-order__step">
+                  {/* Espace de coordonnées 1024×1024 (source animCJK) —
+                      différent des 109×109 des kanjis, voir mockKana.ts. */}
+                  <svg viewBox="0 0 1024 1024">
+                    {kana.strokePaths.slice(0, i + 1).map((d, j) => (
+                      <path key={j} d={d} />
+                    ))}
+                  </svg>
+                  <span className="stroke-order__step-number">{i + 1}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      }
       renderFront={(kana: Kana) => <span className="flip-card__char">{kana.character}</span>}
       renderBack={(kana: Kana) => (
-        <div className="flip-card__back-head">
-          <span className="flip-card__mini-char">{kana.character}</span>
-          <p className="flip-card__mini-word">
-            {kana.romaji}
-            <SpeakButton text={kana.character} />
-          </p>
-        </div>
+        <>
+          <div className="flip-card__back-head">
+            <span className="flip-card__mini-char">{kana.character}</span>
+            <p className="flip-card__mini-word">
+              {kana.romaji}
+              <SpeakButton text={kana.character} />
+            </p>
+          </div>
+
+          <p className="flip-card__label">Exemple</p>
+          <div className="example-item">
+            <p className="example__jp">
+              {kana.example.word}
+              <SpeakButton text={kana.example.word} />
+            </p>
+            {/* Toujours visible (pas de bascule "toucher pour révéler") —
+                contrairement aux exemples de kanjis/vocabulaire, ce n'est
+                pas une question à deviner, juste un ancrage utile pour la
+                lecture. Réutilise le style "révélé" de `.example__translation`
+                plutôt qu'une nouvelle classe. */}
+            <p className="example__translation is-revealed">{kana.example.meaning}</p>
+          </div>
+        </>
       )}
     />
   )

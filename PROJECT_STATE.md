@@ -4638,4 +4638,81 @@ tracé survit) puis après un second trait (584 → 1218, la somme des deux
 — confirme que le PREMIER trait n'a pas disparu quand les résultats se
 sont effacés). Taille de police confirmée à 14px via `getComputedStyle`.
 
-`npx tsc -b` clean. Pas encore commité/poussé.
+`npx tsc -b` clean. Commité et poussé.
+
+## Checkpoint — tracé + exemples en Kana, fix barre de nav iPad (tentative), audit "à revoir" vocab, clarification voix
+
+Quatre demandes/signalements dans le même message.
+
+**1. Ordre des traits + mots d'exemple pour Hiragana/Katakana.** Volontairement
+absents du premier jet (checkpoint précédent, faute de source de données pour
+les traits). Trouvés et intégrés cette fois :
+- **Traces réelles** (pas inventées) : projet [animCJK](https://github.com/parsimonhi/animCJK)
+  (licence LGPL), via le JSON déjà prêt à l'emploi de
+  [kana-svg-data](https://github.com/hy2k/kana-svg-data). Téléchargé directement
+  en Bash (`curl`, PAS via un fetch résumé par un modèle — un `d` de chemin SVG
+  est une longue suite de coordonnées précises, un résumé automatique aurait pu
+  arrondir/déformer des nombres sans que ça se voie) puis extrait par script
+  Node pour les 71 caractères de chaque alphabet déjà couverts par l'appli —
+  aucun caractère manquant. Espace de coordonnées 1024×1024 (pas 109×109 comme
+  les kanjis) — nouveau viewBox dédié dans le panneau "Ordre des traits" de
+  `KanaCardLoop.tsx`.
+- **Mots d'exemple** : un par caractère et par alphabet (142 au total,
+  registre N5/N4, écrits à la main) — un mot japonais natif en hiragana, un
+  emprunt/nom propre en katakana (le mot "naturel" pour illustrer un son
+  n'est pas le même dans les deux alphabets). Cas honnêtes pour ヂ/ヅ/ヲ, très
+  rares en katakana moderne : la note l'indique explicitement plutôt que
+  d'inventer un faux mot courant.
+- `mockKana.ts` régénéré par script (`Kana.strokePaths`/`Kana.example`
+  ajoutés, structure `KANA_TABLE` inchangée) — `KanaCardLoop.tsx` affiche
+  maintenant le panneau de traits (réutilise le composant déjà construit
+  pour les kanjis, juste le viewBox change) et une section "Exemple"
+  toujours visible (pas de bascule "toucher pour révéler", ce n'est pas une
+  question) avec son propre bouton audio. Vérifié en séance réelle : ぬ → 4
+  traits affichés + exemple "ぬの / tissu" + audio sur le caractère ET
+  l'exemple ; plusieurs autres caractères (げ/み/け/ク/ペ/ゾ) vérifiés aussi,
+  tous avec traits + exemple cohérents. Aucune erreur console.
+
+**2. Barre de navigation qui disparaît en scrollant sur iPad — tentative de
+correctif, PAS vérifiable depuis cet environnement.** Cause probable (bug
+WebKit documenté) : `.tab-bar` en `position: fixed` a pour frère
+`.main-layout__content` en `overflow-y: auto` — cette combinaison est connue
+pour faire "traîner"/disparaître un élément fixed pendant un défilement
+inertiel sur Safari iOS/iPadOS. Correctif standard pour cette classe de bug
+(confirmé par recherche) : forcer l'élément sur son propre calque de
+composition GPU via `transform: translateZ(0)` +
+`-webkit-backface-visibility: hidden`, ajouté à `.tab-bar`. Vérifié que la
+règle s'applique bien (`position: fixed` intact, transform en matrice
+identité, backface-visibility hidden) à plusieurs largeurs — mais le VRAI
+test (le rendu Safari iOS pendant un défilement inertiel réel) ne peut pas
+être reproduit dans cet environnement de test. **À confirmer sur un vrai
+iPad** — si le problème persiste, l'étape suivante serait de retirer le
+`overflow-y: auto` imbriqué et faire défiler la page entière nativement
+plutôt qu'un conteneur interne (changement plus large, pas tenté ici pour
+rester prudent sans pouvoir vérifier).
+
+**3. "Aucun mot N5 à réviser" alors que plusieurs mots avaient été marqués
+"à revoir" — mécanisme audité, AUCUN bug trouvé dans le code actuel.** Testé
+en conditions réelles de bout en bout : deux mots N5 (有名, 門) marqués "à
+revoir" dans une vraie séance Vocabulaire, confirmés dans `reviewMarks` avec
+`kind:"vocab"` correct, puis une NOUVELLE séance personnalisée N5 +
+Vocabulaire + "À revoir" → "1/2 mots N5" affiché correctement, les deux mots
+bien présents. Le mécanisme fonctionne. Explication la plus probable pour le
+signalement : `reviewMarks` est une table introduite récemment (voir
+checkpoint "Fix la vraie cause de...") — les clics "À revoir" faits AVANT
+cette mise à jour n'ont jamais été enregistrés nulle part (l'ancien système
+ne gardait aucune trace de cette décision), donc invisibles maintenant même
+si l'utilisatrice se souvient les avoir faits. Pas de perte de données côté
+appli : il suffit de remarquer ces mots "à revoir" une fois, ça restera
+ensuite.
+
+**4. "Comment avoir toutes les voix sur tous les appareils" — clarifié,
+pas un bug.** Les voix de synthèse vocale viennent du SYSTÈME D'EXPLOITATION
+de chaque appareil, pas de l'appli — impossible d'unifier la liste entre
+iPad/iPhone/ordinateur depuis le code de l'appli. Message dans Réglages
+étendu pour l'expliquer en permanence (pas seulement quand aucune voix
+n'est trouvée), avec le rappel du chemin iOS pour en installer davantage
+(Réglages → Accessibilité → Contenu énoncé → Voix → Japonais).
+
+`npx tsc -b` et `npx tsc -p tsconfig.api.json` clean. Pas encore
+commité/poussé.

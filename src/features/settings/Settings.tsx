@@ -575,32 +575,38 @@ function VoiceSection() {
     <section className="settings-card">
       <h2 className="settings-card__title">Voix de prononciation</h2>
 
-      {voices.length === 0 ? (
-        <p className="settings-card__hint">
-          Aucune voix japonaise trouvée sur cet appareil — la prononciation utilisera la voix par défaut du navigateur.
-          Sur iPad/iPhone : Réglages → Accessibilité → Contenu énoncé → Voix → Japonais, pour en installer une.
-        </p>
-      ) : (
-        <>
-          <p className="settings-card__hint">
-            {voices.length === 1
-              ? "Une seule voix japonaise est installée sur cet appareil."
-              : `${voices.length} voix japonaises disponibles sur cet appareil.`}
-          </p>
-          <div className="pin-row">
-            <select className="bulk-mark-select" value={currentURI} onChange={(e) => handleChange(e.target.value)}>
-              {voices.map((v) => (
-                <option key={v.voiceURI} value={v.voiceURI}>
-                  {v.name}
-                </option>
-              ))}
-            </select>
-            <button type="button" className="btn-primary" onClick={() => speakJapanese('こんにちは、元気ですか')}>
-              <Volume2 size={16} strokeWidth={1.75} />
-              Écouter un exemple
-            </button>
-          </div>
-        </>
+      {/* Les voix viennent du SYSTÈME (iPad, iPhone, ordinateur...), pas de
+          l'appli — chacune a les siennes, installées séparément, donc la
+          liste diffère forcément d'un appareil à l'autre (question
+          explicite de l'utilisatrice : "comment avoir toutes les voix sur
+          tous les appareils ?" — pas possible d'unifier depuis l'appli,
+          seulement d'en installer plus PAR appareil). Rappel affiché en
+          permanence, pas seulement quand aucune voix n'est trouvée. */}
+      <p className="settings-card__hint">
+        {voices.length === 0
+          ? 'Aucune voix japonaise trouvée sur cet appareil — la prononciation utilisera la voix par défaut du navigateur.'
+          : voices.length === 1
+            ? 'Une seule voix japonaise est installée sur cet appareil.'
+            : `${voices.length} voix japonaises disponibles sur cet appareil.`}{' '}
+        Les voix dépendent de chaque appareil, pas de l'appli — la liste peut donc différer entre ton iPad, ton
+        téléphone ou ton ordinateur. Sur iPad/iPhone : Réglages → Accessibilité → Contenu énoncé → Voix → Japonais,
+        pour en installer/télécharger d'autres.
+      </p>
+
+      {voices.length > 0 && (
+        <div className="pin-row">
+          <select className="bulk-mark-select" value={currentURI} onChange={(e) => handleChange(e.target.value)}>
+            {voices.map((v) => (
+              <option key={v.voiceURI} value={v.voiceURI}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+          <button type="button" className="btn-primary" onClick={() => speakJapanese('こんにちは、元気ですか')}>
+            <Volume2 size={16} strokeWidth={1.75} />
+            Écouter un exemple
+          </button>
+        </div>
       )}
     </section>
   )
