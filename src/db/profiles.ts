@@ -15,6 +15,15 @@ export async function listProfiles(): Promise<ProfileRecord[]> {
   return profiles.sort((a, b) => a.createdAt - b.createdAt)
 }
 
+// Sert à valider qu'un id de profil mis en cache (voir profileStore.ts,
+// restauration du profil actif après rafraîchissement) correspond encore
+// à un profil réellement présent sur cet appareil, avant de lui faire
+// confiance — jamais l'inverse (afficher un profil dont on n'a pas
+// vérifié l'existence).
+export async function getProfile(id: string): Promise<ProfileRecord | undefined> {
+  return db.profiles.get(id)
+}
+
 export async function createProfile(name: string): Promise<ProfileRecord> {
   const trimmed = name.trim()
   if (!trimmed) throw new Error('Le nom du profil ne peut pas être vide.')

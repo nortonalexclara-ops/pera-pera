@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import MainLayout from './app/MainLayout'
 import ProfileSelector from './features/profile/ProfileSelector'
+import { restoreActiveProfileFromStorage } from './features/profile/profileStore'
 import Dashboard from './features/dashboard/Dashboard'
 import Explorer from './features/explorer/Explorer'
 import Notebook from './features/notebook/Notebook'
@@ -21,10 +22,22 @@ import { useThemeStore } from './features/theme/themeStore'
 // navigation validé en V3.
 export default function App() {
   const theme = useThemeStore((s) => s.theme)
+  // Voir profileStore.ts : le profil actif est mis en cache pour survivre
+  // à un rafraîchissement, mais toujours revérifié contre IndexedDB avant
+  // d'être réactivé — les routes n'ont donc rien à afficher tant que
+  // cette vérification (rapide, une seule lecture par id) n'est pas
+  // passée, sous peine d'un flash "aucun profil" au chargement.
+  const [profileReady, setProfileReady] = useState(false)
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
   }, [theme])
+
+  useEffect(() => {
+    restoreActiveProfileFromStorage().finally(() => setProfileReady(true))
+  }, [])
+
+  if (!profileReady) return null
 
   return (
     <Routes>
