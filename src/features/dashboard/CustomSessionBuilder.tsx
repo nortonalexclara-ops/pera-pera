@@ -2,7 +2,14 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import ChoiceButtonGroup from '../../components/ui/ChoiceButtonGroup'
-import { LEVEL_OPTIONS, CONTENT_OPTIONS, CONTENT_TO_MODE, DEFAULT_CONTENT_OPTION, VOCAB_TYPE_OPTIONS } from './sessionOptions'
+import {
+  LEVEL_OPTIONS,
+  CONTENT_OPTIONS,
+  CONTENT_TO_MODE,
+  DEFAULT_CONTENT_OPTION,
+  VOCAB_TYPE_OPTIONS,
+  VOCAB_TYPE_TO_KEY,
+} from './sessionOptions'
 
 const MODULE_OPTIONS = ['Kanjis', 'Vocabulaire', 'Grammaire', 'Révisions']
 
@@ -22,6 +29,10 @@ export default function CustomSessionBuilder({
     modules: string[],
     level: string,
     contentModes: Partial<Record<'Kanjis' | 'Vocabulaire' | 'Grammaire', 'new' | 'mix' | 'review'>>,
+    // Types de vocabulaire cochés (voir VOCAB_TYPE_TO_KEY) — absent/vide
+    // = pas de filtre (tous les types), sinon liste des `VocabWord.type`
+    // à inclure.
+    vocabTypes: string[],
   ) => void
 }) {
   const [level, setLevel] = useState<string | null>(null)
@@ -71,6 +82,7 @@ export default function CustomSessionBuilder({
           <ChoiceButtonGroup options={CONTENT_OPTIONS} selected={[vocabContent]} onToggle={setVocabContent} />
           <p className="module-config__subtitle">Type</p>
           <ChoiceButtonGroup options={VOCAB_TYPE_OPTIONS} selected={[...vocabTypes]} onToggle={toggleVocabType} />
+          {vocabTypes.size === 0 && <p className="module-config__hint">Choisis au moins un type.</p>}
         </motion.div>
       )}
 
@@ -92,13 +104,18 @@ export default function CustomSessionBuilder({
 
       <button
         className="btn-primary hero-card__cta"
-        disabled={!level || modules.size === 0}
+        disabled={!level || modules.size === 0 || (modules.has('Vocabulaire') && vocabTypes.size === 0)}
         onClick={() =>
-          onStart(MODULE_OPTIONS.filter((m) => modules.has(m)), level!, {
-            Kanjis: CONTENT_TO_MODE[kanjiContent],
-            Vocabulaire: CONTENT_TO_MODE[vocabContent],
-            Grammaire: CONTENT_TO_MODE[grammarContent],
-          })
+          onStart(
+            MODULE_OPTIONS.filter((m) => modules.has(m)),
+            level!,
+            {
+              Kanjis: CONTENT_TO_MODE[kanjiContent],
+              Vocabulaire: CONTENT_TO_MODE[vocabContent],
+              Grammaire: CONTENT_TO_MODE[grammarContent],
+            },
+            [...vocabTypes].map((t) => VOCAB_TYPE_TO_KEY[t]),
+          )
         }
       >
         Commencer ma séance personnalisée

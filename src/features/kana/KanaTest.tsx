@@ -130,7 +130,15 @@ export default function KanaTest() {
             <ArrowLeft size={18} strokeWidth={1.75} />
             Retour
           </button>
-          <ProgressRing percent={((qIndex + 1) / total) * 100} size={44} strokeWidth={4} label={`${qIndex + 1}`} sublabel={`/ ${total}`} />
+          <ProgressRing
+            percent={((qIndex + 1) / total) * 100}
+            size={54}
+            strokeWidth={5}
+            label={`${qIndex + 1}`}
+            sublabel={`/ ${total}`}
+            labelSize={24}
+            sublabelSize={14}
+          />
         </header>
 
         <div className="test-card card">

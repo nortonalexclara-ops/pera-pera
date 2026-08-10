@@ -31,7 +31,7 @@
 }
 
 .test-card__hint {
-  font-size: 13px;
+  font-size: 16px;
   color: var(--color-text-muted);
   margin-bottom: var(--space-md);
 }
@@ -84,17 +84,20 @@
 .test-qcm {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  max-width: 380px;
+  max-width: 460px;
 }
 
+/* Trop petit sur PC (utilisatrice devait zoomer la page à 125%) — voir
+   aussi le repli mobile ci-dessous, qui garde la taille d'origine sur
+   petit écran (pas signalée là). */
 .qcm-option {
   border: 1.5px solid var(--color-border-strong);
   background: var(--color-surface);
   border-radius: var(--radius-sm);
-  padding: 14px 18px;
-  font-size: 17px;
+  padding: 17px 22px;
+  font-size: 20px;
   font-weight: 500;
   text-align: left;
   cursor: pointer;
@@ -158,5 +161,21 @@
 
   .test-card__prompt-fr {
     font-size: 26px;
+  }
+
+  /* Garde la taille d'origine sur petit écran — l'agrandissement
+     ci-dessus répond à un signalement "trop petit sur PC" uniquement. */
+  .test-card__hint {
+    font-size: 13px;
+  }
+
+  .test-qcm {
+    gap: 10px;
+    max-width: 380px;
+  }
+
+  .qcm-option {
+    padding: 14px 18px;
+    font-size: 17px;
   }
 }

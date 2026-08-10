@@ -17,6 +17,9 @@ const EMPTY_SET: Set<string> = new Set()
 interface VocabCardLoopProps {
   level: JlptLevel | null
   contentMode?: 'new' | 'mix' | 'review'
+  // Types cochés dans la séance personnalisée (voir CustomSessionBuilder,
+  // sessionOptions.ts VOCAB_TYPE_TO_KEY) — absent/vide = pas de filtre.
+  types?: string[]
   limit?: number
   continueLabel: string
   onDone: () => void
@@ -39,6 +42,7 @@ export const VERB_CLASS_LABELS: Record<string, string> = {
 export default function VocabCardLoop({
   level,
   contentMode = 'mix',
+  types,
   limit,
   continueLabel,
   onDone,
@@ -65,20 +69,25 @@ export default function VocabCardLoop({
     EMPTY_SET,
   )
   const levelFiltered = level ? mockVocabList.filter((w) => w.jlptLevel === level) : mockVocabList
+  // Bug signalé par l'utilisatrice : "uniquement Verbes" montrait quand
+  // même tout le vocabulaire — les cases à cocher n'étaient jusqu'ici
+  // jamais transmises jusqu'ici (voir CustomSessionBuilder.tsx).
+  const typeFiltered = types && types.length > 0 ? levelFiltered.filter((w) => types.includes(w.type)) : levelFiltered
   const contentFiltered =
     contentMode === 'new'
-      ? levelFiltered.filter((w) => !masteredIds.has(w.id) && !reviewIds.has(w.id))
+      ? typeFiltered.filter((w) => !masteredIds.has(w.id) && !reviewIds.has(w.id))
       : contentMode === 'review'
-        ? levelFiltered.filter((w) => reviewIds.has(w.id))
-        : levelFiltered
+        ? typeFiltered.filter((w) => reviewIds.has(w.id))
+        : typeFiltered
 
   // Voir KanjiCardLoop pour le détail : mode "Mélange" mélangé aléatoirement
-  // (demande utilisatrice), mémoïsé sur `level` seul.
-  const shuffledLevel = useMemo(() => shuffleArray(levelFiltered), [level])
+  // (demande utilisatrice), mémoïsé sur (level, types).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const shuffledLevel = useMemo(() => shuffleArray(typeFiltered), [level, types?.join(',')])
   const orderedContent = contentMode === 'mix' ? shuffledLevel : contentFiltered
   const vocabList = typeof limit === 'number' ? orderedContent.slice(0, limit) : orderedContent
 
-  const allMastered = contentMode === 'new' && levelFiltered.length > 0 && contentFiltered.length === 0
+  const allMastered = contentMode === 'new' && typeFiltered.length > 0 && contentFiltered.length === 0
   const noneToReview = contentMode === 'review' && contentFiltered.length === 0
   // Voir KanjiCardLoop : en 'new'/'review', attendre la vraie valeur de
   // masteredIds/reviewIds avant de laisser CardLoopShell figer sa file de

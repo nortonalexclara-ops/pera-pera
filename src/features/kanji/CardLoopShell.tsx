@@ -274,7 +274,20 @@ export default function CardLoopShell<T>({
               <ChevronLeft size={28} strokeWidth={2} />
             </button>
           )}
-          <div className="flip-card__inner">
+          {/* `key` sur l'item courant — sans ça, passer à la carte
+              suivante (Maîtrisé/À revoir, ou navigation précédente/
+              suivante) réutilisait le même nœud DOM : son contenu passait
+              instantanément à la carte suivante pendant que la rotation
+              CSS (retour de "retourné" à "face") continuait encore
+              d'animer sur 0.6s, laissant entrevoir le VERSO de la carte
+              suivante pendant la transition (signalé par l'utilisatrice,
+              sur toutes les cartes, pas seulement Kanjis). Remonter un
+              nœud frais à chaque nouvel item évite l'animation — il n'y a
+              alors rien "d'avant" dont partir, il apparaît directement
+              dans son état final (face visible, `phase` déjà "front"). Le
+              retournement pour révéler la MÊME carte n'est pas affecté :
+              la clé ne change pas dans ce cas. */}
+          <div className="flip-card__inner" key={getKey(item)}>
             <button type="button" className="flip-card__face flip-card__face--front" onClick={() => setPhase('back')}>
               {renderFront(item)}
               <p className="flip-card__flip-hint">Touche la carte pour révéler</p>

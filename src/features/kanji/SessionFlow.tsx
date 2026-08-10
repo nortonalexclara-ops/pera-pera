@@ -27,6 +27,10 @@ interface SessionLocationState {
   // Plafonne la taille de chaque module — seule la séance recommandée
   // l'utilise, pour proposer un lot raisonnable plutôt que tout le niveau.
   limits?: Partial<Record<'Kanjis' | 'Vocabulaire' | 'Grammaire' | 'Révisions', number>>
+  // Types de vocabulaire cochés dans la séance personnalisée (voir
+  // CustomSessionBuilder.tsx, sessionOptions.ts) — absent/vide = tous
+  // les types.
+  vocabTypes?: string[]
 }
 
 export default function SessionFlow() {
@@ -46,6 +50,7 @@ export default function SessionFlow() {
   const level = state?.level ?? null
   const contentModes = state?.contentModes
   const limits = state?.limits
+  const vocabTypes = state?.vocabTypes
 
   const currentModule = modules[moduleIndex]
   const isLastModule = moduleIndex === modules.length - 1
@@ -102,6 +107,7 @@ export default function SessionFlow() {
             <VocabCardLoop
               level={level}
               contentMode={contentModes?.Vocabulaire}
+              types={vocabTypes}
               limit={limits?.Vocabulaire}
               continueLabel={continueLabel}
               onDone={handleModuleDone}

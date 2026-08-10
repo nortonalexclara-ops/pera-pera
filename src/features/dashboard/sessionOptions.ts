@@ -36,3 +36,14 @@ export const CONTENT_TO_MODE: Record<string, 'new' | 'mix' | 'review'> = {
 }
 
 export const VOCAB_TYPE_OPTIONS = ['Noms', 'Verbes', 'Adjectifs', 'Expressions']
+
+// Vers `VocabWord.type` (mockVocab.ts) — les cases à cocher étaient
+// jusqu'ici purement décoratives : jamais transmises jusqu'à
+// VocabCardLoop, donc "uniquement Verbes" montrait quand même tout le
+// vocabulaire (bug signalé par l'utilisatrice).
+export const VOCAB_TYPE_TO_KEY: Record<string, string> = {
+  Noms: 'nom',
+  Verbes: 'verbe',
+  Adjectifs: 'adjectif',
+  Expressions: 'expression',
+}

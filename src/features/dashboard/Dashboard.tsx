@@ -250,7 +250,9 @@ export default function Dashboard() {
                 />
               ) : (
                 <CustomSessionBuilder
-                  onStart={(modules, level, contentModes) => navigate('/session', { state: { modules, level, contentModes } })}
+                  onStart={(modules, level, contentModes, vocabTypes) =>
+                    navigate('/session', { state: { modules, level, contentModes, vocabTypes } })
+                  }
                 />
               )}
             </motion.div>

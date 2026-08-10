@@ -6,6 +6,13 @@ interface ProgressRingProps {
   strokeWidth?: number
   label?: string
   sublabel?: string
+  // Par défaut ajustées pour l'anneau "objectif" du Dashboard (size=132)
+  // — les compteurs de séance/test (plus petits, size=44-54) passent des
+  // valeurs plus grandes explicitement plutôt que de dépendre d'un calcul
+  // proportionnel, pour ne jamais changer l'anneau du Dashboard par effet
+  // de bord (signalé trop petit spécifiquement en séance/test, pas là).
+  labelSize?: number
+  sublabelSize?: number
 }
 
 export default function ProgressRing({
@@ -14,6 +21,8 @@ export default function ProgressRing({
   strokeWidth = 10,
   label,
   sublabel,
+  labelSize = 20,
+  sublabelSize = 12,
 }: ProgressRingProps) {
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
@@ -55,9 +64,9 @@ export default function ProgressRing({
           justifyContent: 'center',
         }}
       >
-        {label && <span style={{ fontSize: 20, fontWeight: 600 }}>{label}</span>}
+        {label && <span style={{ fontSize: labelSize, fontWeight: 600 }}>{label}</span>}
         {sublabel && (
-          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{sublabel}</span>
+          <span style={{ fontSize: sublabelSize, color: 'var(--color-text-secondary)' }}>{sublabel}</span>
         )}
       </div>
     </div>
