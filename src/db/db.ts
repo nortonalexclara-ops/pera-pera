@@ -94,6 +94,14 @@ export interface TimeSpentRecord {
   profileId: string
   date: string
   seconds: number
+  // Valeur de `seconds` au dernier sync réussi avec un autre appareil
+  // (voir cloudSyncMerge.ts) — permet de calculer combien de secondes
+  // ont été ajoutées LOCALEMENT depuis cette date, pour additionner
+  // correctement du temps passé en parallèle sur deux appareils le même
+  // jour plutôt que de se contenter du plus grand des deux (qui ferait
+  // perdre la pratique la plus courte). `undefined` avant le premier
+  // sync — traité comme 0 (tout l'historique compte comme "nouveau").
+  syncedSeconds?: number
 }
 
 // Un kanji/mot/point de grammaire marqué "À revoir" en séance (voir
@@ -137,6 +145,39 @@ export interface SavedWordRecord {
   savedAt: number
 }
 
+// Trace d'une suppression, pour la synchronisation entre appareils (voir
+// cloudSyncEngine.ts) — sans ça, supprimer un favori/mot sauvegardé/note
+// sur un appareil pourrait le faire "réapparaître" en fusionnant avec une
+// copie plus ancienne d'un autre appareil qui n'a pas encore vu cette
+// suppression. `table` identifie la donnée concernée ('mastery' couvre
+// aussi bien mastery que reviewMarks, traités comme un statut combiné —
+// voir cloudSyncMerge.ts) ; `key` est l'identifiant naturel de l'item
+// dans cette table (kind:itemId, ou `word` pour savedWords, ou l'id de
+// la note). Une seule ligne par (profileId, table, key) — la fusion ne
+// regarde que le tombstone le plus récent, pas un historique complet.
+export type SyncTombstoneTable = 'mastery' | 'favorites' | 'savedWords' | 'notes'
+
+export interface SyncTombstoneRecord {
+  id?: number
+  profileId: string
+  table: SyncTombstoneTable
+  key: string
+  deletedAt: number
+}
+
+// État de la synchronisation automatique en arrière-plan pour ce profil
+// (voir cloudSyncEngine.ts) — table séparée de `profileSettings` : le
+// code PIN et l'activation de la synchro n'ont rien à voir avec les
+// préférences d'affichage (kanjiGoal), les mélanger risquerait qu'un
+// futur réglage écrase silencieusement l'état de synchro en réécrivant
+// la ligne sans penser à le préserver.
+export interface CloudSyncStateRecord {
+  profileId: string
+  pin: string
+  enabled: boolean
+  lastSyncedAt: number | null
+}
+
 class PeraPeraDB extends Dexie {
   profiles!: Table<ProfileRecord, string>
   mastery!: Table<MasteryRecord, number>
@@ -147,6 +188,8 @@ class PeraPeraDB extends Dexie {
   timeSpent!: Table<TimeSpentRecord, number>
   reviewMarks!: Table<ReviewMarkRecord, number>
   savedWords!: Table<SavedWordRecord, number>
+  syncTombstones!: Table<SyncTombstoneRecord, number>
+  cloudSyncState!: Table<CloudSyncStateRecord, string>
 
   constructor() {
     super('pera-pera')
@@ -228,6 +271,23 @@ class PeraPeraDB extends Dexie {
       timeSpent: '++id, [profileId+date], profileId',
       reviewMarks: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
       savedWords: '++id, [profileId+word], profileId',
+    })
+    // v9 : synchronisation automatique entre appareils (voir
+    // cloudSyncEngine.ts) — tombstones pour propager les suppressions
+    // lors d'une fusion, et état de synchro (code, activé, dernier
+    // sync) séparé de profileSettings.
+    this.version(9).stores({
+      profiles: 'id',
+      mastery: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      notes: 'id, profileId, updatedAt',
+      activity: '++id, [profileId+date], profileId',
+      favorites: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      profileSettings: 'profileId',
+      timeSpent: '++id, [profileId+date], profileId',
+      reviewMarks: '++id, [profileId+kind+itemId], profileId, [profileId+kind]',
+      savedWords: '++id, [profileId+word], profileId',
+      syncTombstones: '++id, [profileId+table+key], profileId',
+      cloudSyncState: 'profileId',
     })
   }
 }

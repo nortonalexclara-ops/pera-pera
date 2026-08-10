@@ -1,5 +1,6 @@
 import { db, type NoteRecord } from './db'
 import { generateId } from './id'
+import { writeTombstone } from './syncTombstones'
 
 export async function listNotes(profileId: string): Promise<NoteRecord[]> {
   if (!profileId) return []
@@ -37,10 +38,19 @@ export async function updateNote(
 }
 
 export async function deleteNote(id: string): Promise<void> {
+  const note = await db.notes.get(id)
   await db.notes.delete(id)
+  // `note` peut être absent si déjà supprimé ailleurs — rien à
+  // tombstoner dans ce cas (déjà fait par cette suppression précédente).
+  if (note) await writeTombstone(note.profileId, 'notes', id)
 }
 
 export async function resetNotes(profileId: string): Promise<void> {
   if (!profileId) return
+  const rows = await db.notes.where({ profileId }).toArray()
+  const now = Date.now()
+  for (const row of rows) {
+    await writeTombstone(profileId, 'notes', row.id, now)
+  }
   await db.notes.where({ profileId }).delete()
 }

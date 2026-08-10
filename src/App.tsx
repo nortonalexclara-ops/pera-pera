@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import MainLayout from './app/MainLayout'
 import ProfileSelector from './features/profile/ProfileSelector'
 import { restoreActiveProfileFromStorage } from './features/profile/profileStore'
+import { useCloudSyncScheduler } from './features/profile/useCloudSyncScheduler'
 import Dashboard from './features/dashboard/Dashboard'
 import Explorer from './features/explorer/Explorer'
 import Notebook from './features/notebook/Notebook'
@@ -36,6 +37,12 @@ export default function App() {
   useEffect(() => {
     restoreActiveProfileFromStorage().finally(() => setProfileReady(true))
   }, [])
+
+  // Synchro automatique en arrière-plan entre appareils (voir
+  // cloudSyncEngine.ts) — monté ici plutôt que dans MainLayout.tsx : les
+  // écrans plein écran de séance (hors MainLayout) sont justement là où
+  // mastery/reviewMarks/timeSpent/activity s'écrivent le plus.
+  useCloudSyncScheduler()
 
   if (!profileReady) return null
 

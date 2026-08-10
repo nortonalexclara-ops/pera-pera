@@ -1,4 +1,5 @@
 import { db } from './db'
+import { writeTombstone } from './syncTombstones'
 
 export async function toggleSavedWord(
   profileId: string,
@@ -11,6 +12,7 @@ export async function toggleSavedWord(
   const existing = await db.savedWords.where({ profileId, word }).first()
   if (existing?.id !== undefined) {
     await db.savedWords.delete(existing.id)
+    await writeTombstone(profileId, 'savedWords', word)
     return false
   }
   await db.savedWords.add({ profileId, word, reading, meaning, kanjiChar, savedAt: Date.now() })

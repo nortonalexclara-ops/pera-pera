@@ -14,7 +14,9 @@ import { resetTimeSpent } from '../../db/timeSpent'
 import { exportProfileData } from '../../db/profileSync'
 import { deleteProfile } from '../../db/profiles'
 import { getKanjiGoal, setKanjiGoal, getHasCloudBackup, setHasCloudBackup, DEFAULT_KANJI_GOAL } from '../../db/settings'
+import { getCloudSyncState, enableCloudSync, disableCloudSync } from '../../db/cloudSyncState'
 import { backupProfile, deleteAccountBackup } from '../profile/cloudSync'
+import { syncNow } from '../profile/cloudSyncEngine'
 import {
   isSpeechSupported,
   listJapaneseVoices,
@@ -35,6 +37,22 @@ const KIND_OPTIONS: { key: ItemKind; label: string }[] = [
   { key: 'vocab', label: 'Vocabulaire' },
   { key: 'grammar', label: 'Grammaire' },
 ]
+
+// "Dernière synchro : il y a 2 min" — assez grossier (pas de seconde
+// près), une synchro automatique tourne toutes les ~3 min de toute façon
+// (voir useCloudSyncScheduler.ts), la précision à la seconde n'aiderait
+// pas à se repérer.
+function formatRelativeSync(ts: number): string {
+  const diffSec = Math.round((Date.now() - ts) / 1000)
+  if (diffSec < 10) return "à l'instant"
+  if (diffSec < 60) return `il y a ${diffSec} s`
+  const diffMin = Math.round(diffSec / 60)
+  if (diffMin < 60) return `il y a ${diffMin} min`
+  const diffH = Math.round(diffMin / 60)
+  if (diffH < 24) return `il y a ${diffH} h`
+  const diffD = Math.round(diffH / 24)
+  return `il y a ${diffD} j`
+}
 
 // Même contenu que Explorer/Stats, juste ré-indexé par (kind, level) pour
 // le marquage en masse — pas de nouvelle source de données.
@@ -100,6 +118,19 @@ export default function Settings() {
     [profileId],
     false,
   )
+
+  // État de la synchronisation automatique en arrière-plan pour ce
+  // profil SUR CET APPAREIL (voir cloudSyncState.ts) — distinct de
+  // `hasCloudBackup` : un profil peut avoir une sauvegarde en ligne sans
+  // que la synchro auto soit activée ICI (ex. sauvegarde faite avant
+  // l'existence de cette fonctionnalité — voir le texte conditionnel
+  // plus bas, qui invite alors à ressaisir le code une fois).
+  const cloudSyncState = useLiveQuery(
+    () => (profileId ? getCloudSyncState(profileId) : Promise.resolve(undefined)),
+    [profileId],
+    undefined,
+  )
+  const [manualSyncBusy, setManualSyncBusy] = useState(false)
 
   // Objectif de kanjis affiché sur le Dashboard, personnalisable — `null`
   // tant que l'utilisatrice n'a pas commencé à taper, pour que le champ
@@ -182,12 +213,33 @@ export default function Settings() {
       const payload = await exportProfileData(profileId)
       await backupProfile(profileName, pin, payload)
       await setHasCloudBackup(profileId, true)
+      // Active la synchro automatique en arrière-plan sur cet appareil —
+      // le code n'a plus besoin d'être ressaisi ensuite (voir
+      // cloudSyncState.ts, useCloudSyncScheduler.ts).
+      await enableCloudSync(profileId, pin)
       setBackupResult('ok')
+      setPin('')
+      // Pas attendu : ne bloque pas l'affichage du message de succès,
+      // juste une première synchro immédiate plutôt que d'attendre le
+      // prochain déclenchement automatique.
+      syncNow(profileId, profileName)
     } catch (err) {
       setBackupResult(err instanceof Error ? err.message : 'Échec de la sauvegarde.')
     } finally {
       setBackupBusy(false)
     }
+  }
+
+  async function handleManualSync() {
+    if (!profileId || !profileName) return
+    setManualSyncBusy(true)
+    await syncNow(profileId, profileName)
+    setManualSyncBusy(false)
+  }
+
+  async function handleDisableSync() {
+    if (!profileId) return
+    await disableCloudSync(profileId)
   }
 
   async function handleSaveGoal() {
@@ -233,67 +285,79 @@ export default function Settings() {
         </div>
 
         <section className="settings-card">
-          <h2 className="settings-card__title">Retrouver mon profil sur un autre appareil</h2>
+          <h2 className="settings-card__title">Synchronisation entre appareils</h2>
 
-          {hasCloudBackup && (
-            <p className="settings-card__hint">
-              <Check size={15} strokeWidth={2} className="settings-card__hint-icon" />
-              Code déjà enregistré pour {profileName ?? 'ce profil'}. Utilise-le avec "Récupérer un profil" sur l'autre
-              appareil.
-            </p>
+          {cloudSyncState?.enabled ? (
+            <>
+              {/* Une fois activée, la synchro tourne toute seule en
+                  arrière-plan (voir useCloudSyncScheduler.ts) — plus
+                  besoin de reressaisir le code ni de cliquer quoi que ce
+                  soit pour que les notes/progrès faits sur un appareil
+                  apparaissent sur l'autre. */}
+              <p className="settings-card__hint">
+                <Check size={15} strokeWidth={2} className="settings-card__hint-icon" />
+                Synchronisation automatique activée pour {profileName ?? 'ce profil'}. Dernière synchro :{' '}
+                {cloudSyncState.lastSyncedAt ? formatRelativeSync(cloudSyncState.lastSyncedAt) : 'pas encore'}.
+              </p>
+              <p className="settings-card__hint">
+                Utilise le même nom et le même code avec "Récupérer un profil" sur ton autre appareil pour les lier
+                ensemble.
+              </p>
+              <div className="reset-confirm__actions">
+                <button type="button" className="btn-link" onClick={handleManualSync} disabled={manualSyncBusy}>
+                  {manualSyncBusy ? 'Synchronisation…' : 'Synchroniser maintenant'}
+                </button>
+                <button type="button" className="btn-link" onClick={handleDisableSync}>
+                  Désactiver
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Cas d'un profil sauvegardé manuellement avant l'ajout de
+                  la synchro automatique (hasCloudBackup vrai mais pas de
+                  code enregistré localement, voir cloudSyncState.ts) —
+                  une seule ressaisie suffit pour l'activer. */}
+              <p className="settings-card__hint">
+                {hasCloudBackup
+                  ? `Une sauvegarde existe déjà pour ${profileName ?? 'ce profil'}, mais la synchronisation automatique n'est pas encore activée sur cet appareil. Ressaisis le même code pour l'activer.`
+                  : `Choisis un code à 4 chiffres pour ${profileName ?? 'ce profil'}. Une fois activée, la synchronisation avec ton autre appareil se fait ensuite toute seule, en arrière-plan — utilise "Récupérer un profil" avec le même nom et le même code sur l'autre appareil pour les lier.`}
+              </p>
+
+              <div className="pin-row">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  placeholder="Code à 4 chiffres"
+                  className="pin-input"
+                  value={pin}
+                  onChange={(e) => {
+                    setPin(e.target.value.replace(/\D/g, '').slice(0, 4))
+                    setBackupResult(null)
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={!/^\d{4}$/.test(pin) || backupBusy}
+                  onClick={handleBackup}
+                >
+                  <CloudUpload size={16} strokeWidth={1.75} />
+                  {backupBusy ? 'Activation…' : hasCloudBackup ? 'Activer la synchronisation' : 'Sauvegarder en ligne'}
+                </button>
+              </div>
+
+              {backupResult === 'ok' && (
+                <p className="reset-done">
+                  <Check size={15} strokeWidth={2} />
+                  Synchronisation activée.
+                </p>
+              )}
+              {backupResult && backupResult !== 'ok' && <p className="settings-error">{backupResult}</p>}
+            </>
           )}
-
-          {/* La sauvegarde est un instantané, pas une synchronisation
-              continue — sans un moyen de la remettre à jour, une
-              sauvegarde faite tôt (ex. juste après avoir créé le profil)
-              devient de plus en plus périmée à mesure que la vraie
-              progression avance ailleurs, et une récupération plus tard
-              donne l'impression que "rien n'est enregistré" alors que la
-              sauvegarde elle-même a fonctionné — juste avec une
-              progression bien plus ancienne que celle attendue (bug
-              signalé par l'utilisatrice, retracé à cette impossibilité de
-              remettre à jour). Le même code déjà choisi doit être ressaisi
-              pour confirmer que c'est bien la même personne qui met à
-              jour, pas quelqu'un qui tente de réutiliser ce nom avec un
-              autre code (déjà refusé côté serveur, voir api/backup.ts). */}
-          <p className="settings-card__hint">
-            {hasCloudBackup
-              ? `Tu as progressé depuis ? Ressaisis le même code pour mettre à jour la sauvegarde de ${profileName ?? 'ce profil'} avec ta progression actuelle.`
-              : `Choisis un code à 4 chiffres pour ${profileName ?? 'ce profil'}, puis sauvegarde. Sur l'autre appareil, choisis "Récupérer un profil" depuis l'écran de sélection, avec le même nom et le même code.`}
-          </p>
-
-          <div className="pin-row">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={4}
-              placeholder="Code à 4 chiffres"
-              className="pin-input"
-              value={pin}
-              onChange={(e) => {
-                setPin(e.target.value.replace(/\D/g, '').slice(0, 4))
-                setBackupResult(null)
-              }}
-            />
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={!/^\d{4}$/.test(pin) || backupBusy}
-              onClick={handleBackup}
-            >
-              <CloudUpload size={16} strokeWidth={1.75} />
-              {backupBusy ? 'Sauvegarde…' : hasCloudBackup ? 'Mettre à jour la sauvegarde' : 'Sauvegarder en ligne'}
-            </button>
-          </div>
-
-          {backupResult === 'ok' && (
-            <p className="reset-done">
-              <Check size={15} strokeWidth={2} />
-              {hasCloudBackup ? 'Sauvegarde mise à jour.' : 'Profil sauvegardé — utilise ce nom et ce code sur l\'autre appareil.'}
-            </p>
-          )}
-          {backupResult && backupResult !== 'ok' && <p className="settings-error">{backupResult}</p>}
         </section>
 
         <section className="settings-card">

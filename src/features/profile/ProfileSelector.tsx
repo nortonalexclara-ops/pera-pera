@@ -6,9 +6,11 @@ import { avatarGradients } from './mockProfiles'
 import { useProfileStore } from './profileStore'
 import { listProfiles, createProfile } from '../../db/profiles'
 import { markPinOnboardingPending } from './pinOnboarding'
-import { importProfileData } from '../../db/profileSync'
+import { replaceProfileData } from '../../db/profileSync'
 import { setHasCloudBackup } from '../../db/settings'
+import { enableCloudSync } from '../../db/cloudSyncState'
 import { restoreProfile } from './cloudSync'
+import { syncNow } from './cloudSyncEngine'
 import type { ProfileRecord } from '../../db/db'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import PageTransition from '../../components/ui/PageTransition'
@@ -126,12 +128,20 @@ export default function ProfileSelector() {
     try {
       const result = await restoreProfile(restoreName, restorePin)
       const record = await createProfile(result.displayName)
-      await importProfileData(record.id, result.payload)
+      await replaceProfileData(record.id, result.payload)
       // On vient de prouver qu'une sauvegarde en ligne existe pour ce
       // profil (on est en train de la récupérer) — pas la peine de
       // réafficher la bannière/le formulaire "crée un code" juste après.
       await setHasCloudBackup(record.id, true)
+      // Active la synchro automatique en arrière-plan sur cet appareil
+      // aussi (voir cloudSyncState.ts) — sans ça, ce nouveau profil
+      // resterait figé sur l'instantané récupéré à l'instant, jamais
+      // remis à jour tout seul par la suite.
+      await enableCloudSync(record.id, restorePin)
       setProfiles((prev) => [...prev, record])
+      // Pas attendu : la sélection du profil (ci-dessous) ne doit pas
+      // attendre cette synchro pour se faire.
+      syncNow(record.id, record.name)
       setRestoring(false)
       setRestoreName('')
       setRestorePin('')

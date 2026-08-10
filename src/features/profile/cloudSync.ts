@@ -9,13 +9,27 @@ async function parseErrorMessage(res: Response, fallback: string): Promise<strin
   }
 }
 
+// Porte le code HTTP sur l'erreur — sert au moteur de synchro
+// automatique (cloudSyncEngine.ts) à distinguer "pas encore de
+// sauvegarde distante pour ce nom+code" (404, premier sync : rien à
+// fusionner) d'un vrai échec (réseau, serveur en panne) qu'il ne faut
+// surtout pas traiter comme "distant vide" sous peine d'écraser des
+// données qu'on n'a simplement pas réussi à lire.
+export class HttpError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
 export async function backupProfile(profileName: string, pin: string, payload: ProfileBackupPayload): Promise<void> {
   const res = await fetch('/api/backup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ profileName, pin, payload }),
   })
-  if (!res.ok) throw new Error(await parseErrorMessage(res, 'Échec de la sauvegarde.'))
+  if (!res.ok) throw new HttpError(await parseErrorMessage(res, 'Échec de la sauvegarde.'), res.status)
 }
 
 export interface RestoreResult {
@@ -30,7 +44,7 @@ export async function restoreProfile(profileName: string, pin: string): Promise<
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ profileName, pin }),
   })
-  if (!res.ok) throw new Error(await parseErrorMessage(res, 'Échec de la récupération.'))
+  if (!res.ok) throw new HttpError(await parseErrorMessage(res, 'Échec de la récupération.'), res.status)
   return res.json()
 }
 

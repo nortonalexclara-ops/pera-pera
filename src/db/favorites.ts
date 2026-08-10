@@ -1,4 +1,5 @@
 import { db, type ItemKind } from './db'
+import { itemKey, writeTombstone } from './syncTombstones'
 
 export async function isFavorite(profileId: string, kind: ItemKind, itemId: string): Promise<boolean> {
   if (!profileId) return false
@@ -11,6 +12,7 @@ export async function toggleFavorite(profileId: string, kind: ItemKind, itemId: 
   const existing = await db.favorites.where({ profileId, kind, itemId }).first()
   if (existing?.id !== undefined) {
     await db.favorites.delete(existing.id)
+    await writeTombstone(profileId, 'favorites', itemKey(kind, itemId))
     return false
   }
   await db.favorites.add({ profileId, kind, itemId, favoritedAt: Date.now() })
@@ -42,5 +44,10 @@ export async function getAllFavoriteIds(profileId: string): Promise<Record<ItemK
 
 export async function resetFavorites(profileId: string): Promise<void> {
   if (!profileId) return
+  const rows = await db.favorites.where({ profileId }).toArray()
+  const now = Date.now()
+  for (const row of rows) {
+    await writeTombstone(profileId, 'favorites', itemKey(row.kind, row.itemId), now)
+  }
   await db.favorites.where({ profileId }).delete()
 }

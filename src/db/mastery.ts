@@ -1,4 +1,5 @@
 import { db, type ItemKind } from './db'
+import { itemKey, writeTombstone } from './syncTombstones'
 
 // Décision prise sur une carte en séance — "review" ne stocke rien de
 // spécifique, c'est juste l'absence (ou le retrait) d'un enregistrement de
@@ -32,13 +33,24 @@ export async function getReviewIds(profileId: string, kind: ItemKind): Promise<S
   return new Set(rows.map((r) => r.itemId))
 }
 
+// Écrit un tombstone "statut remis à zéro" (voir SyncTombstoneRecord,
+// table 'mastery' — couvre mastery ET reviewMarks, traités comme un
+// statut combiné par la fusion, voir cloudSyncMerge.ts) pour chaque
+// itemId listé, AVANT suppression — sans ça, un autre appareil pas
+// encore resynchronisé referait réapparaître ces items au prochain sync.
+async function tombstoneStatus(profileId: string, kind: ItemKind, itemIds: string[]): Promise<void> {
+  const now = Date.now()
+  for (const itemId of itemIds) {
+    await writeTombstone(profileId, 'mastery', itemKey(kind, itemId), now)
+  }
+}
+
 export async function resetReviewMarks(profileId: string, kinds?: ItemKind[]): Promise<void> {
   if (!profileId) return
-  if (!kinds || kinds.length === 0) {
-    await db.reviewMarks.where({ profileId }).delete()
-    return
-  }
-  for (const kind of kinds) {
+  const targetKinds: ItemKind[] = kinds && kinds.length > 0 ? kinds : ['kanji', 'vocab', 'grammar', 'hiragana', 'katakana']
+  for (const kind of targetKinds) {
+    const rows = await db.reviewMarks.where({ profileId, kind }).toArray()
+    await tombstoneStatus(profileId, kind, rows.map((r) => r.itemId))
     await db.reviewMarks.where({ profileId, kind }).delete()
   }
 }
@@ -91,11 +103,10 @@ export async function bulkMarkMastered(profileId: string, kind: ItemKind, itemId
 // Kanjis) pour laisser le choix plutôt qu'un unique "tout effacer".
 export async function resetMastery(profileId: string, kinds?: ItemKind[]): Promise<void> {
   if (!profileId) return
-  if (!kinds || kinds.length === 0) {
-    await db.mastery.where({ profileId }).delete()
-    return
-  }
-  for (const kind of kinds) {
+  const targetKinds: ItemKind[] = kinds && kinds.length > 0 ? kinds : ['kanji', 'vocab', 'grammar', 'hiragana', 'katakana']
+  for (const kind of targetKinds) {
+    const rows = await db.mastery.where({ profileId, kind }).toArray()
+    await tombstoneStatus(profileId, kind, rows.map((r) => r.itemId))
     await db.mastery.where({ profileId, kind }).delete()
   }
 }
