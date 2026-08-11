@@ -241,6 +241,22 @@
   height: 13px;
 }
 
+/* Niveau JLPT à côté du caractère/mot (demande utilisatrice) — même
+   gabarit que `.explorer-row__kind-badge` mais plus discret (pas en
+   majuscules, pas la même information de catégorisation), pour ne pas
+   rivaliser avec le caractère lui-même. */
+.explorer-row__level {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 .explorer-row__sub {
   font-size: 12px;
   color: var(--color-text-muted);
@@ -397,7 +413,43 @@
   padding: 0;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+/* Clés des kanjis d'un mot de vocabulaire (demande utilisatrice, même
+   info que la section "Clés" des fiches Kanjis) — un groupe par kanji du
+   mot (un mot de deux kanjis a deux groupes distincts), le caractère
+   d'origine servant de repère avant ses propres composants. */
+.explorer-detail__kanji-keys-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: var(--space-sm) 0 var(--space-lg);
+}
+
+.explorer-detail__kanji-keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Repris tel quel (même chip que la fiche Kanjis), juste sans la marge
+   verticale prévue pour un usage pleine largeur sous un label — ici
+   chaque groupe est une ligne compacte à côté de son caractère
+   d'origine, pas une section à part entière. */
+.explorer-detail__kanji-keys .explorer-detail__components {
+  margin: 0;
+}
+
+.explorer-detail__kanji-keys-char {
+  flex-shrink: 0;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  min-width: 28px;
+  text-align: center;
 }
 
 @media (max-width: 600px) {

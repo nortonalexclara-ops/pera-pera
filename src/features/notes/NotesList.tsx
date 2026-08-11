@@ -86,7 +86,7 @@ export default function NotesList() {
           <div className="saved-words card">
             <p className="saved-words__title">
               <Bookmark size={16} strokeWidth={1.75} />
-              Mots à revoir
+              Mots enregistrés
             </p>
             <ul className="saved-words__list">
               {savedWords.map((word) => (

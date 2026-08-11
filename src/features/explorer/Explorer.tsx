@@ -17,7 +17,7 @@ import { buildExplorerItems, normalizeSearch, type ExplorerItem } from './buildE
 import KanjiPracticeBox from './KanjiPracticeBox'
 import { reconstructReading, reconstructText } from '../../utils/furigana'
 import { toSpokenKanjiReading } from '../../utils/speech'
-import { wordExceedsOwnLevel, wordHasUnmasteredKanji } from '../../utils/kanjiLevel'
+import { wordExceedsOwnLevel, wordHasUnmasteredKanji, kanjisInWord } from '../../utils/kanjiLevel'
 // Réutilise les classes partagées (meaning-pill, conjugation-grid,
 // grammar-rule, flip-card__label...) déjà définies pour les cartes de
 // session — même motif de reuse que WritingCanvas/ModuleEndCard,
@@ -338,6 +338,7 @@ export default function Explorer() {
                         className="explorer-row__speak-btn"
                       />
                     )}
+                    <span className="explorer-row__level">{item.jlptLevel}</span>
                   </span>
                   <span className="explorer-row__sub">{item.subLabel}</span>
                   <span className="explorer-row__meaning">{item.meanings.join(', ')}</span>
@@ -480,9 +481,36 @@ function KanjiDetail({ kanji, onExampleClick }: { kanji: Kanji; onExampleClick: 
 }
 
 function VocabDetail({ vocab }: { vocab: VocabWord }) {
+  // Composants ("clés") des kanjis qui composent ce mot, même info que la
+  // section "Clés" des fiches Kanjis (demande utilisatrice) — absent pour
+  // les mots purement en kana ou dont les kanjis sont atomiques (pas de
+  // décomposition, ex. 人, 大).
+  const kanjisWithComponents = kanjisInWord(vocab.word).filter((k) => k.components.length > 0)
+
   return (
     <div className="explorer-detail__body">
       <span className="word-type-badge">{TYPE_LABELS[vocab.type]}</span>
+
+      {kanjisWithComponents.length > 0 && (
+        <>
+          <p className="flip-card__label">Clés</p>
+          <div className="explorer-detail__kanji-keys-list">
+            {kanjisWithComponents.map((k) => (
+              <div key={k.id} className="explorer-detail__kanji-keys">
+                <span className="explorer-detail__kanji-keys-char">{k.character}</span>
+                <ul className="explorer-detail__components">
+                  {k.components.map((c) => (
+                    <li key={c.character} className="component-chip">
+                      <span className="component-chip__char">{c.character}</span>
+                      <span className="component-chip__meaning">{c.meaning}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {vocab.verbConjugation && (
         <table className="conjugation-grid explorer-detail__conjugation">

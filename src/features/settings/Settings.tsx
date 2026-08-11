@@ -11,6 +11,7 @@ import { resetActivity } from '../../db/activity'
 import { resetNotes } from '../../db/notes'
 import { resetFavorites } from '../../db/favorites'
 import { resetTimeSpent } from '../../db/timeSpent'
+import { resetSavedWords } from '../../db/savedWords'
 import { exportProfileData } from '../../db/profileSync'
 import { deleteProfile } from '../../db/profiles'
 import { getKanjiGoal, setKanjiGoal, getHasCloudBackup, setHasCloudBackup, DEFAULT_KANJI_GOAL } from '../../db/settings'
@@ -73,6 +74,7 @@ type ResetOption =
   | 'favorites'
   | 'timeSpent'
   | 'reviewMarks'
+  | 'savedWords'
 
 const RESET_OPTIONS: { key: ResetOption; label: string; description: string }[] = [
   { key: 'kanji', label: 'Progression Kanjis', description: 'Retire "Maîtrisé" de tous les kanjis de ce profil.' },
@@ -85,6 +87,7 @@ const RESET_OPTIONS: { key: ResetOption; label: string; description: string }[] 
   { key: 'favorites', label: 'Favoris', description: 'Retire tous les kanjis/mots/points de grammaire mis en favori.' },
   { key: 'timeSpent', label: 'Temps passé', description: 'Efface l\'historique du temps passé en séance jour par jour.' },
   { key: 'reviewMarks', label: 'Cartes "À revoir"', description: 'Retire la marque "À revoir" de tous les kanjis/mots/points de grammaire.' },
+  { key: 'savedWords', label: 'Mots enregistrés', description: 'Vide la liste des mots enregistrés pendant une séance (affichée dans Notes).' },
 ]
 
 /**
@@ -199,6 +202,7 @@ export default function Settings() {
     if (selected.has('favorites')) await resetFavorites(profileId)
     if (selected.has('timeSpent')) await resetTimeSpent(profileId)
     if (selected.has('reviewMarks')) await resetReviewMarks(profileId)
+    if (selected.has('savedWords')) await resetSavedWords(profileId)
     setSelected(new Set())
     setConfirming(false)
     setBusy(false)

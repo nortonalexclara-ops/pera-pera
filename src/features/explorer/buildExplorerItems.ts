@@ -2,6 +2,7 @@ import { mockKanjiList, type Kanji, type JlptLevel } from '../kanji/mockKanji'
 import { mockVocabList, type VocabWord } from '../vocab/mockVocab'
 import { mockGrammarList, type GrammarPoint } from '../grammar/mockGrammar'
 import { reconstructReading } from '../../utils/furigana'
+import { shuffleArray } from '../../utils/shuffle'
 
 export type ExplorerKind = 'kanji' | 'vocab' | 'grammar'
 
@@ -87,7 +88,13 @@ export function buildExplorerItems(): ExplorerItem[] {
     }
   })
 
-  return [...kanjiItems, ...vocabItems, ...grammarItems]
+  // Vocabulaire mélangé (demande utilisatrice) — l'ordre du dataset
+  // suivait l'ordre alphabétique (par lecture), pas très utile pour
+  // parcourir librement. Mélangé une seule fois ici (Explorer.tsx
+  // mémoïse `buildExplorerItems()` sur tout le montage), pas à chaque
+  // rendu. Kanjis/grammaire gardent leur ordre (progression JLPT), pas
+  // concernés par la demande.
+  return [...kanjiItems, ...shuffleArray(vocabItems), ...grammarItems]
 }
 
 export function normalizeSearch(s: string): string {

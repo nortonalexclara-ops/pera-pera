@@ -84,7 +84,16 @@ export default function VocabCardLoop({
   // (demande utilisatrice), mémoïsé sur (level, types).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const shuffledLevel = useMemo(() => shuffleArray(typeFiltered), [level, types?.join(',')])
-  const orderedContent = contentMode === 'mix' ? shuffledLevel : contentFiltered
+  // "Nouveaux"/"À revoir" mélangés aussi, pas seulement "Mélange" — pour
+  // les kanjis, l'ordre du dataset suit la progression JLPT (utile tel
+  // quel), mais pour le vocabulaire ce n'est que l'ordre alphabétique du
+  // dataset, qui se voyait trop (demande utilisatrice, séance
+  // personnalisée). Pas mémoïsé : `contentFiltered` change déjà à chaque
+  // fois que masteredIds/reviewIds se résolvent, et CardLoopShell fige de
+  // toute façon la file une seule fois — reproduire ce mélange à chaque
+  // rendu avant ce gel n'a aucun effet visible, juste un calcul de plus,
+  // négligeable vu la taille des listes ici.
+  const orderedContent = contentMode === 'mix' ? shuffledLevel : shuffleArray(contentFiltered)
   const vocabList = typeof limit === 'number' ? orderedContent.slice(0, limit) : orderedContent
 
   const allMastered = contentMode === 'new' && typeFiltered.length > 0 && contentFiltered.length === 0

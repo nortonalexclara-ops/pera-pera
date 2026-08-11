@@ -33,3 +33,19 @@ export async function listSavedWords(profileId: string) {
   const rows = await db.savedWords.where({ profileId }).toArray()
   return rows.sort((a, b) => b.savedAt - a.savedAt)
 }
+
+// Réinitialisation depuis Réglages — manquait jusqu'ici (repéré par
+// l'audit) : toutes les autres listes personnelles (favoris, notes,
+// cartes "à revoir"...) ont leur propre reset, pas celle-ci. Tombstone
+// chaque mot avant suppression, comme les autres resets, pour que la
+// synchro entre appareils propage bien la remise à zéro (voir
+// cloudSyncMerge.ts).
+export async function resetSavedWords(profileId: string): Promise<void> {
+  if (!profileId) return
+  const rows = await db.savedWords.where({ profileId }).toArray()
+  const now = Date.now()
+  for (const row of rows) {
+    await writeTombstone(profileId, 'savedWords', row.word, now)
+  }
+  await db.savedWords.where({ profileId }).delete()
+}

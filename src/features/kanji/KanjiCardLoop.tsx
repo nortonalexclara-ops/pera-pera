@@ -211,7 +211,7 @@ export default function KanjiCardLoop({
                             if (profileId)
                               toggleSavedWord(profileId, text, reconstructReading(w.segments), w.meaning, kanji.character)
                           }}
-                          title={isSaved ? 'Retirer de ma liste de mots à revoir' : 'Ajouter à ma liste de mots à revoir'}
+                          title={isSaved ? 'Retirer de mes mots enregistrés' : 'Ajouter à mes mots enregistrés'}
                         >
                           <Bookmark size={16} strokeWidth={2} fill={isSaved ? 'currentColor' : 'none'} />
                         </button>
