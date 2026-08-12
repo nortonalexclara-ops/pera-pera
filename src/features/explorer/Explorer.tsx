@@ -13,11 +13,12 @@ import { useProfileStore } from '../profile/profileStore'
 import { getAllMasteredIds } from '../../db/mastery'
 import { getAllFavoriteIds, toggleFavorite as toggleFavoriteDb } from '../../db/favorites'
 import type { ItemKind } from '../../db/db'
-import { buildExplorerItems, normalizeSearch, type ExplorerItem } from './buildExplorerItems'
+import { buildExplorerItems, buildDictionaryExplorerItems, normalizeSearch, type ExplorerItem } from './buildExplorerItems'
 import KanjiPracticeBox from './KanjiPracticeBox'
 import { reconstructReading, reconstructText } from '../../utils/furigana'
 import { toSpokenKanjiReading } from '../../utils/speech'
 import { wordExceedsOwnLevel, wordHasUnmasteredKanji, kanjisInWord } from '../../utils/kanjiLevel'
+import { fetchDictionary, posLabel, type DictionaryEntry } from '../dictionary/loadDictionary'
 // Réutilise les classes partagées (meaning-pill, conjugation-grid,
 // grammar-rule, flip-card__label...) déjà définies pour les cartes de
 // session — même motif de reuse que WritingCanvas/ModuleEndCard,
@@ -26,9 +27,14 @@ import '../kanji/SessionCard.css'
 import './Explorer.css'
 
 const LEVEL_OPTIONS = ['Tous', 'N5', 'N4', 'N3', 'N2', 'N1']
-const KIND_OPTIONS = ['Tous', 'Kanjis', 'Vocabulaire', 'Grammaire']
+const KIND_OPTIONS = ['Tous', 'Kanjis', 'Vocabulaire', 'Grammaire', 'Dictionnaire']
 const MASTERY_OPTIONS = ['Tous', 'Non maîtrisés', 'Maîtrisés']
-const KIND_TO_LABEL: Record<string, string> = { kanji: 'Kanjis', vocab: 'Vocabulaire', grammar: 'Grammaire' }
+const KIND_TO_LABEL: Record<string, string> = {
+  kanji: 'Kanjis',
+  vocab: 'Vocabulaire',
+  grammar: 'Grammaire',
+  dictionary: 'Dictionnaire',
+}
 const TYPE_LABELS: Record<string, string> = { nom: 'Nom', verbe: 'Verbe', adjectif: 'Adjectif', expression: 'Expression' }
 // Explorer ne liste que kanji/vocab/grammar (voir buildExplorerItems) —
 // hiragana/katakana quand même présents dans ces Record pour satisfaire
@@ -66,6 +72,9 @@ function isVocab(data: ExplorerItem['data']): data is VocabWord {
 function isGrammar(data: ExplorerItem['data']): data is GrammarPoint {
   return 'pattern' in data && 'rule' in data
 }
+function isDictionary(data: ExplorerItem['data']): data is DictionaryEntry {
+  return 'senses' in data
+}
 
 export default function Explorer() {
   const location = useLocation()
@@ -75,6 +84,27 @@ export default function Explorer() {
   // l'utilisateur retaper le kanji.
   const initialQuery = (location.state as { query?: string } | null)?.query ?? ''
   const allItems = useMemo(() => buildExplorerItems(), [])
+
+  // Dictionnaire de référence (voir loadDictionary.ts) — chargé à part
+  // (pas bundlé dans le JS, ~2 Mo récupérés en arrière-plan dès l'arrivée
+  // sur Explorer), fusionné au contenu curé une fois arrivé. Un échec
+  // (hors-ligne...) laisse simplement Explorer fonctionner comme avant
+  // cette fonctionnalité, avec le seul contenu curé.
+  const [dictionaryEntries, setDictionaryEntries] = useState<DictionaryEntry[]>([])
+  useEffect(() => {
+    let cancelled = false
+    fetchDictionary()
+      .then((entries) => {
+        if (!cancelled) setDictionaryEntries(entries)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const dictionaryItems = useMemo(() => buildDictionaryExplorerItems(dictionaryEntries), [dictionaryEntries])
+  const combinedItems = useMemo(() => [...allItems, ...dictionaryItems], [allItems, dictionaryItems])
+
   const [query, setQuery] = useState(initialQuery)
   const [level, setLevel] = useState('Tous')
   const [kind, setKind] = useState('Tous')
@@ -169,11 +199,24 @@ export default function Explorer() {
   const results = useMemo(() => {
     const q = normalizeSearch(query)
     const themeFilter = theme === 'Tous' ? null : theme.toLowerCase()
-    return allItems.filter((item) => {
+    return combinedItems.filter((item) => {
+      // Le dictionnaire n'apparaît que sur une recherche active — sans
+      // ça, 15 336 entrées brutes sans niveau ni ordre pédagogique
+      // noieraient la liste "parcourir sans filtre" (demande
+      // utilisatrice : une seule recherche, pas deux endroits, mais pas
+      // question non plus de perdre la liste curée habituelle).
+      if (item.kind === 'dictionary' && !q) return false
       if (level !== 'Tous' && item.jlptLevel !== level) return false
       if (kind !== 'Tous' && KIND_TO_LABEL[item.kind] !== kind) return false
       if (themeFilter && !item.themes.includes(themeFilter)) return false
       if (q && !item.normalizedSearchText.includes(q)) return false
+      // Maîtrise/favoris ne s'appliquent qu'au contenu appris — le
+      // dictionnaire de référence n'a ni l'un ni l'autre.
+      if (item.kind === 'dictionary') {
+        if (mastery !== 'Tous') return false
+        if (favoriteFilter === 'Favoris') return false
+        return true
+      }
       if (mastery !== 'Tous') {
         const isMastered = masteredIds[item.kind].has(item.data.id)
         if (mastery === 'Maîtrisés' && !isMastered) return false
@@ -182,7 +225,7 @@ export default function Explorer() {
       if (favoriteFilter === 'Favoris' && !favoriteIds[item.kind].has(item.data.id)) return false
       return true
     })
-  }, [allItems, query, level, kind, theme, mastery, masteredIds, favoriteFilter, favoriteIds])
+  }, [combinedItems, query, level, kind, theme, mastery, masteredIds, favoriteFilter, favoriteIds])
 
   // Nouvelle recherche/filtre = on repart du premier palier, pas de rester
   // scrollé à "300 affichés" sur un tout autre sous-ensemble de résultats.
@@ -218,7 +261,10 @@ export default function Explorer() {
     <PageTransition>
       <div className="explorer">
         <h1 className="explorer__title">Explorer</h1>
-        <p className="explorer__subtitle">Parcours librement tous les kanjis, mots et points de grammaire.</p>
+        <p className="explorer__subtitle">
+          Parcours librement tous les kanjis, mots et points de grammaire — ou cherche n'importe quel autre mot dans
+          le dictionnaire complet, japonais↔français.
+        </p>
 
         <div className="explorer__search-row">
           <div className="explorer__search">
@@ -290,7 +336,7 @@ export default function Explorer() {
           {visibleResults.map((item, i) => {
             const isExpanded = expandedId === item.id
             const isPracticing = practiceId === item.id
-            const isFavorite = favoriteIds[item.kind].has(item.data.id)
+            const isFavorite = item.kind !== 'dictionary' && favoriteIds[item.kind].has(item.data.id)
             const canPractice = isKanji(item.data) && item.data.strokePaths.length > 0
             return (
               <li
@@ -338,7 +384,13 @@ export default function Explorer() {
                         className="explorer-row__speak-btn"
                       />
                     )}
-                    <span className="explorer-row__level">{item.jlptLevel}</span>
+                    {isDictionary(item.data) && (
+                      <SpeakButton
+                        text={item.data.kana[0] ?? item.headline}
+                        className="explorer-row__speak-btn"
+                      />
+                    )}
+                    {item.jlptLevel && <span className="explorer-row__level">{item.jlptLevel}</span>}
                   </span>
                   <span className="explorer-row__sub">{item.subLabel}</span>
                   <span className="explorer-row__meaning">{item.meanings.join(', ')}</span>
@@ -358,16 +410,20 @@ export default function Explorer() {
                       </span>
                     )}
                   </span>
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    className="explorer-row__favorite"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (profileId) toggleFavoriteDb(profileId, item.kind, item.data.id)
-                    }}
-                  >
-                    <Star size={16} strokeWidth={1.75} fill={isFavorite ? 'var(--color-warm)' : 'none'} color={isFavorite ? 'var(--color-warm)' : undefined} />
+                  <span className="explorer-row__favorite">
+                    {/* Pas de statut favori sur le dictionnaire de référence
+                        — ce n'est pas du contenu appris (voir buildExplorerItems.ts).
+                        Le slot reste vide plutôt qu'absent, pour ne pas
+                        décaler les colonnes suivantes (même motif que
+                        `.explorer-row__practice-slot`). */}
+                    {item.kind !== 'dictionary' && (
+                      <FavoriteToggle
+                        profileId={profileId}
+                        kind={item.kind}
+                        itemId={item.data.id}
+                        isFavorite={isFavorite}
+                      />
+                    )}
                   </span>
                   <ChevronDown size={16} strokeWidth={2} className={`explorer-row__chevron${isExpanded ? ' is-open' : ''}`} />
                 </button>
@@ -383,6 +439,7 @@ export default function Explorer() {
                     {isKanji(item.data) && <KanjiDetail kanji={item.data} onExampleClick={openExample} />}
                     {isVocab(item.data) && <VocabDetail vocab={item.data} />}
                     {isGrammar(item.data) && <GrammarDetail point={item.data} />}
+                    {isDictionary(item.data) && <DictionaryDetail entry={item.data} />}
                   </div>
                 )}
               </li>
@@ -401,6 +458,43 @@ export default function Explorer() {
         )}
       </div>
     </PageTransition>
+  )
+}
+
+// Extrait en composant à part (plutôt qu'inline dans la ligne) : `kind`
+// reçu en prop est correctement réduit à `ItemKind` (kanji/vocab/grammar)
+// par TypeScript au point d'appel (voir le `item.kind !== 'dictionary'`
+// juste avant) — capturé directement dans une fermeture `onClick` inline
+// à l'intérieur de la ligne, TypeScript ne peut pas garantir la même
+// réduction (elle pourrait en théorie changer d'ici l'exécution du
+// clic), un simple prop typé l'évite.
+function FavoriteToggle({
+  profileId,
+  kind,
+  itemId,
+  isFavorite,
+}: {
+  profileId: string | null
+  kind: ItemKind
+  itemId: string
+  isFavorite: boolean
+}) {
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      onClick={(e) => {
+        e.stopPropagation()
+        if (profileId) toggleFavoriteDb(profileId, kind, itemId)
+      }}
+    >
+      <Star
+        size={16}
+        strokeWidth={1.75}
+        fill={isFavorite ? 'var(--color-warm)' : 'none'}
+        color={isFavorite ? 'var(--color-warm)' : undefined}
+      />
+    </span>
   )
 }
 
@@ -576,6 +670,34 @@ function VocabDetail({ vocab }: { vocab: VocabWord }) {
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+// Contenu de référence brut (voir loadDictionary.ts) — pas de tableau de
+// conjugaison ni de phrases d'exemple, absents de ce jeu de données
+// (contrairement aux fiches curées) : juste les formes du mot et ses
+// sens, groupés par nature grammaticale.
+function DictionaryDetail({ entry }: { entry: DictionaryEntry }) {
+  // Saute toujours le premier kanji (déjà le titre de la ligne, ou absent)
+  // et la première lecture (déjà le sous-titre, ou déjà le titre s'il n'y
+  // a pas de kanji) — sans ça, la seule lecture d'un mot sans autre forme
+  // se répétait ici alors qu'elle est déjà visible juste au-dessus.
+  const otherForms = [...entry.kanji.slice(1), ...entry.kana.slice(1)]
+  return (
+    <div className="explorer-detail__body">
+      {otherForms.length > 0 && (
+        <p className="explorer-detail__dict-forms">Aussi écrit : {otherForms.join(' · ')}</p>
+      )}
+      <ul className="explorer-detail__examples">
+        {entry.senses.map((s, i) => (
+          <li key={i}>
+            <span className="word-type-badge">{posLabel(s.pos) || '—'}</span>
+            <span className="explorer-detail__example-meaning">{s.gloss.join(', ')}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="explorer-detail__dict-credit">Source : dictionnaire JMdict (licence CC BY-SA).</p>
     </div>
   )
 }

@@ -3,13 +3,23 @@ import { mockVocabList, type VocabWord } from '../vocab/mockVocab'
 import { mockGrammarList, type GrammarPoint } from '../grammar/mockGrammar'
 import { reconstructReading } from '../../utils/furigana'
 import { shuffleArray } from '../../utils/shuffle'
+import type { DictionaryEntry } from '../dictionary/loadDictionary'
 
-export type ExplorerKind = 'kanji' | 'vocab' | 'grammar'
+// 'dictionary' : entrées de référence brutes (voir loadDictionary.ts),
+// pas du contenu appris — distinct des trois kinds curés, traité à part
+// dans Explorer.tsx (pas de niveau, pas de maîtrise/favori, n'apparaît
+// que sur une recherche active).
+export type ExplorerKind = 'kanji' | 'vocab' | 'grammar' | 'dictionary'
 
 export interface ExplorerItem {
   id: string
   kind: ExplorerKind
-  jlptLevel: JlptLevel
+  // `null` pour les entrées du dictionnaire — pas de notion de niveau
+  // JLPT sur du contenu de référence brut, contrairement au programme
+  // curé. Le filtre par niveau (Explorer.tsx) les exclut alors
+  // naturellement dès qu'un niveau précis est choisi (comportement déjà
+  // existant, pas de code spécial à écrire pour ça).
+  jlptLevel: JlptLevel | null
   headline: string
   subLabel: string
   meanings: string[]
@@ -22,7 +32,7 @@ export interface ExplorerItem {
   // Champs lexicaux — uniquement les kanjis pour l'instant, tableau vide
   // sinon (pas de filtre "par thème" pour vocab/grammaire à ce stade).
   themes: string[]
-  data: Kanji | VocabWord | GrammarPoint
+  data: Kanji | VocabWord | GrammarPoint | DictionaryEntry
 }
 
 // Virgule entre lectures d'un même type (intra on'yomi / intra
@@ -95,6 +105,35 @@ export function buildExplorerItems(): ExplorerItem[] {
   // rendu. Kanjis/grammaire gardent leur ordre (progression JLPT), pas
   // concernés par la demande.
   return [...kanjiItems, ...shuffleArray(vocabItems), ...grammarItems]
+}
+
+// Séparée de `buildExplorerItems()` : le dictionnaire est chargé de
+// façon asynchrone (voir loadDictionary.ts, fetchDictionary), pas
+// disponible au chargement du module comme les trois datasets curés
+// (bundlés dans le JS). Appelée depuis Explorer.tsx une fois le
+// dictionnaire arrivé.
+export function buildDictionaryExplorerItems(entries: DictionaryEntry[]): ExplorerItem[] {
+  return entries.map((e) => {
+    const headline = e.kanji[0] ?? e.kana[0]
+    // Lecture affichée seulement si distincte du titre (un mot sans
+    // kanji, ex. がっかり, a déjà sa lecture comme titre — pas la peine de
+    // la répéter juste en dessous).
+    const subLabel = e.kanji.length > 0 ? e.kana[0] ?? '' : ''
+    const meanings = [...new Set(e.senses.flatMap((s) => s.gloss))]
+    const searchText = [...e.kanji, ...e.kana, ...meanings].join(' ')
+    return {
+      id: `dict-${e.id}`,
+      kind: 'dictionary',
+      jlptLevel: null,
+      headline,
+      subLabel,
+      meanings,
+      searchText,
+      normalizedSearchText: normalizeSearch(searchText),
+      themes: [],
+      data: e,
+    }
+  })
 }
 
 export function normalizeSearch(s: string): string {
