@@ -128,7 +128,7 @@
   margin-top: var(--space-sm);
 }
 
-/* Interrupteur séance recommandée / personnalisée */
+/* Interrupteur Apprentissage / Test */
 .session-toggle {
   display: flex;
   background: var(--color-bg);
@@ -169,8 +169,8 @@
   z-index: 1;
 }
 
-/* Mode personnalisé : bascule sur l'accent chaleureux pour bien marquer
-   qu'on n'est plus dans le mode recommandé (turquoise) */
+/* Mode Apprentissage : bascule sur l'accent chaleureux pour bien marquer
+   qu'on n'est pas dans le mode Test (turquoise) */
 .mode-custom .session-toggle__indicator {
   background: var(--color-warm);
 }
@@ -184,31 +184,7 @@
   box-shadow: 0 8px 20px rgba(242, 153, 74, 0.36);
 }
 
-/* Grille de statistiques (mode recommandé) */
-.stat-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-md);
-  margin-bottom: var(--space-md);
-}
-
-.stat-grid__item {
-  display: flex;
-  flex-direction: column;
-}
-
-.stat-grid__number {
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--color-accent-dark);
-}
-
-.stat-grid__label {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-
-/* Constructeur de séance personnalisée */
+/* Constructeur de séance personnalisée / configuration du test */
 .custom-builder__label {
   font-size: 12px;
   font-weight: 600;

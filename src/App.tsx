@@ -13,6 +13,7 @@ import StatsScreen from './features/stats/StatsScreen'
 import Settings from './features/settings/Settings'
 import SessionFlow from './features/kanji/SessionFlow'
 import TestKnowledge from './features/test/TestKnowledge'
+import MasteryTest from './features/test/MasteryTest'
 import KanaSetup from './features/kana/KanaSetup'
 import KanaSession from './features/kana/KanaSession'
 import KanaTest from './features/kana/KanaTest'
@@ -51,6 +52,7 @@ export default function App() {
       <Route path="/" element={<ProfileSelector />} />
       <Route path="/session" element={<SessionFlow />} />
       <Route path="/session/test" element={<TestKnowledge />} />
+      <Route path="/session/mastery-test" element={<MasteryTest />} />
       <Route path="/session/kana" element={<KanaSession />} />
       <Route path="/session/kana/test" element={<KanaTest />} />
 

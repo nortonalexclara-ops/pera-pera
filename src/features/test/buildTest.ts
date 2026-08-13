@@ -1,6 +1,7 @@
 import { mockKanjiList, type JlptLevel, type Kanji } from '../kanji/mockKanji'
 import { mockVocabList, type VocabWord } from '../vocab/mockVocab'
 import { mockGrammarList, type GrammarPoint } from '../grammar/mockGrammar'
+import type { ItemKind } from '../../db/db'
 
 // Un item vu pendant la séance (kanji/vocab/grammaire dont l'utilisateur a
 // pris une décision Maîtrisé/À revoir) — c'est cette liste, pas le contenu
@@ -188,50 +189,92 @@ export function buildTestPoolFromSeen(seenItems: SeenItem[]): TestItem[] {
   return items
 }
 
-/**
- * Une question par item du pool, mélangée, avec un sens (JP→FR / FR→JP)
- * tiré au sort pour chacune. Toujours en QCM (demande explicite de
- * l'utilisatrice : écrire la réponse est trop pénible) — seul repli sur
- * "write" quand le pool n'a qu'un seul item, où un QCM n'a pas de sens
- * (impossible de construire ne serait-ce qu'un leurre).
- */
-export function buildQuestions(pool: TestItem[]): TestQuestion[] {
-  const shuffledPool = shuffle(pool)
+// Construit une question pour un item donné, avec un sens (JP→FR / FR→JP)
+// tiré au sort. Toujours en QCM (demande explicite de l'utilisatrice :
+// écrire la réponse est trop pénible) — seul repli sur "write" quand le pool
+// n'a qu'un seul item, où un QCM n'a pas de sens (impossible de construire
+// ne serait-ce qu'un leurre). Séparée de `buildQuestions`/`buildOneQuestion`
+// pour être réutilisable telle quelle par les deux (lot fixe vs tirage à la
+// demande, voir MasteryTest.tsx).
+function buildQuestionForItem(item: TestItem, pool: TestItem[]): TestQuestion {
+  const direction: Direction = Math.random() < 0.5 ? 'jp-to-fr' : 'fr-to-jp'
+  const mode: Mode = pool.length >= 2 ? 'qcm' : 'write'
 
-  return shuffledPool.map((item) => {
-    const direction: Direction = Math.random() < 0.5 ? 'jp-to-fr' : 'fr-to-jp'
-    const mode: Mode = pool.length >= 2 ? 'qcm' : 'write'
+  const correctAnswer =
+    direction === 'jp-to-fr'
+      ? item.meanings.join(' / ')
+      : `${item.prompt}${item.readings.length ? ` (${item.readings.join(' / ')})` : ''}`
 
-    const correctAnswer =
-      direction === 'jp-to-fr'
-        ? item.meanings.join(' / ')
-        : `${item.prompt}${item.readings.length ? ` (${item.readings.join(' / ')})` : ''}`
-
-    let options: string[] | undefined
-    if (mode === 'qcm') {
-      const correctOption = direction === 'jp-to-fr' ? item.meanings[0] : item.prompt
-      // Deux items différents peuvent partager le même sens affiché (ex. le
-      // kanji 大 et le mot 大きい ont tous les deux "grand" comme
-      // traduction) — dédoublonner par valeur affichée, pas seulement par
-      // id, sinon deux options identiques et indiscernables apparaissent.
-      const seenValues = new Set([correctOption])
-      const distractors: string[] = []
-      // Les leurres du même type (kanji/vocab/grammaire) d'abord — plus
-      // pertinent pédagogiquement qu'un mélange (comparer un motif de
-      // grammaire à un sens de kanji au hasard) — puis on complète avec le
-      // reste du pool si le module n'a pas assez d'items pour 3 leurres.
-      const rest = shuffle(pool.filter((p) => p.id !== item.id))
-      const sameKindFirst = [...rest.filter((p) => p.kind === item.kind), ...rest.filter((p) => p.kind !== item.kind)]
-      for (const d of sameKindFirst) {
-        const value = direction === 'jp-to-fr' ? d.meanings[0] : d.prompt
-        if (seenValues.has(value)) continue
-        seenValues.add(value)
-        distractors.push(value)
-        if (distractors.length >= 3) break
-      }
-      options = shuffle([correctOption, ...distractors])
+  let options: string[] | undefined
+  if (mode === 'qcm') {
+    const correctOption = direction === 'jp-to-fr' ? item.meanings[0] : item.prompt
+    // Deux items différents peuvent partager le même sens affiché (ex. le
+    // kanji 大 et le mot 大きい ont tous les deux "grand" comme
+    // traduction) — dédoublonner par valeur affichée, pas seulement par
+    // id, sinon deux options identiques et indiscernables apparaissent.
+    const seenValues = new Set([correctOption])
+    const distractors: string[] = []
+    // Les leurres du même type (kanji/vocab/grammaire) d'abord — plus
+    // pertinent pédagogiquement qu'un mélange (comparer un motif de
+    // grammaire à un sens de kanji au hasard) — puis on complète avec le
+    // reste du pool si le module n'a pas assez d'items pour 3 leurres.
+    const rest = shuffle(pool.filter((p) => p.id !== item.id))
+    const sameKindFirst = [...rest.filter((p) => p.kind === item.kind), ...rest.filter((p) => p.kind !== item.kind)]
+    for (const d of sameKindFirst) {
+      const value = direction === 'jp-to-fr' ? d.meanings[0] : d.prompt
+      if (seenValues.has(value)) continue
+      seenValues.add(value)
+      distractors.push(value)
+      if (distractors.length >= 3) break
     }
+    options = shuffle([correctOption, ...distractors])
+  }
 
-    return { item, direction, mode, correctAnswer, options }
-  })
+  return { item, direction, mode, correctAnswer, options }
+}
+
+// Une question par item du pool, mélangée — lot fixe utilisé par le test de
+// fin de séance (TestKnowledge.tsx).
+export function buildQuestions(pool: TestItem[]): TestQuestion[] {
+  return shuffle(pool).map((item) => buildQuestionForItem(item, pool))
+}
+
+// Une seule question, item tiré au sort dans le pool — utilisé par le test
+// illimité (MasteryTest.tsx) pour générer les questions une par une plutôt
+// qu'en lot fixe, tant que l'utilisatrice ne clique pas sur "Terminer".
+export function buildOneQuestion(pool: TestItem[]): TestQuestion {
+  const item = pool[Math.floor(Math.random() * pool.length)]
+  return buildQuestionForItem(item, pool)
+}
+
+/**
+ * Pool testable limité à ce que le profil a marqué "Maîtrisé", pour le
+ * niveau et les modules choisis — utilisé par le test illimité
+ * (MasteryTest.tsx), qui interroge sur les connaissances déjà acquises
+ * plutôt que sur tout le contenu d'un niveau (contrairement à
+ * `buildTestPool`).
+ */
+export function buildMasteredTestPool(
+  modules: string[],
+  level: JlptLevel,
+  masteredIds: Record<ItemKind, Set<string>>,
+): TestItem[] {
+  const items: TestItem[] = []
+
+  if (modules.includes('Kanjis')) {
+    const kanjis = mockKanjiList.filter((k) => k.jlptLevel === level && masteredIds.kanji.has(k.id))
+    items.push(...kanjis.map(kanjiToTestItem))
+  }
+
+  if (modules.includes('Vocabulaire')) {
+    const words = mockVocabList.filter((w) => w.jlptLevel === level && masteredIds.vocab.has(w.id))
+    items.push(...words.map(vocabToTestItem))
+  }
+
+  if (modules.includes('Grammaire')) {
+    const points = mockGrammarList.filter((g) => g.jlptLevel === level && masteredIds.grammar.has(g.id))
+    items.push(...points.map(grammarToTestItem))
+  }
+
+  return items
 }

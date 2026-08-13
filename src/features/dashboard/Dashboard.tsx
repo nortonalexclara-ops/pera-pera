@@ -9,17 +9,14 @@ import { getStreak } from '../../db/activity'
 import { isFavorite as checkIsFavorite, toggleFavorite } from '../../db/favorites'
 import type { ItemKind } from '../../db/db'
 import { mockKanjiList } from '../kanji/mockKanji'
-import { mockVocabList } from '../vocab/mockVocab'
-import { mockGrammarList } from '../grammar/mockGrammar'
-import type { RecommendedSession } from './mockDashboard'
 import { getKanjiGoal, getHasCloudBackup, DEFAULT_KANJI_GOAL } from '../../db/settings'
 import { getWordOfDay } from './wordOfDay'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import ProgressRing from '../../components/ui/ProgressRing'
 import PageTransition from '../../components/ui/PageTransition'
 import SessionModeToggle, { type SessionMode } from './SessionModeToggle'
-import RecommendedSessionPanel from './RecommendedSessionPanel'
 import CustomSessionBuilder from './CustomSessionBuilder'
+import TestSetupPanel from '../test/TestSetupPanel'
 import PinOnboardingModal from './PinOnboardingModal'
 import { consumePinOnboardingFlag } from '../profile/pinOnboarding'
 import './Dashboard.css'
@@ -32,13 +29,11 @@ const EMPTY_MASTERED: Record<ItemKind, Set<string>> = {
   katakana: new Set(),
 }
 
-// Taille cible d'une séance recommandée — pas un objectif de progression
-// (voir mockGoal pour ça), juste "combien de cartes proposer aujourd'hui"
-// pour rester dans les ~25 min annoncées. Le nombre réellement affiché/
-// proposé est le minimum entre cette cible et ce qui reste vraiment à
-// apprendre (ou à réviser), pour ne jamais promettre plus que le contenu
-// disponible ne peut tenir.
-const SESSION_SIZE = { kanji: 5, vocab: 12, grammar: 3, review: 38 }
+// Taille cible d'une séance de nouveaux kanjis — sert uniquement de
+// dénominateur de secours pour l'estimation "à ce rythme : ~X jours" de la
+// carte objectif (voir paceDays plus bas), pas à une séance recommandée
+// (supprimée : demande explicite de l'utilisatrice).
+const NEW_KANJI_SESSION_TARGET = 5
 
 const listVariants = {
   hidden: {},
@@ -113,9 +108,8 @@ export default function Dashboard() {
     false,
   )
 
-  // Tous les items maîtrisés (3 kinds) en un aller-retour — sert à calculer
-  // "nouveaux" (= pas encore dans cet ensemble) et "à réviser" (= dedans)
-  // pour la séance recommandée, en vrai plutôt qu'en chiffres inventés.
+  // Tous les items maîtrisés (3 kinds) en un aller-retour — sert au calcul
+  // de la carte objectif (kanjis restants) ci-dessous.
   const masteredIds = useLiveQuery(
     () => (profileId ? getAllMasteredIds(profileId) : Promise.resolve(EMPTY_MASTERED)),
     [profileId],
@@ -138,43 +132,18 @@ export default function Dashboard() {
     [profileId, wordOfDay.id],
     false,
   )
-  // Démarre sur "personnalisée" plutôt que "recommandée" (demande
-  // explicite de l'utilisatrice) — reste modifiable via le même
-  // interrupteur, ce n'est qu'un changement de mode par défaut à
-  // l'ouverture du Dashboard.
   const [mode, setMode] = useState<SessionMode>('custom')
 
   const goalCurrent = masteredKanjiCount ?? 0
   const goalPercent = Math.round((goalCurrent / kanjiGoal) * 100)
   const remaining = kanjiGoal - goalCurrent
 
-  const newKanjiCount = Math.min(SESSION_SIZE.kanji, Math.max(0, mockKanjiList.length - masteredIds.kanji.size))
-  const newVocabCount = Math.min(SESSION_SIZE.vocab, Math.max(0, mockVocabList.length - masteredIds.vocab.size))
-  const newGrammarCount = Math.min(SESSION_SIZE.grammar, Math.max(0, mockGrammarList.length - masteredIds.grammar.size))
-  const reviewCount = Math.min(
-    SESSION_SIZE.review,
-    masteredIds.kanji.size + masteredIds.vocab.size + masteredIds.grammar.size,
-  )
-
-  const recommendedSession: RecommendedSession = {
-    kanjiCount: newKanjiCount,
-    vocabCount: newVocabCount,
-    grammarCount: newGrammarCount,
-    reviewCount,
-    durationMinutes: 25,
-  }
+  const newKanjiCount = Math.min(NEW_KANJI_SESSION_TARGET, Math.max(0, mockKanjiList.length - masteredIds.kanji.size))
 
   // Dénominateur de secours pour éviter une division par zéro si tous les
   // kanjis disponibles sont déjà maîtrisés (newKanjiCount = 0) — on retombe
   // sur la taille de séance cible plutôt que d'afficher Infinity/NaN.
-  const paceDays = Math.ceil(remaining / (newKanjiCount > 0 ? newKanjiCount : SESSION_SIZE.kanji))
-
-  const recommendedModules = [
-    recommendedSession.kanjiCount > 0 && 'Kanjis',
-    recommendedSession.vocabCount > 0 && 'Vocabulaire',
-    recommendedSession.grammarCount > 0 && 'Grammaire',
-    recommendedSession.reviewCount > 0 && 'Révisions',
-  ].filter((m): m is string => Boolean(m))
+  const paceDays = Math.ceil(remaining / (newKanjiCount > 0 ? newKanjiCount : NEW_KANJI_SESSION_TARGET))
 
   return (
     <PageTransition>
@@ -230,29 +199,15 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
             >
-              {mode === 'recommended' ? (
-                <RecommendedSessionPanel
-                  session={recommendedSession}
-                  onStart={() =>
-                    navigate('/session', {
-                      state: {
-                        modules: recommendedModules,
-                        contentModes: { Kanjis: 'new', Vocabulaire: 'new', Grammaire: 'new' },
-                        limits: {
-                          Kanjis: SESSION_SIZE.kanji,
-                          Vocabulaire: SESSION_SIZE.vocab,
-                          Grammaire: SESSION_SIZE.grammar,
-                          Révisions: SESSION_SIZE.review,
-                        },
-                      },
-                    })
-                  }
-                />
-              ) : (
+              {mode === 'custom' ? (
                 <CustomSessionBuilder
                   onStart={(modules, level, contentModes, vocabTypes) =>
                     navigate('/session', { state: { modules, level, contentModes, vocabTypes } })
                   }
+                />
+              ) : (
+                <TestSetupPanel
+                  onStart={(level, modules) => navigate('/session/mastery-test', { state: { level, modules } })}
                 />
               )}
             </motion.div>

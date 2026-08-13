@@ -154,6 +154,19 @@
   margin-top: var(--space-sm);
 }
 
+/* Compteur du test illimité (MasteryTest.tsx) — pas de ProgressRing ici,
+   il n'y a pas de total fixe à afficher comme dénominateur. */
+.test-mastery__score {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 8px 16px;
+  white-space: nowrap;
+}
+
 @media (max-width: 640px) {
   .test-card__prompt-jp {
     font-size: 64px;
