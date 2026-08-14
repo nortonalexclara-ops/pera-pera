@@ -167,6 +167,59 @@
   white-space: nowrap;
 }
 
+/* Trois zones (bouton fin / chrono / score) réparties aux extrémités et
+   au centre, contrairement à l'en-tête à deux zones de TestKnowledge.tsx
+   (`.test-screen__header` seul, `justify-content: space-between` lui
+   suffit) — une grille garantit un centrage réel du chrono, pas juste
+   approximatif selon la largeur des boutons de part et d'autre. Deux
+   classes sur le même header (voir MasteryTest.tsx) pour que cette règle,
+   plus spécifique, l'emporte sans `!important`. */
+.test-screen__header.test-mastery__header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+
+.test-mastery__header > .btn-link {
+  justify-self: start;
+}
+
+.test-mastery__header .test-mastery__score {
+  justify-self: end;
+}
+
+.test-mastery__timer {
+  justify-self: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.test-mastery__record-hint {
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.test-mastery__recap-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-sm);
+}
+
+.test-mastery__new-record {
+  margin-top: var(--space-sm);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-warm);
+}
+
 @media (max-width: 640px) {
   .test-card__prompt-jp {
     font-size: 64px;
@@ -190,5 +243,21 @@
   .qcm-option {
     padding: 14px 18px;
     font-size: 17px;
+  }
+
+  /* Trois zones qui se resserrent au lieu de déborder sur un petit
+     téléphone — le libellé du bouton "Terminer le test" reste tel quel
+     (déjà court), seuls le chrono et le score raccourcissent. */
+  .test-mastery__header .btn-link {
+    font-size: 13px;
+  }
+
+  .test-mastery__timer {
+    font-size: 14px;
+  }
+
+  .test-mastery__score {
+    font-size: 13px;
+    padding: 6px 12px;
   }
 }

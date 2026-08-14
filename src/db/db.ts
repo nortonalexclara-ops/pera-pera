@@ -81,6 +81,13 @@ export interface ProfileSettingsRecord {
   profileId: string
   kanjiGoal: number
   hasCloudBackup: boolean
+  // Record du test illimité (voir MasteryTest.tsx) — meilleur nombre de
+  // bonnes réponses et plus long temps tenu en une tentative, tous
+  // niveaux/modules confondus (un seul record global, pas un par
+  // combinaison, pour rester simple et motivant). Optionnels : absents
+  // tant qu'aucun test n'a été terminé.
+  bestTestScore?: number
+  bestTestTimeSeconds?: number
 }
 
 // Une ligne par jour où le profil a passé du temps en séance (Kanjis/

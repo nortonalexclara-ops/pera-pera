@@ -74,7 +74,11 @@ export default function SessionFlow() {
         <header className="session__header">
           <button className="btn-link" onClick={() => navigate('/dashboard')}>
             <ArrowLeft size={18} strokeWidth={1.75} />
-            Retour au dashboard
+            {/* Raccourci sur téléphone (demande utilisatrice, boutons du
+                haut trop larges) — la version longue reste affichée sur
+                desktop, voir la règle responsive dans SessionCard.css. */}
+            <span className="session__header-label-full">Retour au dashboard</span>
+            <span className="session__header-label-short">Dashboard</span>
           </button>
           <div className="session__header-right">
             {level && <span className="session__module-badge">{level}</span>}
@@ -87,7 +91,8 @@ export default function SessionFlow() {
                 un module, donc c'est à l'utilisateur de décider quand il a
                 fini, pas à un compteur. */}
             <button className="btn-link" onClick={handleModuleDone}>
-              {continueLabel}
+              <span className="session__header-label-full">{continueLabel}</span>
+              <span className="session__header-label-short">{isLastModule ? 'Test' : continueLabel}</span>
               <ArrowRight size={14} strokeWidth={2} />
             </button>
           </div>

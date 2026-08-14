@@ -43,6 +43,14 @@
   gap: var(--space-md);
 }
 
+/* Libellés courts des boutons d'en-tête — masqués par défaut (desktop),
+   visibles seulement sur téléphone (voir @media 600px) où la version
+   longue ("Retour au dashboard", "Tester mes connaissances") prenait trop
+   de place à côté des badges de module (demande utilisatrice). */
+.session__header-label-short {
+  display: none;
+}
+
 .session__module-badge {
   font-size: 13px;
   font-weight: 600;
@@ -164,6 +172,21 @@
 .session__writing-col > .writing-canvas {
   flex: 1;
   min-height: 0;
+}
+
+/* Bouton flottant + fenêtre d'écriture (téléphone uniquement, voir
+   @media 860px plus bas) — cachés par défaut ici : sur desktop la
+   colonne d'écriture reste affichée normalement ci-dessus, inchangée. */
+.session__writing-fab {
+  display: none;
+}
+
+.session__writing-backdrop {
+  display: none;
+}
+
+.session__writing-modal-close {
+  display: none;
 }
 
 /* Carte retournable */
@@ -831,9 +854,73 @@ rt {
     flex-direction: column;
   }
 
+  /* Entraînement à l'écriture "camouflé" (demande utilisatrice) : plus
+     affiché en ligne sous la carte (ça forçait à défiler beaucoup pour
+     voir les exemples au dos) — accessible via le bouton flottant, qui
+     l'ouvre en fenêtre par-dessus tout le reste. La carte récupère alors
+     toute la hauteur de `.session__body`. */
   .session__writing-col {
+    display: none;
+  }
+
+  .session__writing-fab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: var(--space-lg);
+    bottom: var(--space-lg);
+    z-index: 15;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    background: var(--color-accent);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+    cursor: pointer;
+  }
+
+  .session__writing-backdrop.is-open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  .session__writing-col.is-open {
+    display: flex;
+    position: fixed;
+    left: var(--space-md);
+    right: var(--space-md);
+    top: 5vh;
+    bottom: 5vh;
+    z-index: 21;
     max-width: none;
-    flex: 0 0 200px;
+    min-width: 0;
+    flex: none;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+    padding: var(--space-md);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .session__writing-col.is-open .session__writing-modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-end;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--color-bg);
+    color: var(--color-text-secondary);
+    cursor: pointer;
   }
 
   .flip-card__char {
@@ -874,6 +961,31 @@ rt {
     margin-bottom: var(--space-sm);
   }
 
+  /* Boutons du haut resserrés (demande utilisatrice) : libellé court à la
+     place du long, icône et texte réduits, moins d'écart avec les badges
+     de module qui partagent la même rangée. */
+  .session__header-label-full {
+    display: none;
+  }
+
+  .session__header-label-short {
+    display: inline;
+  }
+
+  .session__header .btn-link {
+    gap: 4px;
+    font-size: 13px;
+  }
+
+  .session__header .btn-link svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .session__header-right {
+    gap: var(--space-sm);
+  }
+
   .session__body {
     gap: var(--space-md);
   }
@@ -907,30 +1019,6 @@ rt {
     padding: var(--space-md);
   }
 
-  /* "Agrandit le cadran en déplaçant l'ordre des traits sur la gauche en
-     long" (demande utilisateur) : au lieu d'une rangée de vignettes
-     AU-DESSUS du canevas (qui lui mangeait ~70-90px de hauteur), une
-     bande étroite À GAUCHE, en colonne, avec son propre défilement
-     interne si le kanji a beaucoup de traits — le canevas récupère
-     quasi toute la hauteur de la colonne d'écriture. Basis remonté
-     240px→300px : la place gagnée ici vient pour partie de la carte au-
-     dessus (le titre/flèche rétrécis ci-dessus, `.session__writing-col`
-     étant à largeur fixe, tout gain de hauteur totale de `.session__body`
-     lui profite directement puisque `.session__card-col` absorbe le
-     reste via flex-grow). Le `overflow-y: auto` reste un filet de
-     sécurité si jamais ça ne suffit toujours pas sur un très petit écran. */
-  .session__writing-col {
-    flex: 0 0 300px;
-    flex-direction: row;
-    gap: var(--space-sm);
-    overflow-y: auto;
-  }
-
-  .session__writing-col > .writing-canvas {
-    flex: 1;
-    min-width: 0;
-  }
-
   .writing-canvas {
     padding: var(--space-sm);
   }
@@ -954,43 +1042,16 @@ rt {
     min-height: 120px;
   }
 
-  .stroke-order-panel {
-    flex: 0 0 52px;
-    display: flex;
-    flex-direction: column;
-    padding: 6px;
-    overflow: hidden;
-  }
-
-  /* "ORDRE DES TRAITS" en majuscules ne tient pas lisiblement dans une
-     bande de 52px de large — les vignettes numérotées se suffisent à
-     elles-mêmes une fois qu'on sait ce qu'elles représentent. */
-  .stroke-order-panel .flip-card__label {
-    display: none;
-  }
-
-  .stroke-order__steps {
-    flex: 1;
-    min-height: 0;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    overflow-y: auto;
-    gap: 6px;
-  }
-
-  .stroke-order__step {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1;
-    flex-shrink: 0;
-  }
-
+  /* Boutons centrés et ajustés à leur contenu plutôt qu'étirés sur toute
+     la largeur (demande utilisatrice : trop larges sur téléphone). */
   .session__decision {
     gap: var(--space-sm);
+    justify-content: center;
   }
 
   .decision-btn {
-    padding: 12px 16px;
+    flex: 0 1 auto;
+    padding: 12px 18px;
     font-size: 15px;
   }
 

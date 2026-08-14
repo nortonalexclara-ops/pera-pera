@@ -575,15 +575,35 @@ function KanjiDetail({ kanji, onExampleClick }: { kanji: Kanji; onExampleClick: 
 }
 
 function VocabDetail({ vocab }: { vocab: VocabWord }) {
+  // Kanjis qui composent ce mot, avec leur propre signification (demande
+  // utilisatrice) — distinct de "Clés" juste en dessous (composants/
+  // radicaux d'UN kanji) : ici c'est le sens de chaque kanji du MOT.
+  // Absent pour un mot à un seul kanji ou purement en kana.
+  const wordKanjis = kanjisInWord(vocab.word)
+
   // Composants ("clés") des kanjis qui composent ce mot, même info que la
   // section "Clés" des fiches Kanjis (demande utilisatrice) — absent pour
   // les mots purement en kana ou dont les kanjis sont atomiques (pas de
   // décomposition, ex. 人, 大).
-  const kanjisWithComponents = kanjisInWord(vocab.word).filter((k) => k.components.length > 0)
+  const kanjisWithComponents = wordKanjis.filter((k) => k.components.length > 0)
 
   return (
     <div className="explorer-detail__body">
       <span className="word-type-badge">{TYPE_LABELS[vocab.type]}</span>
+
+      {wordKanjis.length >= 2 && (
+        <>
+          <p className="flip-card__label">Kanjis</p>
+          <ul className="explorer-detail__components">
+            {wordKanjis.map((k) => (
+              <li key={k.id} className="component-chip">
+                <span className="component-chip__char">{k.character}</span>
+                <span className="component-chip__meaning">{k.meanings[0]}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       {kanjisWithComponents.length > 0 && (
         <>

@@ -170,7 +170,9 @@ export default function VocabCardLoop({
           </span>
         </>
       )}
-      renderBack={(vocab: VocabWord, revealed, toggleReveal) => (
+      renderBack={(vocab: VocabWord, revealed, toggleReveal) => {
+        const wordKanjis = kanjisInWord(vocab.word)
+        return (
         <>
           <div className="flip-card__back-head">
             <span className="word-type-badge">
@@ -189,6 +191,26 @@ export default function VocabCardLoop({
               ))}
             </div>
           </div>
+
+          {/* Décomposition du mot en ses kanjis, chacun avec sa propre
+              signification (demande utilisatrice) — distinct de "Clés"
+              (composants/radicaux d'UN kanji, voir KanjiCardLoop) : ici
+              c'est le sens de chaque kanji du MOT, pas de ses radicaux.
+              Absent pour un mot à un seul kanji (rien à décomposer) ou
+              purement en kana. */}
+          {wordKanjis.length >= 2 && (
+            <>
+              <p className="flip-card__label">Kanjis</p>
+              <ul className="flip-card__components">
+                {wordKanjis.map((k) => (
+                  <li key={k.id} className="component-chip">
+                    <span className="component-chip__char">{k.character}</span>
+                    <span className="component-chip__meaning">{k.meanings[0]}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
 
           {vocab.verbConjugation && (
             <div className="conjugation-table">
@@ -265,7 +287,8 @@ export default function VocabCardLoop({
             ))}
           </ul>
         </>
-      )}
+        )
+      }}
     />
   )
 }

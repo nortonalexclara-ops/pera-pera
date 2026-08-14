@@ -5,6 +5,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Square, Check, Trophy, Info } from 'lucide-react'
 import { useProfileStore } from '../profile/profileStore'
 import { getAllMasteredIds } from '../../db/mastery'
+import { recordActivityToday } from '../../db/activity'
+import { getTestRecord, recordTestResult, type TestRecord } from '../../db/settings'
 import type { ItemKind } from '../../db/db'
 import type { JlptLevel } from '../kanji/mockKanji'
 import PageTransition from '../../components/ui/PageTransition'
@@ -25,11 +27,21 @@ const EMPTY_MASTERED: Record<ItemKind, Set<string>> = {
   katakana: new Set(),
 }
 
+const EMPTY_RECORD: TestRecord = { bestScore: 0, bestTimeSeconds: 0 }
+
+export function formatTime(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
 // Test "Maîtrisé" — questions illimitées tirées du pool de cartes déjà
 // maîtrisées par le profil (contrairement à TestKnowledge.tsx, qui teste un
 // lot fixe issu d'une séance ou de tout un niveau). Pas de fin automatique :
 // l'utilisatrice arrête quand elle veut via le bouton "Terminer le test",
-// qui affiche alors un récap correct/total.
+// qui affiche alors un récap correct/total, avec le temps tenu et le
+// record (score et temps, voir settings.ts) — pensé comme un petit jeu où
+// on essaie de battre sa propre meilleure tentative.
 export default function MasteryTest() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -54,6 +66,12 @@ export default function MasteryTest() {
     [modules, level, masteredIds],
   )
 
+  const record = useLiveQuery(
+    () => (profileId ? getTestRecord(profileId) : Promise.resolve(EMPTY_RECORD)),
+    [profileId],
+    EMPTY_RECORD,
+  )
+
   const [question, setQuestion] = useState<TestQuestion | null>(null)
   const [phase, setPhase] = useState<'answering' | 'answered'>('answering')
   const [selectedOption, setSelectedOption] = useState<string | null>(null)
@@ -61,6 +79,8 @@ export default function MasteryTest() {
   const [answeredCount, setAnsweredCount] = useState(0)
   const [correctCount, setCorrectCount] = useState(0)
   const [finished, setFinished] = useState(false)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [newRecord, setNewRecord] = useState<{ score: boolean; time: boolean } | null>(null)
 
   // Tire la toute première question dès que le pool est prêt et suffisant —
   // les questions suivantes sont tirées par nextQuestion(), pas ce hook.
@@ -71,8 +91,22 @@ export default function MasteryTest() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [masteredReady, pool.length])
 
+  // Chrono affiché en haut du test — démarre dès la première question et
+  // s'arrête à "Terminer le test" (voir endTest), pas de pause possible.
+  const hasStarted = question !== null
+  useEffect(() => {
+    if (!hasStarted || finished) return
+    const interval = setInterval(() => setElapsedSeconds((s) => s + 1), 1000)
+    return () => clearInterval(interval)
+  }, [hasStarted, finished])
+
   function selectOption(opt: string) {
     if (!question || phase === 'answered') return
+    // Compte pour le streak dès la première réponse — sans ça, un profil
+    // qui ne fait QUE le test illimité (jamais de séance Kanjis/Vocab/
+    // Grammaire, seul chemin qui l'enregistrait jusqu'ici) voyait son
+    // streak rester bloqué à 0 malgré une vraie pratique du jour.
+    if (answeredCount === 0 && profileId) recordActivityToday(profileId)
     const correctOption = question.direction === 'jp-to-fr' ? question.item.meanings[0] : question.item.prompt
     const correct = opt === correctOption
     setSelectedOption(opt)
@@ -86,6 +120,14 @@ export default function MasteryTest() {
     setQuestion(buildOneQuestion(pool))
     setPhase('answering')
     setSelectedOption(null)
+  }
+
+  async function endTest() {
+    setFinished(true)
+    if (profileId) {
+      const result = await recordTestResult(profileId, correctCount, elapsedSeconds)
+      setNewRecord({ score: result.newScoreRecord, time: result.newTimeRecord })
+    }
   }
 
   if (masteredReady && pool.length < 2) {
@@ -106,6 +148,8 @@ export default function MasteryTest() {
 
   if (finished) {
     const percent = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0
+    const finalBestScore = Math.max(record.bestScore, correctCount)
+    const finalBestTime = Math.max(record.bestTimeSeconds, elapsedSeconds)
     return (
       <PageTransition>
         <div className="test-screen">
@@ -123,7 +167,15 @@ export default function MasteryTest() {
             }
             buttonLabel="Retour au dashboard"
             onContinue={() => navigate('/dashboard')}
-          />
+          >
+            <div className="test-mastery__recap-stats">
+              <span>Temps tenu : {formatTime(elapsedSeconds)}</span>
+              <span>
+                Record : {finalBestScore} bonnes réponses · {formatTime(finalBestTime)}
+              </span>
+            </div>
+            {(newRecord?.score || newRecord?.time) && <p className="test-mastery__new-record">Nouveau record !</p>}
+          </ModuleEndCard>
         </div>
       </PageTransition>
     )
@@ -138,15 +190,22 @@ export default function MasteryTest() {
   return (
     <PageTransition>
       <div className="test-screen">
-        <header className="test-screen__header">
-          <button className="btn-link" onClick={() => setFinished(true)}>
+        <header className="test-screen__header test-mastery__header">
+          <button className="btn-link" onClick={endTest}>
             <Square size={16} strokeWidth={1.75} />
             Terminer le test
           </button>
+          <span className="test-mastery__timer">{formatTime(elapsedSeconds)}</span>
           <span className="test-mastery__score">
             {correctCount} / {answeredCount} correctes
           </span>
         </header>
+
+        {(record.bestScore > 0 || record.bestTimeSeconds > 0) && (
+          <p className="test-mastery__record-hint">
+            Record à battre : {record.bestScore} bonnes réponses · {formatTime(record.bestTimeSeconds)}
+          </p>
+        )}
 
         <div className="test-card card">
           <p className="test-card__hint">{promptHint}</p>

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { ArrowRight, type LucideIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 interface ModuleEndCardProps {
   icon: LucideIcon
@@ -7,6 +8,10 @@ interface ModuleEndCardProps {
   description: string
   buttonLabel: string
   onContinue: () => void
+  // Contenu additionnel optionnel entre la description et le bouton (ex.
+  // temps/record sur le récap du test illimité, voir MasteryTest.tsx) —
+  // absent partout ailleurs, ne change rien aux autres appelants.
+  children?: ReactNode
 }
 
 /**
@@ -15,7 +20,14 @@ interface ModuleEndCardProps {
  * pas encore construits (Vocabulaire, Grammaire, Révisions) — dans les deux
  * cas, l'utilisateur n'a qu'un seul geste possible : continuer.
  */
-export default function ModuleEndCard({ icon: Icon, title, description, buttonLabel, onContinue }: ModuleEndCardProps) {
+export default function ModuleEndCard({
+  icon: Icon,
+  title,
+  description,
+  buttonLabel,
+  onContinue,
+  children,
+}: ModuleEndCardProps) {
   return (
     <motion.div
       className="module-end card"
@@ -28,6 +40,7 @@ export default function ModuleEndCard({ icon: Icon, title, description, buttonLa
       </div>
       <h2 className="module-end__title">{title}</h2>
       <p className="module-end__description">{description}</p>
+      {children}
       <button className="btn-primary module-end__button" onClick={onContinue}>
         {buttonLabel}
         <ArrowRight size={17} strokeWidth={2} />

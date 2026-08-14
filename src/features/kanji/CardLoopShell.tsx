@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { Check, RotateCcw, GraduationCap, Info, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Check, RotateCcw, GraduationCap, Info, ChevronLeft, ChevronRight, Pencil, X } from 'lucide-react'
 import WritingCanvas from './WritingCanvas'
 import ModuleEndCard from './ModuleEndCard'
 import { recordActivityToday } from '../../db/activity'
@@ -129,6 +129,12 @@ export default function CardLoopShell<T>({
   const [revealed, setRevealed] = useState<Set<number>>(new Set())
   const [moduleDone, setModuleDone] = useState(false)
   const backFaceRef = useRef<HTMLDivElement>(null)
+  // Panneau d'écriture ouvert en fenêtre sur téléphone (demande
+  // utilisatrice : toujours affiché en ligne, il forçait trop de
+  // défilement pour voir les exemples au dos de la carte) — sans effet
+  // sur desktop, où la colonne reste affichée normalement à côté de la
+  // carte (voir la règle responsive dans SessionCard.css).
+  const [showWritingModal, setShowWritingModal] = useState(false)
 
   // Temps passé en séance (vrai "temps passé par jour", voir Stats.tsx) —
   // écrit en base par petites tranches (à chaque carte passée, voir
@@ -221,6 +227,7 @@ export default function CardLoopShell<T>({
       })
       setPhase('front')
       setRevealed(new Set())
+      setShowWritingModal(false)
     }
   }
 
@@ -229,6 +236,7 @@ export default function CardLoopShell<T>({
     setIndex((i) => i - 1)
     setPhase('front')
     setRevealed(new Set())
+    setShowWritingModal(false)
   }
 
   // Rejoue une carte déjà vue (voir maxIndexSeen) — pour "revenir en
@@ -240,6 +248,7 @@ export default function CardLoopShell<T>({
     setIndex((i) => i + 1)
     setPhase('front')
     setRevealed(new Set())
+    setShowWritingModal(false)
   }
 
   if (moduleDone) {
@@ -329,7 +338,33 @@ export default function CardLoopShell<T>({
         )}
       </div>
 
-      <div className="session__writing-col">
+      {/* Bouton flottant + fenêtre : uniquement visibles sur téléphone
+          (voir @media 860px, SessionCard.css) — sur desktop la colonne
+          d'écriture reste affichée normalement ci-dessous, ce bouton et
+          ce fond restent cachés. */}
+      <button
+        type="button"
+        className="session__writing-fab"
+        onClick={() => setShowWritingModal(true)}
+        title="Entraînement à l'écriture"
+      >
+        <Pencil size={20} strokeWidth={2} />
+      </button>
+
+      <div
+        className={`session__writing-backdrop${showWritingModal ? ' is-open' : ''}`}
+        onClick={() => setShowWritingModal(false)}
+      />
+
+      <div className={`session__writing-col${showWritingModal ? ' is-open' : ''}`}>
+        <button
+          type="button"
+          className="session__writing-modal-close"
+          onClick={() => setShowWritingModal(false)}
+          title="Fermer"
+        >
+          <X size={18} strokeWidth={2} />
+        </button>
         {renderWritingExtra?.(item)}
         <WritingCanvas strokeKey={getKey(item)} />
       </div>
