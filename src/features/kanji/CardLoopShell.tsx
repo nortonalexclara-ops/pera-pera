@@ -338,33 +338,44 @@ export default function CardLoopShell<T>({
         )}
       </div>
 
-      {/* Bouton flottant + fenêtre : uniquement visibles sur téléphone
-          (voir @media 860px, SessionCard.css) — sur desktop la colonne
-          d'écriture reste affichée normalement ci-dessous, ce bouton et
-          ce fond restent cachés. */}
-      <button
-        type="button"
-        className="session__writing-fab"
-        onClick={() => setShowWritingModal(true)}
-        title="Entraînement à l'écriture"
-      >
-        <Pencil size={20} strokeWidth={2} />
-      </button>
+      {/* Bulle + fenêtre : uniquement au verso, sur téléphone (voir
+          @media 860px, SessionCard.css) — demande utilisatrice, écrire de
+          mémoire AVANT de retourner la carte reste utile, donc la zone
+          reste ouverte en ligne au recto comme avant ; au verso (réponse
+          déjà visible), elle est camouflée derrière la bulle pour ne plus
+          forcer à défiler autant pour voir les exemples. Sur desktop, ni
+          la bulle ni ce fond ne s'affichent (colonne toujours en ligne). */}
+      {phase === 'back' && (
+        <button
+          type="button"
+          className="session__writing-fab"
+          onClick={() => setShowWritingModal(true)}
+          title="Entraînement à l'écriture"
+        >
+          <Pencil size={20} strokeWidth={2} />
+        </button>
+      )}
 
       <div
-        className={`session__writing-backdrop${showWritingModal ? ' is-open' : ''}`}
+        className={`session__writing-backdrop${phase === 'back' && showWritingModal ? ' is-open' : ''}`}
         onClick={() => setShowWritingModal(false)}
       />
 
-      <div className={`session__writing-col${showWritingModal ? ' is-open' : ''}`}>
-        <button
-          type="button"
-          className="session__writing-modal-close"
-          onClick={() => setShowWritingModal(false)}
-          title="Fermer"
-        >
-          <X size={18} strokeWidth={2} />
-        </button>
+      <div
+        className={`session__writing-col${
+          phase === 'front' ? ' session__writing-col--inline' : showWritingModal ? ' is-open' : ''
+        }`}
+      >
+        {phase === 'back' && (
+          <button
+            type="button"
+            className="session__writing-modal-close"
+            onClick={() => setShowWritingModal(false)}
+            title="Fermer"
+          >
+            <X size={18} strokeWidth={2} />
+          </button>
+        )}
         {renderWritingExtra?.(item)}
         <WritingCanvas strokeKey={getKey(item)} />
       </div>

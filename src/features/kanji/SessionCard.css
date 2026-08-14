@@ -854,13 +854,23 @@ rt {
     flex-direction: column;
   }
 
-  /* Entraînement à l'écriture "camouflé" (demande utilisatrice) : plus
-     affiché en ligne sous la carte (ça forçait à défiler beaucoup pour
-     voir les exemples au dos) — accessible via le bouton flottant, qui
-     l'ouvre en fenêtre par-dessus tout le reste. La carte récupère alors
-     toute la hauteur de `.session__body`. */
-  .session__writing-col {
+  /* Entraînement à l'écriture : reste ouvert en ligne au RECTO
+     (`--inline`, écrire de mémoire avant de retourner la carte reste
+     utile — demande utilisatrice), mais camouflé au VERSO derrière le
+     bouton flottant (ça forçait à défiler beaucoup pour voir les
+     exemples au dos) — accessible via ce bouton, qui l'ouvre en fenêtre
+     par-dessus tout le reste. Ni l'un ni l'autre : caché (cas transitoire
+     seulement, ne devrait pas arriver en pratique). */
+  .session__writing-col:not(.session__writing-col--inline):not(.is-open) {
     display: none;
+  }
+
+  /* Recto : bande fixe sous la carte, comme avant (pas de bouton, pas de
+     fenêtre — juste un panneau en ligne) ; resserrée encore à ≤600px
+     (voir plus bas). */
+  .session__writing-col--inline {
+    max-width: none;
+    flex: 0 0 200px;
   }
 
   .session__writing-fab {
@@ -1019,6 +1029,32 @@ rt {
     padding: var(--space-md);
   }
 
+  /* "Agrandit le cadran en déplaçant l'ordre des traits sur la gauche en
+     long" (demande utilisatrice, restauré tel quel après un aller-retour :
+     la version "colonne spacieuse" tentée entre-temps n'était pas ce
+     qu'elle voulait) : au lieu d'une rangée de vignettes AU-DESSUS du
+     canevas (qui mangeait ~70-90px de hauteur), une bande étroite À
+     GAUCHE, en colonne, avec son propre défilement interne si le kanji a
+     beaucoup de traits — le canevas récupère quasi toute la largeur.
+     S'applique aussi bien au recto (`--inline`, bande fixe sous la carte)
+     qu'au verso (`.is-open`, même agencement mais dans la fenêtre). */
+  .session__writing-col--inline,
+  .session__writing-col.is-open {
+    flex-direction: row;
+    gap: var(--space-sm);
+  }
+
+  .session__writing-col--inline {
+    flex: 0 0 300px;
+    overflow-y: auto;
+  }
+
+  .session__writing-col--inline > .writing-canvas,
+  .session__writing-col.is-open > .writing-canvas {
+    flex: 1;
+    min-width: 0;
+  }
+
   .writing-canvas {
     padding: var(--space-sm);
   }
@@ -1040,6 +1076,37 @@ rt {
 
   .writing-canvas__surface {
     min-height: 120px;
+  }
+
+  .stroke-order-panel {
+    flex: 0 0 52px;
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+    overflow: hidden;
+  }
+
+  /* "ORDRE DES TRAITS" en majuscules ne tient pas lisiblement dans une
+     bande de 52px de large — les vignettes numérotées se suffisent à
+     elles-mêmes une fois qu'on sait ce qu'elles représentent. */
+  .stroke-order-panel .flip-card__label {
+    display: none;
+  }
+
+  .stroke-order__steps {
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    overflow-y: auto;
+    gap: 6px;
+  }
+
+  .stroke-order__step {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    flex-shrink: 0;
   }
 
   /* Boutons centrés et ajustés à leur contenu plutôt qu'étirés sur toute
