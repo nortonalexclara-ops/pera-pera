@@ -92,7 +92,7 @@ export default function GrammarCardLoop({
             : `Aucun point de grammaire ${level} dans le contenu disponible pour l'instant.`
       }
       doneTitle="Grammaire passée en revue"
-      doneDescription={`Tu as revu les ${grammarList.length} points de grammaire du jour.`}
+      doneDescription={(total) => `Tu as revu les ${total} points de grammaire du jour.`}
       renderFront={(point: GrammarPoint) => (
         <>
           <span className="word-type-badge">Grammaire</span>

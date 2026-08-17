@@ -10,8 +10,9 @@ import { getTestRecord, recordTestResult, type TestRecord } from '../../db/setti
 import type { ItemKind } from '../../db/db'
 import type { JlptLevel } from '../kanji/mockKanji'
 import PageTransition from '../../components/ui/PageTransition'
+import FuriganaText from '../../components/ui/FuriganaText'
 import ModuleEndCard from '../kanji/ModuleEndCard'
-import { buildMasteredTestPool, buildOneQuestion, type TestQuestion } from './buildTest'
+import { buildMasteredTestPool, buildOneQuestion, needsFurigana, type TestQuestion } from './buildTest'
 import './TestKnowledge.css'
 
 interface MasteryTestLocationState {
@@ -100,7 +101,7 @@ export default function MasteryTest() {
     return () => clearInterval(interval)
   }, [hasStarted, finished])
 
-  function selectOption(opt: string) {
+  function selectOption(optDisplay: string) {
     if (!question || phase === 'answered') return
     // Compte pour le streak dès la première réponse — sans ça, un profil
     // qui ne fait QUE le test illimité (jamais de séance Kanjis/Vocab/
@@ -108,8 +109,8 @@ export default function MasteryTest() {
     // streak rester bloqué à 0 malgré une vraie pratique du jour.
     if (answeredCount === 0 && profileId) recordActivityToday(profileId)
     const correctOption = question.direction === 'jp-to-fr' ? question.item.meanings[0] : question.item.prompt
-    const correct = opt === correctOption
-    setSelectedOption(opt)
+    const correct = optDisplay === correctOption
+    setSelectedOption(optDisplay)
     setIsCorrect(correct)
     setAnsweredCount((c) => c + 1)
     if (correct) setCorrectCount((c) => c + 1)
@@ -210,14 +211,23 @@ export default function MasteryTest() {
         <div className="test-card card">
           <p className="test-card__hint">{promptHint}</p>
           <span className={question.direction === 'jp-to-fr' ? 'test-card__prompt-jp' : 'test-card__prompt-fr'}>
-            {promptText}
+            {question.direction === 'jp-to-fr' &&
+            needsFurigana(question.item.kind, question.item.prompt, question.item.jlptLevel, masteredIds.kanji) ? (
+              <FuriganaText segments={question.item.promptSegments ?? []} />
+            ) : (
+              promptText
+            )}
           </span>
 
           {phase === 'answering' && question.options && (
             <div className="test-qcm">
               {question.options.map((opt, i) => (
-                <button key={i} type="button" className="qcm-option" onClick={() => selectOption(opt)}>
-                  {opt}
+                <button key={i} type="button" className="qcm-option" onClick={() => selectOption(opt.display)}>
+                  {needsFurigana(opt.kind, opt.display, opt.jlptLevel, masteredIds.kanji) ? (
+                    <FuriganaText segments={opt.promptSegments ?? []} />
+                  ) : (
+                    opt.display
+                  )}
                 </button>
               ))}
             </div>
@@ -226,12 +236,16 @@ export default function MasteryTest() {
           {phase === 'answered' && question.options && (
             <div className="test-qcm">
               {question.options.map((opt, i) => {
-                const isTheCorrectOne = opt === correctOptionForQcm
-                const isThePickedOne = opt === selectedOption
+                const isTheCorrectOne = opt.display === correctOptionForQcm
+                const isThePickedOne = opt.display === selectedOption
                 const cls = isTheCorrectOne ? 'correct' : isThePickedOne ? 'incorrect' : ''
                 return (
                   <button key={i} type="button" className={`qcm-option ${cls}`} disabled>
-                    {opt}
+                    {needsFurigana(opt.kind, opt.display, opt.jlptLevel, masteredIds.kanji) ? (
+                      <FuriganaText segments={opt.promptSegments ?? []} />
+                    ) : (
+                      opt.display
+                    )}
                   </button>
                 )
               })}

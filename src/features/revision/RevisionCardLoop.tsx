@@ -67,7 +67,7 @@ export default function RevisionCardLoop({ level, limit, continueLabel, onDone, 
           : 'Rien à réviser pour l\'instant — coche quelques kanjis, mots ou points de grammaire comme "Maîtrisé" pour les voir apparaître ici.'
       }
       doneTitle="Révisions terminées"
-      doneDescription={`Tu as repassé ${items.length} éléments en revue.`}
+      doneDescription={(total) => `Tu as repassé ${total} éléments en revue.`}
       renderWritingExtra={(item: RevisionItem) =>
         item.kind === 'kanji' &&
         item.data.strokePaths.length > 0 && (

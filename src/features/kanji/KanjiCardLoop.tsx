@@ -111,7 +111,7 @@ export default function KanjiCardLoop({
             : `Aucun kanji ${level} dans le contenu disponible pour l'instant.`
       }
       doneTitle="Kanjis passés en revue"
-      doneDescription={`Tu as revu les ${kanjiList.length} kanjis du jour.`}
+      doneDescription={(total) => `Tu as revu les ${total} kanjis du jour.`}
       renderWritingExtra={(kanji: Kanji) =>
         kanji.strokePaths.length > 0 && (
           <div className="stroke-order-panel">

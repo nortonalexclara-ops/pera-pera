@@ -31,7 +31,16 @@ interface CardLoopShellProps<T> {
   renderBack: (item: T, revealed: Set<number>, toggleReveal: (i: number) => void) => ReactNode
   emptyDescription: string
   doneTitle: string
-  doneDescription: string
+  // Fonction plutôt que chaîne pré-calculée : reçoit le total RÉELLEMENT
+  // figé par ce composant (`total`, voir plus bas), pas un compte
+  // recalculé côté appelant à chaque rendu. Un appelant qui calculerait
+  // lui-même `items.length` se ferait avoir dès que la liste dépend de
+  // masteredIds/reviewIds (mode "Nouveaux"/"À revoir") : cocher "Maîtrisé"
+  // en cours de séance fait alors RÉTRÉCIR cette liste sous ses pieds
+  // (l'item vient d'en sortir), donc le total affiché en fin de séance
+  // finissait plus petit que ce qui a vraiment été parcouru (signalé par
+  // l'utilisatrice : 24 cartes faites, "bravo, tu as revu les 12 mots").
+  doneDescription: (total: number) => string
   continueLabel: string
   onDone: () => void
   // Position dans le programme complet du niveau (pas la session en cours)
@@ -256,7 +265,7 @@ export default function CardLoopShell<T>({
       <ModuleEndCard
         icon={GraduationCap}
         title={doneTitle}
-        description={doneDescription}
+        description={doneDescription(total)}
         buttonLabel={continueLabel}
         onContinue={onDone}
       />

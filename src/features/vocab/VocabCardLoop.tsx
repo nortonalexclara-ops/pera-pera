@@ -125,7 +125,7 @@ export default function VocabCardLoop({
             : `Aucun mot de vocabulaire ${level} dans le contenu disponible pour l'instant.`
       }
       doneTitle="Vocabulaire passé en revue"
-      doneDescription={`Tu as revu les ${vocabList.length} mots du jour.`}
+      doneDescription={(total) => `Tu as revu les ${total} mots du jour.`}
       renderWritingExtra={(vocab: VocabWord) => {
         const kanjis = kanjisInWord(vocab.word).filter((k) => k.strokePaths.length > 0)
         if (kanjis.length === 0) return null

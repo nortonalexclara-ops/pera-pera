@@ -1,13 +1,26 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeft, Check, Trophy, Info } from 'lucide-react'
 import PageTransition from '../../components/ui/PageTransition'
 import ProgressRing from '../../components/ui/ProgressRing'
+import FuriganaText from '../../components/ui/FuriganaText'
 import ModuleEndCard from '../kanji/ModuleEndCard'
 import type { JlptLevel } from '../kanji/mockKanji'
-import { buildTestPool, buildTestPoolFromSeen, buildQuestions, isAnswerAccepted, type SeenItem } from './buildTest'
+import { useProfileStore } from '../profile/profileStore'
+import { getMasteredIds } from '../../db/mastery'
+import {
+  buildTestPool,
+  buildTestPoolFromSeen,
+  buildQuestions,
+  isAnswerAccepted,
+  needsFurigana,
+  type SeenItem,
+} from './buildTest'
 import './TestKnowledge.css'
+
+const EMPTY_SET: Set<string> = new Set()
 
 interface TestLocationState {
   modules?: string[]
@@ -22,6 +35,15 @@ export default function TestKnowledge() {
   const modules = state?.modules?.length ? state.modules : ['Kanjis']
   const level = state?.level ?? null
   const seenItems = state?.seenItems
+  const profileId = useProfileStore((s) => s.activeProfileId)
+  // Sert uniquement à décider d'afficher les furigana sur les mots de
+  // vocabulaire (voir needsFurigana, buildTest.ts) — même règle que le
+  // recto de VocabCardLoop.
+  const masteredKanjiIds = useLiveQuery(
+    () => (profileId ? getMasteredIds(profileId, 'kanji') : Promise.resolve(EMPTY_SET)),
+    [profileId],
+    EMPTY_SET,
+  )
 
   // Se limite à ce qui vient d'être vu pendant la séance (le chemin
   // normal) — repli sur tout le contenu du niveau seulement si `/session/test`
@@ -134,11 +156,11 @@ export default function TestKnowledge() {
     setPhase('answered')
   }
 
-  function selectOption(opt: string) {
+  function selectOption(optDisplay: string) {
     if (phase === 'answered') return
     const correctOption = question.direction === 'jp-to-fr' ? question.item.meanings[0] : question.item.prompt
-    const correct = opt === correctOption
-    setSelectedOption(opt)
+    const correct = optDisplay === correctOption
+    setSelectedOption(optDisplay)
     setIsCorrect(correct)
     setWasSkipped(false)
     if (correct) setScore((s) => s + 1)
@@ -188,7 +210,12 @@ export default function TestKnowledge() {
         <div className="test-card card">
           <p className="test-card__hint">{promptHint}</p>
           <span className={question.direction === 'jp-to-fr' ? 'test-card__prompt-jp' : 'test-card__prompt-fr'}>
-            {promptText}
+            {question.direction === 'jp-to-fr' &&
+            needsFurigana(question.item.kind, question.item.prompt, question.item.jlptLevel, masteredKanjiIds) ? (
+              <FuriganaText segments={question.item.promptSegments ?? []} />
+            ) : (
+              promptText
+            )}
           </span>
 
           {phase === 'answering' && question.mode === 'write' && (
@@ -218,8 +245,12 @@ export default function TestKnowledge() {
             <>
               <div className="test-qcm">
                 {question.options.map((opt, i) => (
-                  <button key={i} type="button" className="qcm-option" onClick={() => selectOption(opt)}>
-                    {opt}
+                  <button key={i} type="button" className="qcm-option" onClick={() => selectOption(opt.display)}>
+                    {needsFurigana(opt.kind, opt.display, opt.jlptLevel, masteredKanjiIds) ? (
+                      <FuriganaText segments={opt.promptSegments ?? []} />
+                    ) : (
+                      opt.display
+                    )}
                   </button>
                 ))}
               </div>
@@ -232,12 +263,16 @@ export default function TestKnowledge() {
           {phase === 'answered' && question.mode === 'qcm' && question.options && (
             <div className="test-qcm">
               {question.options.map((opt, i) => {
-                const isTheCorrectOne = opt === correctOptionForQcm
-                const isThePickedOne = opt === selectedOption
+                const isTheCorrectOne = opt.display === correctOptionForQcm
+                const isThePickedOne = opt.display === selectedOption
                 const cls = isTheCorrectOne ? 'correct' : isThePickedOne ? 'incorrect' : ''
                 return (
                   <button key={i} type="button" className={`qcm-option ${cls}`} disabled>
-                    {opt}
+                    {needsFurigana(opt.kind, opt.display, opt.jlptLevel, masteredKanjiIds) ? (
+                      <FuriganaText segments={opt.promptSegments ?? []} />
+                    ) : (
+                      opt.display
+                    )}
                   </button>
                 )
               })}

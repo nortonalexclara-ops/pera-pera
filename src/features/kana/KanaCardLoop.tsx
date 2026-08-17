@@ -99,7 +99,7 @@ export default function KanaCardLoop({ scripts, contentMode = 'mix', continueLab
             : 'Aucun caractère disponible pour cette sélection.'
       }
       doneTitle="Caractères passés en revue"
-      doneDescription={`Tu as revu les ${kanaList.length} caractères du jour.`}
+      doneDescription={(total) => `Tu as revu les ${total} caractères du jour.`}
       renderWritingExtra={(kana: Kana) =>
         kana.strokePaths.length > 0 && (
           <div className="stroke-order-panel">

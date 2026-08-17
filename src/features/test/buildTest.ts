@@ -2,6 +2,8 @@ import { mockKanjiList, type JlptLevel, type Kanji } from '../kanji/mockKanji'
 import { mockVocabList, type VocabWord } from '../vocab/mockVocab'
 import { mockGrammarList, type GrammarPoint } from '../grammar/mockGrammar'
 import type { ItemKind } from '../../db/db'
+import type { FuriganaSegment } from '../../components/ui/FuriganaText'
+import { wordExceedsOwnLevel, wordHasUnmasteredKanji } from '../../utils/kanjiLevel'
 
 // Un item vu pendant la séance (kanji/vocab/grammaire dont l'utilisateur a
 // pris une décision Maîtrisé/À revoir) — c'est cette liste, pas le contenu
@@ -20,10 +22,28 @@ export interface TestItem {
   // laquelle plutôt que d'exiger une lecture précise hors contexte).
   readings: string[]
   meanings: string[]
+  // Présents uniquement pour le vocabulaire (voir vocabToTestItem) — sert
+  // à décider, au moment du rendu, s'il faut afficher `prompt` avec
+  // furigana plutôt qu'en clair (voir needsFurigana plus bas) : même
+  // règle que le recto de VocabCardLoop, un mot dont un kanji n'est pas
+  // encore enseigné/maîtrisé par CE profil ne doit jamais être montré nu.
+  promptSegments?: FuriganaSegment[]
+  jlptLevel?: JlptLevel
 }
 
 export type Direction = 'jp-to-fr' | 'fr-to-jp'
 export type Mode = 'write' | 'qcm'
+
+// Une option de QCM porte son propre `kind`/`jlptLevel`/`promptSegments`
+// (pas seulement `display`) car chaque option vient d'un item DIFFÉRENT
+// du pool (les leurres) — la décision furigana doit se faire par option,
+// pas seulement pour l'item de la question.
+export interface TestOption {
+  display: string
+  kind: TestItem['kind']
+  promptSegments?: FuriganaSegment[]
+  jlptLevel?: JlptLevel
+}
 
 export interface TestQuestion {
   item: TestItem
@@ -32,7 +52,26 @@ export interface TestQuestion {
   // Réponse "canonique" affichée à la correction (les autres réponses
   // acceptées restent valides même si on n'en montre qu'une combinaison).
   correctAnswer: string
-  options?: string[]
+  options?: TestOption[]
+}
+
+// Même règle que le recto de VocabCardLoop (voir wordExceedsOwnLevel/
+// wordHasUnmasteredKanji, utils/kanjiLevel.ts) : un mot japonais affiché
+// dans le test (prompt OU option de QCM) montre ses furigana si un de ses
+// kanjis dépasse le niveau du mot dans le programme, ou n'est pas encore
+// maîtrisé par ce profil précisément — sinon le test forcerait à
+// déchiffrer un kanji jamais enseigné. Sans effet sur kanji/grammaire
+// (`jlptLevel` absent sur leurs TestItem — voir kanjiToTestItem/
+// grammarToTestItem), ni sur les options en sens jp-to-fr (des sens en
+// français, jamais de furigana à y montrer).
+export function needsFurigana(
+  kind: TestItem['kind'],
+  word: string,
+  jlptLevel: JlptLevel | undefined,
+  masteredKanjiIds: Set<string>,
+): boolean {
+  if (kind !== 'vocab' || !jlptLevel) return false
+  return wordExceedsOwnLevel(word, jlptLevel) || wordHasUnmasteredKanji(word, masteredKanjiIds)
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -120,6 +159,8 @@ function vocabToTestItem(w: VocabWord): TestItem {
     prompt: w.word,
     readings: [reconstructReading(w.wordSegments)],
     meanings: w.meanings,
+    promptSegments: w.wordSegments,
+    jlptLevel: w.jlptLevel,
   }
 }
 
@@ -205,15 +246,25 @@ function buildQuestionForItem(item: TestItem, pool: TestItem[]): TestQuestion {
       ? item.meanings.join(' / ')
       : `${item.prompt}${item.readings.length ? ` (${item.readings.join(' / ')})` : ''}`
 
-  let options: string[] | undefined
+  let options: TestOption[] | undefined
   if (mode === 'qcm') {
-    const correctOption = direction === 'jp-to-fr' ? item.meanings[0] : item.prompt
+    // En sens fr-to-jp, chaque option porte le `promptSegments`/`jlptLevel`
+    // de SON PROPRE item (pas celui de la question) — les leurres viennent
+    // d'items différents, la décision furigana (voir needsFurigana) doit
+    // se faire par option.
+    const toOption = (d: TestItem, value: string): TestOption =>
+      direction === 'jp-to-fr'
+        ? { display: value, kind: d.kind }
+        : { display: value, kind: d.kind, promptSegments: d.promptSegments, jlptLevel: d.jlptLevel }
+
+    const correctValue = direction === 'jp-to-fr' ? item.meanings[0] : item.prompt
+    const correctOption = toOption(item, correctValue)
     // Deux items différents peuvent partager le même sens affiché (ex. le
     // kanji 大 et le mot 大きい ont tous les deux "grand" comme
     // traduction) — dédoublonner par valeur affichée, pas seulement par
     // id, sinon deux options identiques et indiscernables apparaissent.
-    const seenValues = new Set([correctOption])
-    const distractors: string[] = []
+    const seenValues = new Set([correctValue])
+    const distractors: TestOption[] = []
     // Les leurres du même type (kanji/vocab/grammaire) d'abord — plus
     // pertinent pédagogiquement qu'un mélange (comparer un motif de
     // grammaire à un sens de kanji au hasard) — puis on complète avec le
@@ -224,7 +275,7 @@ function buildQuestionForItem(item: TestItem, pool: TestItem[]): TestQuestion {
       const value = direction === 'jp-to-fr' ? d.meanings[0] : d.prompt
       if (seenValues.has(value)) continue
       seenValues.add(value)
-      distractors.push(value)
+      distractors.push(toOption(d, value))
       if (distractors.length >= 3) break
     }
     options = shuffle([correctOption, ...distractors])
