@@ -336,6 +336,15 @@
   padding-top: var(--space-md);
 }
 
+/* `.word-type-badge`/`.flip-card__label` n'ont ni l'un ni l'autre de
+   marge propre à cette jonction (juste un empilement de blocs) — collés
+   l'un à l'autre dès que "Clés" (ou "Kanjis") est la toute première
+   section après le badge, sans rien entre les deux pour créer un écart
+   naturellement (signalé par l'utilisatrice, capture à l'appui). */
+.explorer-detail__body > .word-type-badge {
+  margin-bottom: var(--space-md);
+}
+
 .explorer-detail__readings {
   display: grid;
   grid-template-columns: 1fr 1fr;
