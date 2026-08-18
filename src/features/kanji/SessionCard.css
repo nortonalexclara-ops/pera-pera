@@ -111,14 +111,22 @@
    transparent par défaut (seule la flèche se voit, pas de bloc plein qui
    couperait visuellement la carte en trois) — un fond apparaît juste au
    survol/tap pour matérialiser toute la zone cliquable. */
+/* Flèche remontée vers le haut de la carte plutôt que centrée sur toute
+   la hauteur (demande utilisatrice : au verso, une flèche centrée tombe
+   pile sur le texte — exemples, "Toucher pour révéler" — gênant à
+   toucher par erreur). La zone cliquable, elle, reste pleine hauteur
+   (`top: 0; bottom: 0` inchangés) : seule la position de l'icône à
+   l'intérieur de cette zone change (`align-items: flex-start` + un
+   padding-top), pas sa taille. */
 .session__nav-btn {
   position: absolute;
   top: 0;
   bottom: 0;
   z-index: 5;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding-top: var(--space-2xl);
   width: 56px;
   border: none;
   background: transparent;
