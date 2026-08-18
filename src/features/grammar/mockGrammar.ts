@@ -9,6 +9,10 @@ export interface GrammarExample {
 export interface GrammarPoint {
   id: string
   pattern: string
+  // Segments (texte + lecture) du motif, pour l'affichage avec furigana
+  // (voir GrammarCardLoop.tsx/buildTest.ts) — absent quand le motif ne
+  // contient aucun kanji (rien à décomposer, `pattern` seul suffit).
+  patternSegments?: FuriganaSegment[]
   jlptLevel: JlptLevel
   meaning: string
   // La formation du point de grammaire (ex. "verbe en て + ください").
@@ -118,6 +122,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: 'mae-ni',
     pattern: '〜前に',
+    patternSegments: [
+      { text: '〜' },
+      { text: '前', reading: 'まえ' },
+      { text: 'に' },
+    ],
     jlptLevel: 'N5',
     meaning: 'Avant de ~',
     rule: 'Verbe (forme dictionnaire) + 前に, ou Nom + の前に',
@@ -1536,6 +1545,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "masu-form",
     pattern: "動詞ます形",
+    patternSegments: [
+      { text: "動詞", reading: "どうし" },
+      { text: "ます" },
+      { text: "形", reading: "けい" },
+    ],
     jlptLevel: "N5",
     meaning: "Forme polie du verbe (présent)",
     rule: "Base ます du verbe + ます",
@@ -2356,6 +2370,15 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "no-naka-de-ichiban",
     pattern: "〜の中で〜が一番",
+    patternSegments: [
+      { text: "〜" },
+      { text: "の" },
+      { text: "中", reading: "なか" },
+      { text: "で" },
+      { text: "〜" },
+      { text: "が" },
+      { text: "一番", reading: "いちばん" },
+    ],
     jlptLevel: "N5",
     meaning: "Parmi ~, ~ est le plus ~ (superlatif)",
     rule: "Groupe + の中で + Nom + が + 一番 + adjectif",
@@ -2505,6 +2528,10 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "toki",
     pattern: "〜時",
+    patternSegments: [
+      { text: "〜" },
+      { text: "時", reading: "とき" },
+    ],
     jlptLevel: "N5",
     meaning: "Quand ~, au moment où ~",
     rule: "Verbe/adjectif (forme neutre) ou Nom + の + 時",
@@ -2590,6 +2617,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "atode",
     pattern: "〜後で",
+    patternSegments: [
+      { text: "〜" },
+      { text: "後", reading: "あと" },
+      { text: "で" },
+    ],
     jlptLevel: "N5",
     meaning: "Après ~",
     rule: "Verbe (forme dictionnaire) + 後で, ou Nom + の後で",
@@ -2668,6 +2700,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "aida-ni",
     pattern: "〜間に",
+    patternSegments: [
+      { text: "〜" },
+      { text: "間", reading: "あいだ" },
+      { text: "に" },
+    ],
     jlptLevel: "N5",
     meaning: "Pendant que ~ (dans l’intervalle)",
     rule: "Verbe (forme neutre présent) ou Nom + の + 間に",
@@ -2850,6 +2887,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "to-omoimasu",
     pattern: "〜と思います",
+    patternSegments: [
+      { text: "〜" },
+      { text: "と" },
+      { text: "思", reading: "おも" },
+      { text: "います" },
+    ],
     jlptLevel: "N5",
     meaning: "Je pense que ~",
     rule: "Phrase (forme neutre) + と思います",
@@ -2976,6 +3019,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "to-iimasu",
     pattern: "〜と言います",
+    patternSegments: [
+      { text: "〜" },
+      { text: "と" },
+      { text: "言", reading: "い" },
+      { text: "います" },
+    ],
     jlptLevel: "N5",
     meaning: "S’appelle ~ / dit ~",
     rule: "Nom/citation + と言います",
@@ -3159,6 +3208,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "gimonshi-ka",
     pattern: "疑問詞＋か",
+    patternSegments: [
+      { text: "疑問詞", reading: "ぎもんし" },
+      { text: "＋" },
+      { text: "か" },
+    ],
     jlptLevel: "N5",
     meaning: "Quelque chose, quelque part, quelqu’un (indéfini)",
     rule: "Mot interrogatif (何/どこ/誰 etc.) + か",
@@ -4167,6 +4221,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "gimonshi-demo",
     pattern: "疑問詞＋でも",
+    patternSegments: [
+      { text: "疑問詞", reading: "ぎもんし" },
+      { text: "＋" },
+      { text: "でも" },
+    ],
     jlptLevel: "N5",
     meaning: "N’importe quoi, n’importe où, n’importe qui",
     rule: "Mot interrogatif (何/どこ/誰 etc.) + でも",
@@ -4320,6 +4379,10 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "kata-howto",
     pattern: "〜方",
+    patternSegments: [
+      { text: "〜" },
+      { text: "方", reading: "かた" },
+    ],
     jlptLevel: "N5",
     meaning: "Façon de faire ~, comment faire ~",
     rule: "Verbe (base ます) + 方",
@@ -4394,6 +4457,13 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "mieru-kikoeru",
     pattern: "見えます／聞こえます",
+    patternSegments: [
+      { text: "見", reading: "み" },
+      { text: "えます" },
+      { text: "／" },
+      { text: "聞", reading: "き" },
+      { text: "こえます" },
+    ],
     jlptLevel: "N5",
     meaning: "Pouvoir voir / pouvoir entendre (perception naturelle)",
     rule: "Nom + が + 見えます／聞こえます",
@@ -4882,6 +4952,7 @@ export const mockGrammarList: GrammarPoint[] = [
           },
           {
             text: "泣",
+            reading: "な",
           },
           {
             text: "きだしました。",
@@ -4900,6 +4971,7 @@ export const mockGrammarList: GrammarPoint[] = [
           },
           {
             text: "降",
+            reading: "ふ",
           },
           {
             text: "りだしました。",
@@ -4913,6 +4985,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "tsuzukeru",
     pattern: "〜続ける",
+    patternSegments: [
+      { text: "〜" },
+      { text: "続", reading: "つづ" },
+      { text: "ける" },
+    ],
     jlptLevel: "N4",
     meaning: "continuer à faire ~",
     rule: "Verbe (base ます, sans ます) + 続ける",
@@ -4945,12 +5022,17 @@ export const mockGrammarList: GrammarPoint[] = [
         segments: [
           {
             text: "彼",
+            reading: "かれ",
           },
           {
             text: "は",
           },
           {
             text: "歩",
+            reading: "ある",
+          },
+          {
+            text: "き",
           },
           {
             text: "続",
@@ -4992,6 +5074,7 @@ export const mockGrammarList: GrammarPoint[] = [
         segments: [
           {
             text: "彼",
+            reading: "かれ",
           },
           {
             text: "は",
@@ -5014,6 +5097,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "hajimeru-aux",
     pattern: "〜始める",
+    patternSegments: [
+      { text: "〜" },
+      { text: "始", reading: "はじ" },
+      { text: "める" },
+    ],
     jlptLevel: "N4",
     meaning: "commencer à faire ~",
     rule: "Verbe (base ます, sans ます) + 始める",
@@ -5029,6 +5117,10 @@ export const mockGrammarList: GrammarPoint[] = [
           },
           {
             text: "降",
+            reading: "ふ",
+          },
+          {
+            text: "り",
           },
           {
             text: "始",
@@ -5045,12 +5137,16 @@ export const mockGrammarList: GrammarPoint[] = [
         segments: [
           {
             text: "子供",
+            reading: "こども",
           },
           {
             text: "が",
           },
           {
             text: "話",
+          },
+          {
+            text: "し",
           },
           {
             text: "始",
@@ -5077,12 +5173,14 @@ export const mockGrammarList: GrammarPoint[] = [
         segments: [
           {
             text: "靴",
+            reading: "くつ",
           },
           {
             text: "を",
           },
           {
             text: "履",
+            reading: "は",
           },
           {
             text: "いたまま",
@@ -5090,6 +5188,7 @@ export const mockGrammarList: GrammarPoint[] = [
           },
           {
             text: "部屋",
+            reading: "へや",
           },
           {
             text: "に",
@@ -5114,6 +5213,7 @@ export const mockGrammarList: GrammarPoint[] = [
           },
           {
             text: "寝",
+            reading: "ね",
           },
           {
             text: "ました。",
@@ -5141,6 +5241,7 @@ export const mockGrammarList: GrammarPoint[] = [
           },
           {
             text: "降",
+            reading: "ふ",
           },
           {
             text: "ったら",
@@ -5202,6 +5303,7 @@ export const mockGrammarList: GrammarPoint[] = [
           },
           {
             text: "練習",
+            reading: "れんしゅう",
           },
           {
             text: "すれば",
@@ -5232,6 +5334,7 @@ export const mockGrammarList: GrammarPoint[] = [
           },
           {
             text: "押",
+            reading: "お",
           },
           {
             text: "せば",
@@ -5260,6 +5363,13 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "to-conditional",
     pattern: "〜と（条件）",
+    patternSegments: [
+      { text: "〜" },
+      { text: "と" },
+      { text: "（" },
+      { text: "条件", reading: "じょうけん" },
+      { text: "）" },
+    ],
     jlptLevel: "N4",
     meaning: "si ~, quand ~ (conséquence automatique)",
     rule: "Verbe/Adjectif (forme au présent) + と",
@@ -5322,6 +5432,7 @@ export const mockGrammarList: GrammarPoint[] = [
           },
           {
             text: "咲",
+            reading: "さ",
           },
           {
             text: "きます。",
@@ -5398,6 +5509,7 @@ export const mockGrammarList: GrammarPoint[] = [
           },
           {
             text: "便利",
+            reading: "べんり",
           },
           {
             text: "です。",
@@ -5419,12 +5531,14 @@ export const mockGrammarList: GrammarPoint[] = [
         segments: [
           {
             text: "壁",
+            reading: "かべ",
           },
           {
             text: "に",
           },
           {
             text: "絵",
+            reading: "え",
           },
           {
             text: "が",
@@ -5458,6 +5572,7 @@ export const mockGrammarList: GrammarPoint[] = [
           },
           {
             text: "置",
+            reading: "お",
           },
           {
             text: "いてあります。",
@@ -5495,6 +5610,7 @@ export const mockGrammarList: GrammarPoint[] = [
         segments: [
           {
             text: "荷物",
+            reading: "にもつ",
           },
           {
             text: "を",
@@ -5540,6 +5656,7 @@ export const mockGrammarList: GrammarPoint[] = [
         segments: [
           {
             text: "猫",
+            reading: "ねこ",
           },
           {
             text: "が",
@@ -5658,6 +5775,13 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "passive-voice",
     pattern: "〜れる・られる（受身形）",
+    patternSegments: [
+      { text: "〜" },
+      { text: "れる・られる" },
+      { text: "（" },
+      { text: "受身形", reading: "うけみけい" },
+      { text: "）" },
+    ],
     jlptLevel: "N4",
     meaning: "forme passive : être fait ~ (par quelqu’un)",
     rule: "Godan：あ段 + れる ; Ichidan：語幹 + られる ; する→される、来る→来られる",
@@ -5737,6 +5861,13 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "causative-voice",
     pattern: "〜せる・させる（使役形）",
+    patternSegments: [
+      { text: "〜" },
+      { text: "せる・させる" },
+      { text: "（" },
+      { text: "使役形", reading: "しえきけい" },
+      { text: "）" },
+    ],
     jlptLevel: "N4",
     meaning: "forme causative : faire faire ~, laisser faire ~",
     rule: "Godan：あ段 + せる ; Ichidan：語幹 + させる ; する→させる、来る→来させる",
@@ -5812,6 +5943,13 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "causative-passive",
     pattern: "〜させられる（使役受身形）",
+    patternSegments: [
+      { text: "〜" },
+      { text: "させられる" },
+      { text: "（" },
+      { text: "使役受身形", reading: "しえきうけみけい" },
+      { text: "）" },
+    ],
     jlptLevel: "N4",
     meaning: "être forcé de faire ~",
     rule: "Verbe (forme causative) + られる",
@@ -5868,6 +6006,7 @@ export const mockGrammarList: GrammarPoint[] = [
           },
           {
             text: "練習",
+            reading: "れんしゅう",
           },
           {
             text: "させられました。",
@@ -6168,6 +6307,7 @@ export const mockGrammarList: GrammarPoint[] = [
         segments: [
           {
             text: "彼",
+            reading: "かれ",
           },
           {
             text: "は",
@@ -6513,6 +6653,13 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "volitional-form",
     pattern: "〜よう（意向形）",
+    patternSegments: [
+      { text: "〜" },
+      { text: "よう" },
+      { text: "（" },
+      { text: "意向形", reading: "いこうけい" },
+      { text: "）" },
+    ],
     jlptLevel: "N4",
     meaning: "forme volitive : allons faire ~, je vais faire ~",
     rule: "Godan：う段→お段 + う ; Ichidan：語幹 + よう ; する→しよう、来る→来よう",
@@ -6707,6 +6854,7 @@ export const mockGrammarList: GrammarPoint[] = [
         segments: [
           {
             text: "練習",
+            reading: "れんしゅう",
           },
           {
             text: "すれば",
@@ -6811,6 +6959,13 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "potential-form",
     pattern: "〜れる・られる（可能形）",
+    patternSegments: [
+      { text: "〜" },
+      { text: "れる・られる" },
+      { text: "（" },
+      { text: "可能形", reading: "かのうけい" },
+      { text: "）" },
+    ],
     jlptLevel: "N4",
     meaning: "forme potentielle : pouvoir faire ~",
     rule: "Godan：う段→え段 + る ; Ichidan：語幹 + られる ; する→できる、来る→来られる",
@@ -6890,6 +7045,7 @@ export const mockGrammarList: GrammarPoint[] = [
         segments: [
           {
             text: "子供",
+            reading: "こども",
           },
           {
             text: "は",
@@ -7764,6 +7920,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ni-chigainai",
     pattern: "〜に違いない",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "違", reading: "ちが" },
+      { text: "いない" },
+    ],
     jlptLevel: "N3",
     meaning: "Ça ne peut être que ~, c’est sûrement ~",
     rule: "Nom / Verbe/adjectif (forme normale) + に違いない",
@@ -8385,6 +8547,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ni-taishite",
     pattern: "〜に対して",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "対", reading: "たい" },
+      { text: "して" },
+    ],
     jlptLevel: "N3",
     meaning: "Envers ~, vis-à-vis de ~",
     rule: "Nom + に対して",
@@ -8551,6 +8719,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ni-kanshite",
     pattern: "〜に関して",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "関", reading: "かん" },
+      { text: "して" },
+    ],
     jlptLevel: "N3",
     meaning: "Concernant ~, à propos de ~",
     rule: "Nom + に関して",
@@ -8779,6 +8953,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ni-motozuite",
     pattern: "〜に基づいて",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "基", reading: "もと" },
+      { text: "づいて" },
+    ],
     jlptLevel: "N3",
     meaning: "En se basant sur ~",
     rule: "Nom + に基づいて",
@@ -8974,6 +9154,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ippou-de",
     pattern: "〜一方で",
+    patternSegments: [
+      { text: "〜" },
+      { text: "一方", reading: "いっぽう" },
+      { text: "で" },
+    ],
     jlptLevel: "N3",
     meaning: "D’un côté ~, d’un autre côté ~",
     rule: "Verbe/adjectif (forme normale) + 一方で",
@@ -9208,6 +9393,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "nuki-de",
     pattern: "〜抜きで",
+    patternSegments: [
+      { text: "〜" },
+      { text: "抜", reading: "ぬ" },
+      { text: "きで" },
+    ],
     jlptLevel: "N3",
     meaning: "Sans ~",
     rule: "Nom + 抜きで",
@@ -9273,6 +9463,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "sue-ni",
     pattern: "〜末に",
+    patternSegments: [
+      { text: "〜" },
+      { text: "末", reading: "すえ" },
+      { text: "に" },
+    ],
     jlptLevel: "N3",
     meaning: "Après beaucoup de ~, finalement",
     rule: "Verbe (forme た) / Nom の + 末に",
@@ -9364,6 +9559,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ue-de",
     pattern: "〜上で",
+    patternSegments: [
+      { text: "〜" },
+      { text: "上", reading: "うえ" },
+      { text: "で" },
+    ],
     jlptLevel: "N3",
     meaning: "Après avoir fait ~ (puis)",
     rule: "Verbe (forme た) / Nom の + 上で",
@@ -9443,6 +9643,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ue-ni",
     pattern: "〜上に",
+    patternSegments: [
+      { text: "〜" },
+      { text: "上", reading: "うえ" },
+      { text: "に" },
+    ],
     jlptLevel: "N3",
     meaning: "De plus, en plus de ~",
     rule: "Verbe/adjectif (forme normale) + 上に",
@@ -9530,6 +9735,10 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "shidai",
     pattern: "〜次第",
+    patternSegments: [
+      { text: "〜" },
+      { text: "次第", reading: "しだい" },
+    ],
     jlptLevel: "N3",
     meaning: "Dès que ~ / cela dépend de ~",
     rule: "Verbe (forme ます) / Nom + 次第",
@@ -10464,6 +10673,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "zaru-wo-enai",
     pattern: "〜ざるを得ない",
+    patternSegments: [
+      { text: "〜" },
+      { text: "ざるを" },
+      { text: "得", reading: "え" },
+      { text: "ない" },
+    ],
     jlptLevel: "N3",
     meaning: "On ne peut s’empêcher de ~ / on est obligé de ~",
     rule: "Verbe (forme ない、sans ない) + ざるを得ない",
@@ -10938,6 +11153,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ni-kagirazu",
     pattern: "〜に限らず",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "限", reading: "かぎ" },
+      { text: "らず" },
+    ],
     jlptLevel: "N3",
     meaning: "Sans se limiter à ~",
     rule: "Nom + に限らず",
@@ -11227,6 +11448,10 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "hanmen",
     pattern: "〜反面",
+    patternSegments: [
+      { text: "〜" },
+      { text: "反面", reading: "はんめん" },
+    ],
     jlptLevel: "N3",
     meaning: "D’un côté ~, mais d’un autre côté",
     rule: "Verbe/adjectif (forme normale) / Nom な・の + 反面",
@@ -11697,6 +11922,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "wo-towazu",
     pattern: "〜を問わず",
+    patternSegments: [
+      { text: "〜" },
+      { text: "を" },
+      { text: "問", reading: "と" },
+      { text: "わず" },
+    ],
     jlptLevel: "N3",
     meaning: "Sans distinction de ~, quel que soit ~",
     rule: "Nom + を問わず",
@@ -11848,6 +12079,10 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "gimi",
     pattern: "〜気味",
+    patternSegments: [
+      { text: "〜" },
+      { text: "気味", reading: "ぎみ" },
+    ],
     jlptLevel: "N3",
     meaning: "Légère tendance à ~",
     rule: "Verbe (forme ます) / Nom + 気味",
@@ -12943,6 +13178,17 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "wo-tsujite",
     pattern: "〜を通じて／〜を通して",
+    patternSegments: [
+      { text: "〜" },
+      { text: "を" },
+      { text: "通", reading: "つう" },
+      { text: "じて" },
+      { text: "／" },
+      { text: "〜" },
+      { text: "を" },
+      { text: "通", reading: "とお" },
+      { text: "して" },
+    ],
     jlptLevel: "N2",
     meaning: "À travers ~ / durant tout ~",
     rule: "Nom + を通じて・を通して",
@@ -13345,6 +13591,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ni-tomonatte",
     pattern: "〜に伴って",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "伴", reading: "ともな" },
+      { text: "って" },
+    ],
     jlptLevel: "N2",
     meaning: "Accompagnant ~ / avec ~",
     rule: "Nom / Verbe (forme辞書) + に伴って",
@@ -13447,6 +13699,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "to-douji-ni",
     pattern: "〜と同時に",
+    patternSegments: [
+      { text: "〜" },
+      { text: "と" },
+      { text: "同時", reading: "どうじ" },
+      { text: "に" },
+    ],
     jlptLevel: "N2",
     meaning: "En même temps que ~",
     rule: "Verbe (forme辞書) / Nom + と同時に",
@@ -13621,6 +13879,17 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ka-to-omou-to",
     pattern: "〜かと思うと／〜かと思ったら",
+    patternSegments: [
+      { text: "〜" },
+      { text: "かと" },
+      { text: "思", reading: "おも" },
+      { text: "うと" },
+      { text: "／" },
+      { text: "〜" },
+      { text: "かと" },
+      { text: "思", reading: "おも" },
+      { text: "ったら" },
+    ],
     jlptLevel: "N2",
     meaning: "À peine ~ que ~ déjà",
     rule: "Verbe (forme辞書・た形) + かと思うと・かと思ったら",
@@ -13819,6 +14088,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ya-ina-ya",
     pattern: "〜や否や",
+    patternSegments: [
+      { text: "〜" },
+      { text: "や" },
+      { text: "否", reading: "いな" },
+      { text: "や" },
+    ],
     jlptLevel: "N2",
     meaning: "À peine ~ que (immédiatement)",
     rule: "Verbe (forme辞書) + や否や",
@@ -14678,6 +14953,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "no-itari",
     pattern: "〜の至り",
+    patternSegments: [
+      { text: "〜" },
+      { text: "の" },
+      { text: "至", reading: "いた" },
+      { text: "り" },
+    ],
     jlptLevel: "N2",
     meaning: "Le comble de ~",
     rule: "Nom + の至り",
@@ -15017,6 +15298,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ga-hayaika",
     pattern: "〜が早いか",
+    patternSegments: [
+      { text: "〜" },
+      { text: "が" },
+      { text: "早", reading: "はや" },
+      { text: "いか" },
+    ],
     jlptLevel: "N2",
     meaning: "À peine ~ que (aussitôt)",
     rule: "Verbe (辞書形) + が早いか",
@@ -15802,6 +16089,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "wo-yogi-nakusareru",
     pattern: "〜を余儀なくされる",
+    patternSegments: [
+      { text: "〜" },
+      { text: "を" },
+      { text: "余儀", reading: "よぎ" },
+      { text: "なくされる" },
+    ],
     jlptLevel: "N2",
     meaning: "Être contraint de ~",
     rule: "Nom + を余儀なくされる",
@@ -15886,6 +16179,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ni-tariru",
     pattern: "〜に足る",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "足", reading: "た" },
+      { text: "る" },
+    ],
     jlptLevel: "N2",
     meaning: "Digne de ~ / suffisant pour ~",
     rule: "Nom / Verbe (辞書形) + に足る",
@@ -16047,6 +16346,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "to-iwanbakarini",
     pattern: "〜と言わんばかりに",
+    patternSegments: [
+      { text: "〜" },
+      { text: "と" },
+      { text: "言", reading: "い" },
+      { text: "わんばかりに" },
+    ],
     jlptLevel: "N2",
     meaning: "Comme pour dire presque ~",
     rule: "Phrase (forme normale) + と言わんばかりに",
@@ -16366,6 +16671,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "shimatsu-da",
     pattern: "〜始末だ",
+    patternSegments: [
+      { text: "〜" },
+      { text: "始末", reading: "しまつ" },
+      { text: "だ" },
+    ],
     jlptLevel: "N2",
     meaning: "Pour finir, ça en arrive à ~ (résultat fâcheux)",
     rule: "Verbe (辞書形) + 始末だ",
@@ -17268,6 +17578,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "wo-kawakirini",
     pattern: "〜を皮切りに",
+    patternSegments: [
+      { text: "〜" },
+      { text: "を" },
+      { text: "皮切", reading: "かわき" },
+      { text: "りに" },
+    ],
     jlptLevel: "N2",
     meaning: "À partir de ~ (point de départ d’une série)",
     rule: "Nom + を皮切りに",
@@ -17363,6 +17679,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "wo-kagirini",
     pattern: "〜を限りに",
+    patternSegments: [
+      { text: "〜" },
+      { text: "を" },
+      { text: "限", reading: "かぎ" },
+      { text: "りに" },
+    ],
     jlptLevel: "N2",
     meaning: "À partir de ~ (dernier moment)",
     rule: "Nom + を限りに",
@@ -17436,6 +17758,16 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ageku-no-hateni",
     pattern: "〜挙句（の果て）に",
+    patternSegments: [
+      { text: "〜" },
+      { text: "挙句", reading: "あげく" },
+      { text: "（" },
+      { text: "の" },
+      { text: "果", reading: "は" },
+      { text: "て" },
+      { text: "）" },
+      { text: "に" },
+    ],
     jlptLevel: "N2",
     meaning: "Après tant de ~, finalement ~ (résultat négatif)",
     rule: "Verbe (た形) + 挙句（の果て）に",
@@ -17528,6 +17860,10 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "temae",
     pattern: "〜手前",
+    patternSegments: [
+      { text: "〜" },
+      { text: "手前", reading: "てまえ" },
+    ],
     jlptLevel: "N2",
     meaning: "Étant donné que ~ (souci du regard d’autrui)",
     rule: "Nom(+の) / Verbe (forme normale) + 手前",
@@ -17823,6 +18159,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "manukarenai",
     pattern: "〜は免れない",
+    patternSegments: [
+      { text: "〜" },
+      { text: "は" },
+      { text: "免", reading: "まぬか" },
+      { text: "れない" },
+    ],
     jlptLevel: "N2",
     meaning: "On ne peut échapper à ~",
     rule: "Nom + は免れない",
@@ -17886,6 +18228,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "wo-fumaete",
     pattern: "〜を踏まえて",
+    patternSegments: [
+      { text: "〜" },
+      { text: "を" },
+      { text: "踏", reading: "ふ" },
+      { text: "まえて" },
+    ],
     jlptLevel: "N2",
     meaning: "En se basant sur ~",
     rule: "Nom + を踏まえて",
@@ -17977,6 +18325,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ni-sokushite",
     pattern: "〜に即して",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "即", reading: "そく" },
+      { text: "して" },
+    ],
     jlptLevel: "N2",
     meaning: "Conformément à ~",
     rule: "Nom + に即して",
@@ -18047,6 +18401,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "towa-iu-monono",
     pattern: "〜とは言うものの",
+    patternSegments: [
+      { text: "〜" },
+      { text: "とは" },
+      { text: "言", reading: "い" },
+      { text: "うものの" },
+    ],
     jlptLevel: "N2",
     meaning: "Cela dit, ~ (concession)",
     rule: "Phrase (forme normale) + とは言うものの",
@@ -18425,6 +18785,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "naitomo-kagiranai",
     pattern: "〜ないとも限らない",
+    patternSegments: [
+      { text: "〜" },
+      { text: "ないとも" },
+      { text: "限", reading: "かぎ" },
+      { text: "らない" },
+    ],
     jlptLevel: "N2",
     meaning: "On ne peut pas dire que ~ ne se produira pas",
     rule: "Verbe (ない形) + とも限らない",
@@ -18878,6 +19244,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "kaigaaru",
     pattern: "〜甲斐がある",
+    patternSegments: [
+      { text: "〜" },
+      { text: "甲斐", reading: "かい" },
+      { text: "がある" },
+    ],
     jlptLevel: "N2",
     meaning: "Cela vaut la peine de ~",
     rule: "Verbe (ます形) + 甲斐がある",
@@ -18941,6 +19312,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ni-koshita-koto-wa-nai",
     pattern: "〜に越したことはない",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "越", reading: "こ" },
+      { text: "したことはない" },
+    ],
     jlptLevel: "N2",
     meaning: "Rien ne vaut ~ / mieux vaut ~",
     rule: "Verbe (辞書形) / Adjectif + に越したことはない",
@@ -19209,6 +19586,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ga-yueni",
     pattern: "〜が故に",
+    patternSegments: [
+      { text: "〜" },
+      { text: "が" },
+      { text: "故", reading: "ゆえ" },
+      { text: "に" },
+    ],
     jlptLevel: "N2",
     meaning: "À cause de ~ (soutenu)",
     rule: "Nom(+の) / Verbe・adjectif (forme normale) + が故に",
@@ -19691,6 +20074,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "kararu-mono",
     pattern: "〜たる者",
+    patternSegments: [
+      { text: "〜" },
+      { text: "たる" },
+      { text: "者", reading: "もの" },
+    ],
     jlptLevel: "N2",
     meaning: "En tant que ~ (devoir, statut)",
     rule: "Nom + たる者",
@@ -19901,6 +20289,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "kiwami",
     pattern: "〜の極み",
+    patternSegments: [
+      { text: "〜" },
+      { text: "の" },
+      { text: "極", reading: "きわ" },
+      { text: "み" },
+    ],
     jlptLevel: "N2",
     meaning: "Le comble de ~",
     rule: "Nom + の極み",
@@ -20184,6 +20578,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ni-tarinai",
     pattern: "〜に足りない",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "足", reading: "た" },
+      { text: "りない" },
+    ],
     jlptLevel: "N2",
     meaning: "Ne pas mériter ~ / insuffisant pour ~",
     rule: "Nom / Verbe (辞書形) + に足りない",
@@ -20267,6 +20667,14 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "iuni-oyobazu",
     pattern: "〜は言うに及ばず",
+    patternSegments: [
+      { text: "〜" },
+      { text: "は" },
+      { text: "言", reading: "い" },
+      { text: "うに" },
+      { text: "及", reading: "およ" },
+      { text: "ばず" },
+    ],
     jlptLevel: "N2",
     meaning: "Sans même parler de ~ (évident)",
     rule: "Nom + は言うに及ばず",
@@ -20589,6 +20997,14 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "to-itte-mo-kagon-dewanai",
     pattern: "〜と言っても過言ではない",
+    patternSegments: [
+      { text: "〜" },
+      { text: "と" },
+      { text: "言", reading: "い" },
+      { text: "っても" },
+      { text: "過言", reading: "かごん" },
+      { text: "ではない" },
+    ],
     jlptLevel: "N2",
     meaning: "On ne peut pas dire que c’est exagéré de dire ~",
     rule: "Phrase (forme normale) + と言っても過言ではない",
@@ -20676,6 +21092,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "iwazumogana",
     pattern: "〜は言わずもがな",
+    patternSegments: [
+      { text: "〜" },
+      { text: "は" },
+      { text: "言", reading: "い" },
+      { text: "わずもがな" },
+    ],
     jlptLevel: "N2",
     meaning: "Il va sans dire que ~",
     rule: "Nom + は言わずもがな",
@@ -20739,6 +21161,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "tomo-arou-monoga",
     pattern: "〜ともあろう者が",
+    patternSegments: [
+      { text: "〜" },
+      { text: "ともあろう" },
+      { text: "者", reading: "もの" },
+      { text: "が" },
+    ],
     jlptLevel: "N2",
     meaning: "Quelqu’un d’aussi qualifié que ~ (reproche)",
     rule: "Nom + ともあろう者が",
@@ -20871,6 +21299,14 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "wo-kinjienai",
     pattern: "〜を禁じ得ない",
+    patternSegments: [
+      { text: "〜" },
+      { text: "を" },
+      { text: "禁", reading: "きん" },
+      { text: "じ" },
+      { text: "得", reading: "え" },
+      { text: "ない" },
+    ],
     jlptLevel: "N2",
     meaning: "Ne pouvoir s’empêcher de ressentir ~",
     rule: "Nom + を禁じ得ない",
@@ -20965,6 +21401,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ni-terashite",
     pattern: "〜に照らして",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "照", reading: "て" },
+      { text: "らして" },
+    ],
     jlptLevel: "N2",
     meaning: "À la lumière de ~ / conformément à ~",
     rule: "Nom + に照らして",
@@ -21369,6 +21811,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "mono-to-omowareru",
     pattern: "〜ものと思われる",
+    patternSegments: [
+      { text: "〜" },
+      { text: "ものと" },
+      { text: "思", reading: "おも" },
+      { text: "われる" },
+    ],
     jlptLevel: "N2",
     meaning: "On pense que ~ (conjecture objective)",
     rule: "Phrase (forme normale) + ものと思われる",
@@ -21456,6 +21904,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "wo-sakaini",
     pattern: "〜を境に",
+    patternSegments: [
+      { text: "〜" },
+      { text: "を" },
+      { text: "境", reading: "さかい" },
+      { text: "に" },
+    ],
     jlptLevel: "N2",
     meaning: "À partir de ~ (comme tournant)",
     rule: "Nom + を境に",
@@ -21547,6 +22001,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ichito-wo-tadoru",
     pattern: "〜一途をたどる",
+    patternSegments: [
+      { text: "〜" },
+      { text: "一途", reading: "いっと" },
+      { text: "をたどる" },
+    ],
     jlptLevel: "N2",
     meaning: "Continuer sur la voie de ~ (évolution constante)",
     rule: "Nom + 一途をたどる",
@@ -21617,6 +22076,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "towataishoteki-ni",
     pattern: "〜とは対照的に",
+    patternSegments: [
+      { text: "〜" },
+      { text: "とは" },
+      { text: "対照的", reading: "たいしょうてき" },
+      { text: "に" },
+    ],
     jlptLevel: "N2",
     meaning: "Contrairement à ~ (contraste net)",
     rule: "Nom + とは対照的に",
@@ -22106,6 +22571,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "tara-saigo",
     pattern: "〜たら最後",
+    patternSegments: [
+      { text: "〜" },
+      { text: "たら" },
+      { text: "最後", reading: "さいご" },
+    ],
     jlptLevel: "N2",
     meaning: "Une fois que ~, c’en est fini (irréversible)",
     rule: "Verbe (た形) + ら最後",
@@ -22194,6 +22664,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "itatte-wa",
     pattern: "〜に至っては",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "至", reading: "いた" },
+      { text: "っては" },
+    ],
     jlptLevel: "N2",
     meaning: "Quand il s’agit de ~ (cas extrême)",
     rule: "Nom + に至っては",
@@ -22351,6 +22827,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "nannarito",
     pattern: "〜何なりと",
+    patternSegments: [
+      { text: "〜" },
+      { text: "何", reading: "なん" },
+      { text: "なりと" },
+    ],
     jlptLevel: "N2",
     meaning: "Tout ce que vous voulez ~ (offre formelle)",
     rule: "何なりと + Verbe",
@@ -22594,6 +23075,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ni-oyonde",
     pattern: "〜に及んで",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "及", reading: "およ" },
+      { text: "んで" },
+    ],
     jlptLevel: "N2",
     meaning: "Lorsqu’on en arrive à ~ (situation extrême, tardive)",
     rule: "Nom / Verbe (辞書形) + に及んで",
@@ -22702,6 +23189,11 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "kagirida",
     pattern: "〜限りだ",
+    patternSegments: [
+      { text: "〜" },
+      { text: "限", reading: "かぎ" },
+      { text: "りだ" },
+    ],
     jlptLevel: "N2",
     meaning: "C’est vraiment très ~ (sentiment intense)",
     rule: "Adjectif (辞書形) + 限りだ",
@@ -22758,6 +23250,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "mo-douzen-da",
     pattern: "〜も同然だ",
+    patternSegments: [
+      { text: "〜" },
+      { text: "も" },
+      { text: "同然", reading: "どうぜん" },
+      { text: "だ" },
+    ],
     jlptLevel: "N2",
     meaning: "C’est comme si c’était ~",
     rule: "Nom / Verbe (辞書形) + も同然だ",
@@ -23113,6 +23611,10 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ippentou",
     pattern: "〜一辺倒",
+    patternSegments: [
+      { text: "〜" },
+      { text: "一辺倒", reading: "いっぺんとう" },
+    ],
     jlptLevel: "N2",
     meaning: "Entièrement tourné vers ~ (exclusif)",
     rule: "Nom + 一辺倒",
@@ -24164,6 +24666,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "ni-itaru",
     pattern: "〜に至る",
+    patternSegments: [
+      { text: "〜" },
+      { text: "に" },
+      { text: "至", reading: "いた" },
+      { text: "る" },
+    ],
     jlptLevel: "N1",
     meaning: "En arriver à ~, aboutir à ~",
     rule: "Nom / Verbe (forme dictionnaire) + に至る",
@@ -24938,6 +25446,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "zuniwa-sumanai",
     pattern: "〜ずには済まない",
+    patternSegments: [
+      { text: "〜" },
+      { text: "ずには" },
+      { text: "済", reading: "す" },
+      { text: "まない" },
+    ],
     jlptLevel: "N1",
     meaning: "Ne pas pouvoir s'en tirer sans ~, être inévitablement contraint de ~",
     rule: "Verbe (forme ない, sans ない) + ずには済まない",
@@ -25102,6 +25616,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "mo-jisanai",
     pattern: "〜も辞さない",
+    patternSegments: [
+      { text: "〜" },
+      { text: "も" },
+      { text: "辞", reading: "じ" },
+      { text: "さない" },
+    ],
     jlptLevel: "N1",
     meaning: "Être prêt à aller jusqu'à ~, ne pas reculer devant ~",
     rule: "Nom／Verbe (forme dictionnaire + こと) + も辞さない",
@@ -25541,6 +26061,12 @@ export const mockGrammarList: GrammarPoint[] = [
   {
     id: "niwa-oyobanai",
     pattern: "〜には及ばない",
+    patternSegments: [
+      { text: "〜" },
+      { text: "には" },
+      { text: "及", reading: "およ" },
+      { text: "ばない" },
+    ],
     jlptLevel: "N1",
     meaning: "Il n'y a pas lieu de ~, inutile d'aller jusqu'à ~",
     rule: "Verbe (forme dictionnaire)／Nom + には及ばない",

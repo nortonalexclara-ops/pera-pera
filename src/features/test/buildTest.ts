@@ -55,22 +55,24 @@ export interface TestQuestion {
   options?: TestOption[]
 }
 
-// Même règle que le recto de VocabCardLoop (voir wordExceedsOwnLevel/
-// wordHasUnmasteredKanji, utils/kanjiLevel.ts) : un mot japonais affiché
-// dans le test (prompt OU option de QCM) montre ses furigana si un de ses
-// kanjis dépasse le niveau du mot dans le programme, ou n'est pas encore
-// maîtrisé par ce profil précisément — sinon le test forcerait à
-// déchiffrer un kanji jamais enseigné. Sans effet sur kanji/grammaire
-// (`jlptLevel` absent sur leurs TestItem — voir kanjiToTestItem/
-// grammarToTestItem), ni sur les options en sens jp-to-fr (des sens en
-// français, jamais de furigana à y montrer).
+// Même règle que le recto de VocabCardLoop / GrammarCardLoop (voir
+// wordExceedsOwnLevel/wordHasUnmasteredKanji, utils/kanjiLevel.ts) : un
+// mot ou motif japonais affiché dans le test (prompt OU option de QCM)
+// montre ses furigana si un de ses kanjis dépasse le niveau de l'item
+// dans le programme, ou n'est pas encore maîtrisé par ce profil
+// précisément — sinon le test forcerait à déchiffrer un kanji jamais
+// enseigné. Vocabulaire et grammaire uniquement (voir vocabToTestItem/
+// grammarToTestItem) — un kanji EST la question posée (kind: 'kanji'),
+// pas la peine de lui-même donner sa lecture en indice. Sans effet non
+// plus sur les options en sens jp-to-fr (des sens en français, jamais de
+// furigana à y montrer).
 export function needsFurigana(
   kind: TestItem['kind'],
   word: string,
   jlptLevel: JlptLevel | undefined,
   masteredKanjiIds: Set<string>,
 ): boolean {
-  if (kind !== 'vocab' || !jlptLevel) return false
+  if ((kind !== 'vocab' && kind !== 'grammar') || !jlptLevel) return false
   return wordExceedsOwnLevel(word, jlptLevel) || wordHasUnmasteredKanji(word, masteredKanjiIds)
 }
 
@@ -171,6 +173,8 @@ function grammarToTestItem(g: GrammarPoint): TestItem {
     prompt: g.pattern,
     readings: [],
     meanings: [g.meaning],
+    promptSegments: g.patternSegments,
+    jlptLevel: g.jlptLevel,
   }
 }
 

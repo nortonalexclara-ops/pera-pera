@@ -9,6 +9,8 @@ import { buildRevisionPool, type RevisionItem } from './buildRevisionPool'
 import { useProfileStore } from '../profile/profileStore'
 import { getAllMasteredIds, setMastered } from '../../db/mastery'
 import type { ItemKind } from '../../db/db'
+import type { GrammarPoint } from '../grammar/mockGrammar'
+import { wordExceedsOwnLevel, wordHasUnmasteredKanji } from '../../utils/kanjiLevel'
 
 const EMPTY_MASTERED: Record<ItemKind, Set<string>> = {
   kanji: new Set(),
@@ -48,6 +50,20 @@ export default function RevisionCardLoop({ level, limit, continueLabel, onDone, 
   // CardLoopShell figer sa file, sinon la séance peut se figer sur une
   // liste vide (valeur par défaut le temps du chargement).
   const itemsReady = masteredIds !== EMPTY_MASTERED
+
+  // Même règle que GrammarCardLoop : un point de grammaire déjà maîtrisé
+  // peut quand même contenir un kanji pas encore maîtrisé PAR CE PROFIL
+  // (les deux tables sont indépendantes) — furigana au besoin plutôt que
+  // de forcer à déchiffrer un kanji jamais appris.
+  function renderPattern(point: GrammarPoint) {
+    if (
+      point.patternSegments &&
+      (wordExceedsOwnLevel(point.pattern, point.jlptLevel) || wordHasUnmasteredKanji(point.pattern, masteredIds.kanji))
+    ) {
+      return <FuriganaText segments={point.patternSegments} />
+    }
+    return point.pattern
+  }
 
   return (
     <CardLoopShell
@@ -101,7 +117,7 @@ export default function RevisionCardLoop({ level, limit, continueLabel, onDone, 
         return (
           <>
             <span className="word-type-badge">Grammaire</span>
-            <span className="flip-card__word">{item.data.pattern}</span>
+            <span className="flip-card__word">{renderPattern(item.data)}</span>
           </>
         )
       }}
@@ -283,7 +299,7 @@ export default function RevisionCardLoop({ level, limit, continueLabel, onDone, 
           <>
             <div className="flip-card__back-head">
               <span className="word-type-badge">Grammaire</span>
-              <p className="flip-card__mini-word">{point.pattern}</p>
+              <p className="flip-card__mini-word">{renderPattern(point)}</p>
               <div className="flip-card__meanings">
                 <span className="meaning-pill">{point.meaning}</span>
               </div>

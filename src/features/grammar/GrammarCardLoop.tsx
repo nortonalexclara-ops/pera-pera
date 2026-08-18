@@ -10,6 +10,7 @@ import { useProfileStore } from '../profile/profileStore'
 import { getMasteredIds, setMastered, getReviewIds } from '../../db/mastery'
 import { shuffleArray } from '../../utils/shuffle'
 import { reconstructReading } from '../../utils/furigana'
+import { wordExceedsOwnLevel, wordHasUnmasteredKanji } from '../../utils/kanjiLevel'
 
 // "〜" n'est qu'un espace réservé typographique ("insère le radical ici",
 // ex. "〜てください") — jamais destiné à être prononcé, retiré avant de
@@ -48,6 +49,14 @@ export default function GrammarCardLoop({
     [profileId],
     EMPTY_SET,
   )
+  // Kanjis maîtrisés par ce profil — sert uniquement à décider d'afficher
+  // le motif de grammaire avec furigana (voir renderPattern plus bas),
+  // même règle que le recto de VocabCardLoop.
+  const masteredKanjiIds = useLiveQuery(
+    () => (profileId ? getMasteredIds(profileId, 'kanji') : Promise.resolve(EMPTY_SET)),
+    [profileId],
+    EMPTY_SET,
+  )
 
   const levelFiltered = level ? mockGrammarList.filter((g) => g.jlptLevel === level) : mockGrammarList
   const contentFiltered =
@@ -70,6 +79,21 @@ export default function GrammarCardLoop({
   // session.
   const itemsReady =
     (contentMode !== 'new' || masteredIds !== EMPTY_SET) && (contentMode !== 'review' || reviewIds !== EMPTY_SET)
+
+  // Furigana sur le motif seulement si un de ses kanjis dépasse le niveau
+  // du point de grammaire, ou n'est pas encore maîtrisé par CE profil
+  // (voir wordExceedsOwnLevel/wordHasUnmasteredKanji) — même règle que le
+  // recto de VocabCardLoop, pour ne jamais forcer à déchiffrer un kanji
+  // pas encore enseigné/appris.
+  function renderPattern(point: GrammarPoint) {
+    if (
+      point.patternSegments &&
+      (wordExceedsOwnLevel(point.pattern, point.jlptLevel) || wordHasUnmasteredKanji(point.pattern, masteredKanjiIds))
+    ) {
+      return <FuriganaText segments={point.patternSegments} />
+    }
+    return point.pattern
+  }
 
   return (
     <CardLoopShell
@@ -96,7 +120,7 @@ export default function GrammarCardLoop({
       renderFront={(point: GrammarPoint) => (
         <>
           <span className="word-type-badge">Grammaire</span>
-          <span className="flip-card__word">{point.pattern}</span>
+          <span className="flip-card__word">{renderPattern(point)}</span>
         </>
       )}
       renderBack={(point: GrammarPoint, revealed, toggleReveal) => (
@@ -104,7 +128,7 @@ export default function GrammarCardLoop({
           <div className="flip-card__back-head">
             <span className="word-type-badge">Grammaire</span>
             <p className="flip-card__mini-word">
-              {point.pattern}
+              {renderPattern(point)}
               <SpeakButton text={spokenPattern(point.pattern)} />
             </p>
             <div className="flip-card__meanings">

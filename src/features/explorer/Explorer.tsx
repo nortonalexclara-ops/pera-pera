@@ -369,6 +369,11 @@ export default function Explorer() {
                     (wordExceedsOwnLevel(item.data.word, item.data.jlptLevel) ||
                       wordHasUnmasteredKanji(item.data.word, masteredIds.kanji)) ? (
                       <FuriganaText segments={item.data.wordSegments} />
+                    ) : isGrammar(item.data) &&
+                      item.data.patternSegments &&
+                      (wordExceedsOwnLevel(item.data.pattern, item.data.jlptLevel) ||
+                        wordHasUnmasteredKanji(item.data.pattern, masteredIds.kanji)) ? (
+                      <FuriganaText segments={item.data.patternSegments} />
                     ) : (
                       item.headline
                     )}
