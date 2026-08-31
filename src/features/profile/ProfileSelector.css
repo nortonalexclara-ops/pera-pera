@@ -133,3 +133,31 @@
   color: var(--color-danger);
   font-size: 13px;
 }
+
+/* Filet de secours IndexedDB "coincée" en mode autonome (voir
+   ProfileSelector.tsx, isStandalonePwa) — pas de rechargement auto pour ne
+   pas perdre le plein écran, juste un message + un bouton manuel. */
+.profile-selector__stuck {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.profile-selector__reload {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  cursor: pointer;
+}

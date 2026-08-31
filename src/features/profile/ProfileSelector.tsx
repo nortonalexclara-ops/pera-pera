@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Plus, Check, CloudDownload } from 'lucide-react'
+import { Plus, Check, CloudDownload, RefreshCw } from 'lucide-react'
 import { avatarGradients } from './mockProfiles'
 import { useProfileStore } from './profileStore'
 import { listProfiles, createProfile } from '../../db/profiles'
@@ -11,6 +11,7 @@ import { setHasCloudBackup } from '../../db/settings'
 import { enableCloudSync } from '../../db/cloudSyncState'
 import { restoreProfile } from './cloudSync'
 import { syncNow } from './cloudSyncEngine'
+import { isStandalonePwa } from '../../utils/pwa'
 import type { ProfileRecord } from '../../db/db'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import PageTransition from '../../components/ui/PageTransition'
@@ -41,6 +42,10 @@ export default function ProfileSelector() {
   const [restorePin, setRestorePin] = useState('')
   const [restoreBusy, setRestoreBusy] = useState(false)
   const [restoreError, setRestoreError] = useState<string | null>(null)
+  // Vrai si le filet de sécurité ci-dessous s'est déclenché en mode
+  // autonome (voir isStandalonePwa) — affiche un bouton de rechargement
+  // manuel plutôt qu'un rechargement automatique.
+  const [stuckLoading, setStuckLoading] = useState(false)
 
   // Bug WebKit connu (Safari iPadOS/iOS) : après une restauration bfcache
   // (voir main.tsx), la connexion IndexedDB peut rester "coincée" — toute
@@ -51,14 +56,22 @@ export default function ProfileSelector() {
   // d'autre (signalé par l'utilisatrice sur iPad) — pas d'erreur visible
   // puisque la promesse ne se règle jamais, juste un silence permanent.
   // Filet de sécurité : si `listProfiles()` n'a pas répondu au bout de 4s,
-  // on considère la connexion figée et on force un vrai rechargement
-  // complet (nouvelle connexion IndexedDB saine), plutôt que de laisser
-  // l'app inutilisable sans qu'aucune action de l'utilisatrice ne puisse
-  // la débloquer.
+  // on considère la connexion figée. En mode autonome (écran d'accueil),
+  // pas de rechargement automatique — `location.reload()` y ferait perdre
+  // le mode plein écran (second bug signalé, voir isStandalonePwa) —
+  // juste un bouton pour recharger manuellement si l'utilisatrice le
+  // choisit. Dans un onglet de navigateur normal, le rechargement
+  // automatique reste inoffensif et évite de laisser l'app bloquée sans
+  // action possible.
   useEffect(() => {
     let cancelled = false
     const watchdog = setTimeout(() => {
-      if (!cancelled) window.location.reload()
+      if (cancelled) return
+      if (isStandalonePwa()) {
+        setStuckLoading(true)
+      } else {
+        window.location.reload()
+      }
     }, 4000)
 
     listProfiles()
@@ -162,6 +175,24 @@ export default function ProfileSelector() {
           <h1 className="profile-selector__title">Qui apprend aujourd'hui ?</h1>
           <p className="profile-selector__subtitle">Chaque profil garde sa propre progression.</p>
         </div>
+
+        {!loaded && stuckLoading && (
+          <motion.div
+            className="profile-selector__stuck card"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p>Le chargement prend plus de temps que prévu.</p>
+            <button
+              type="button"
+              className="profile-selector__reload"
+              onClick={() => window.location.reload()}
+            >
+              <RefreshCw size={16} strokeWidth={2} />
+              Recharger
+            </button>
+          </motion.div>
+        )}
 
         {loaded && (
           <motion.div className="profile-grid" variants={gridVariants} initial="hidden" animate="visible">

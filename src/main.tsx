@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import { isStandalonePwa } from './utils/pwa'
 import './styles/tokens.css'
 import './styles/global.css'
 
@@ -19,8 +20,15 @@ import './styles/global.css'
 // session (voir profileStore.ts, restoreActiveProfileFromStorage) — mais
 // toujours revérifié contre IndexedDB avant d'être réactivé, jamais fait
 // confiance tel quel.
+//
+// Pas de rechargement forcé en mode autonome (voir isStandalonePwa) :
+// second bug signalé ensuite, plus gênant que celui-ci — un
+// `location.reload()` dans une appli lancée depuis l'écran d'accueil iOS
+// fait perdre le mode plein écran et rouvre l'appli dans un onglet Safari
+// classique avec barre d'adresse. Le filet de sécurité bfcache reste actif
+// dans un onglet de navigateur normal, où il n'y a pas ce risque.
 window.addEventListener('pageshow', (event) => {
-  if (event.persisted) {
+  if (event.persisted && !isStandalonePwa()) {
     window.location.reload()
   }
 })

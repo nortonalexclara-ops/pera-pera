@@ -33,6 +33,15 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
+    // Couleur de la barre d'état/barre d'adresse iOS/Android (demande
+    // utilisatrice : le turquoise de l'appli plutôt que le blanc par
+    // défaut, qui donnait une bande grise disgracieuse en haut de
+    // l'écran) — pas exprimable en CSS pur, mis à jour ici pour suivre
+    // aussi bien le mode clair/sombre que le bascule manuel (voir
+    // themeStore, pas seulement la préférence système). Mêmes valeurs que
+    // --color-accent en clair/sombre (tokens.css).
+    const themeColor = theme === 'dark' ? '#3fc9be' : '#14a098'
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeColor)
   }, [theme])
 
   useEffect(() => {
