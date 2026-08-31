@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Bookmark } from 'lucide-react'
 import FuriganaText from '../../components/ui/FuriganaText'
 import SpeakButton from '../../components/ui/SpeakButton'
 import CardLoopShell from '../kanji/CardLoopShell'
@@ -8,8 +9,9 @@ import type { SeenItem } from '../test/buildTest'
 import { mockVocabList, type VocabWord } from './mockVocab'
 import { useProfileStore } from '../profile/profileStore'
 import { getMasteredIds, setMastered, getReviewIds } from '../../db/mastery'
+import { toggleSavedWord, getSavedWordTexts } from '../../db/savedWords'
 import { shuffleArray } from '../../utils/shuffle'
-import { reconstructReading } from '../../utils/furigana'
+import { reconstructReading, reconstructText } from '../../utils/furigana'
 import { wordExceedsOwnLevel, wordHasUnmasteredKanji, kanjisInWord } from '../../utils/kanjiLevel'
 
 const EMPTY_SET: Set<string> = new Set()
@@ -65,6 +67,13 @@ export default function VocabCardLoop({
   // "officiel" du kanji dans le programme (voir wordExceedsOwnLevel).
   const masteredKanjiIds = useLiveQuery(
     () => (profileId ? getMasteredIds(profileId, 'kanji') : Promise.resolve(EMPTY_SET)),
+    [profileId],
+    EMPTY_SET,
+  )
+  // Mots/phrases/clés déjà enregistrés — voir KanjiCardLoop pour le détail
+  // du mécanisme, repris ici pour "Clés" et "Exemples".
+  const savedWordTexts = useLiveQuery(
+    () => (profileId ? getSavedWordTexts(profileId) : Promise.resolve(EMPTY_SET)),
     [profileId],
     EMPTY_SET,
   )
@@ -212,6 +221,44 @@ export default function VocabCardLoop({
             </>
           )}
 
+          {/* Composants/radicaux de chaque kanji du mot (demande
+              utilisatrice : les clés manquaient dès qu'on n'est pas passé
+              par Explorer) — même règle et même mécanisme que "Clés" sur
+              la carte Kanjis, un groupe par kanji du mot. Absent si aucun
+              des kanjis du mot n'a de composants (kanjis atomiques,
+              ex. 人, 大) ou si le mot est purement en kana. */}
+          {wordKanjis.some((k) => k.components.length > 0) && (
+            <>
+              <p className="flip-card__label">Clés</p>
+              {wordKanjis
+                .filter((k) => k.components.length > 0)
+                .map((k) => (
+                  <ul key={k.id} className="flip-card__components">
+                    {k.components.map((c) => {
+                      const isKeySaved = savedWordTexts.has(c.character)
+                      return (
+                        <li key={c.character} className="component-chip">
+                          <span className="component-chip__char">{c.character}</span>
+                          <span className="component-chip__meaning">{c.meaning}</span>
+                          <button
+                            type="button"
+                            className={`component-chip__save${isKeySaved ? ' is-saved' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (profileId) toggleSavedWord(profileId, c.character, '', c.meaning, k.character, 'key')
+                            }}
+                            title={isKeySaved ? 'Retirer de mes clés enregistrées' : 'Ajouter à mes clés enregistrées'}
+                          >
+                            <Bookmark size={12} strokeWidth={2} fill={isKeySaved ? 'currentColor' : 'none'} />
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ))}
+            </>
+          )}
+
           {vocab.verbConjugation && (
             <div className="conjugation-table">
               <p className="flip-card__label">Conjugaison</p>
@@ -270,21 +317,39 @@ export default function VocabCardLoop({
 
           <p className="flip-card__label">Exemples</p>
           <ul className="example-list">
-            {vocab.examples.map((ex, i) => (
-              <li key={i} className="example-item">
-                <p className="example__jp example__jp--sentence">
-                  <FuriganaText segments={ex.segments} />
-                  <SpeakButton text={reconstructReading(ex.segments)} />
-                </p>
-                <button
-                  type="button"
-                  className={`example__translation${revealed.has(i) ? ' is-revealed' : ''}`}
-                  onClick={() => toggleReveal(i)}
-                >
-                  {revealed.has(i) ? ex.translation : 'Toucher pour révéler'}
-                </button>
-              </li>
-            ))}
+            {vocab.examples.map((ex, i) => {
+              const text = reconstructText(ex.segments)
+              const isPhraseSaved = savedWordTexts.has(text)
+              return (
+                <li key={i} className="example-item">
+                  <div className="example-item__row">
+                    <p className="example__jp example__jp--sentence">
+                      <FuriganaText segments={ex.segments} />
+                      <SpeakButton text={reconstructReading(ex.segments)} />
+                    </p>
+                    <button
+                      type="button"
+                      className={`example-save-btn${isPhraseSaved ? ' is-saved' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (profileId)
+                          toggleSavedWord(profileId, text, reconstructReading(ex.segments), ex.translation, vocab.word, 'phrase')
+                      }}
+                      title={isPhraseSaved ? 'Retirer de mes phrases enregistrées' : 'Ajouter à mes phrases enregistrées'}
+                    >
+                      <Bookmark size={16} strokeWidth={2} fill={isPhraseSaved ? 'currentColor' : 'none'} />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className={`example__translation${revealed.has(i) ? ' is-revealed' : ''}`}
+                    onClick={() => toggleReveal(i)}
+                  >
+                    {revealed.has(i) ? ex.translation : 'Toucher pour révéler'}
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         </>
         )

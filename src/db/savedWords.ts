@@ -1,4 +1,4 @@
-import { db } from './db'
+import { db, type SavedWordRecord } from './db'
 import { writeTombstone } from './syncTombstones'
 
 export async function toggleSavedWord(
@@ -7,6 +7,7 @@ export async function toggleSavedWord(
   reading: string,
   meaning: string,
   kanjiChar: string,
+  kind: SavedWordRecord['kind'] = 'word',
 ): Promise<boolean> {
   if (!profileId) return false
   const existing = await db.savedWords.where({ profileId, word }).first()
@@ -15,7 +16,7 @@ export async function toggleSavedWord(
     await writeTombstone(profileId, 'savedWords', word)
     return false
   }
-  await db.savedWords.add({ profileId, word, reading, meaning, kanjiChar, savedAt: Date.now() })
+  await db.savedWords.add({ profileId, word, reading, meaning, kanjiChar, kind, savedAt: Date.now() })
   return true
 }
 

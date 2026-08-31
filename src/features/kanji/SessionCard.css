@@ -499,6 +499,32 @@
   color: var(--color-text-secondary);
 }
 
+/* "Enregistrer cette clé" (demande utilisatrice) — même mécanisme que
+   `.example-save-btn` sur Mots/Phrases, en plus compact pour tenir dans
+   la puce sans l'élargir excessivement. */
+.component-chip__save {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.component-chip__save:hover {
+  color: var(--color-accent-dark);
+}
+
+.component-chip__save.is-saved {
+  color: var(--color-accent-dark);
+}
+
 .conjugation-table {
   margin-bottom: var(--space-2xl);
   padding-bottom: var(--space-lg);

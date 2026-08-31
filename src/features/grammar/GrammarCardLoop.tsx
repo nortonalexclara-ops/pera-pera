@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Bookmark } from 'lucide-react'
 import FuriganaText from '../../components/ui/FuriganaText'
 import SpeakButton from '../../components/ui/SpeakButton'
 import CardLoopShell from '../kanji/CardLoopShell'
@@ -8,8 +9,9 @@ import type { SeenItem } from '../test/buildTest'
 import { mockGrammarList, type GrammarPoint } from './mockGrammar'
 import { useProfileStore } from '../profile/profileStore'
 import { getMasteredIds, setMastered, getReviewIds } from '../../db/mastery'
+import { toggleSavedWord, getSavedWordTexts } from '../../db/savedWords'
 import { shuffleArray } from '../../utils/shuffle'
-import { reconstructReading } from '../../utils/furigana'
+import { reconstructReading, reconstructText } from '../../utils/furigana'
 import { wordExceedsOwnLevel, wordHasUnmasteredKanji } from '../../utils/kanjiLevel'
 
 // "〜" n'est qu'un espace réservé typographique ("insère le radical ici",
@@ -54,6 +56,13 @@ export default function GrammarCardLoop({
   // même règle que le recto de VocabCardLoop.
   const masteredKanjiIds = useLiveQuery(
     () => (profileId ? getMasteredIds(profileId, 'kanji') : Promise.resolve(EMPTY_SET)),
+    [profileId],
+    EMPTY_SET,
+  )
+  // Phrases déjà enregistrées — voir KanjiCardLoop pour le détail du
+  // mécanisme.
+  const savedWordTexts = useLiveQuery(
+    () => (profileId ? getSavedWordTexts(profileId) : Promise.resolve(EMPTY_SET)),
     [profileId],
     EMPTY_SET,
   )
@@ -149,21 +158,39 @@ export default function GrammarCardLoop({
 
           <p className="flip-card__label">Exemples</p>
           <ul className="example-list">
-            {point.examples.map((ex, i) => (
-              <li key={i} className="example-item">
-                <p className="example__jp example__jp--sentence">
-                  <FuriganaText segments={ex.segments} />
-                  <SpeakButton text={reconstructReading(ex.segments)} />
-                </p>
-                <button
-                  type="button"
-                  className={`example__translation${revealed.has(i) ? ' is-revealed' : ''}`}
-                  onClick={() => toggleReveal(i)}
-                >
-                  {revealed.has(i) ? ex.translation : 'Toucher pour révéler'}
-                </button>
-              </li>
-            ))}
+            {point.examples.map((ex, i) => {
+              const text = reconstructText(ex.segments)
+              const isPhraseSaved = savedWordTexts.has(text)
+              return (
+                <li key={i} className="example-item">
+                  <div className="example-item__row">
+                    <p className="example__jp example__jp--sentence">
+                      <FuriganaText segments={ex.segments} />
+                      <SpeakButton text={reconstructReading(ex.segments)} />
+                    </p>
+                    <button
+                      type="button"
+                      className={`example-save-btn${isPhraseSaved ? ' is-saved' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (profileId)
+                          toggleSavedWord(profileId, text, reconstructReading(ex.segments), ex.translation, point.pattern, 'phrase')
+                      }}
+                      title={isPhraseSaved ? 'Retirer de mes phrases enregistrées' : 'Ajouter à mes phrases enregistrées'}
+                    >
+                      <Bookmark size={16} strokeWidth={2} fill={isPhraseSaved ? 'currentColor' : 'none'} />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className={`example__translation${revealed.has(i) ? ' is-revealed' : ''}`}
+                    onClick={() => toggleReveal(i)}
+                  >
+                    {revealed.has(i) ? ex.translation : 'Toucher pour révéler'}
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         </>
       )}

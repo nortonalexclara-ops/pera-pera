@@ -21,6 +21,13 @@
   color: var(--color-text-secondary);
 }
 
+/* Boutons de niveau (demande utilisatrice) — filtrent "Répartition par
+   module" et le sous-titre ci-dessus ; "Progression par niveau JLPT" (déjà
+   les 5 niveaux côte à côte) n'y est pas soumis. */
+.stats__level-filter {
+  margin-top: var(--space-md);
+}
+
 .stats-card {
   background: var(--color-surface);
   border-radius: var(--radius-md);

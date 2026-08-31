@@ -35,6 +35,51 @@ function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
+// Un bloc par type d'enregistrement (Mots/Phrases/Clés — demande
+// utilisatrice de pouvoir enregistrer les trois, pas seulement des mots
+// isolés) plutôt qu'une seule liste mélangée : chaque type a un usage de
+// relecture différent. Absent si vide, pour ne pas afficher trois blocs
+// vides à un profil qui n'a encore rien enregistré.
+function SavedList({
+  title,
+  items,
+  onNavigate,
+  onRemove,
+}: {
+  title: string
+  items: SavedWordRecord[]
+  onNavigate: (word: SavedWordRecord) => void
+  onRemove: (word: SavedWordRecord) => void
+}) {
+  if (items.length === 0) return null
+  return (
+    <div className="saved-words card">
+      <p className="saved-words__title">
+        <Bookmark size={16} strokeWidth={1.75} />
+        {title}
+      </p>
+      <ul className="saved-words__list">
+        {items.map((word) => (
+          <li key={word.id} className="saved-words__item">
+            <button type="button" className="saved-words__word" onClick={() => onNavigate(word)}>
+              {word.word}
+              <span className="saved-words__meaning">{word.meaning}</span>
+            </button>
+            <button
+              type="button"
+              className="saved-words__remove"
+              onClick={() => onRemove(word)}
+              title="Retirer de la liste"
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export default function NotesList() {
   const navigate = useNavigate()
   const profileId = useProfileStore((s) => s.activeProfileId)
@@ -73,6 +118,18 @@ export default function NotesList() {
     setSavedWords((words) => words.filter((w) => w.id !== word.id))
   }
 
+  function handleNavigateSavedWord(word: SavedWordRecord) {
+    navigate('/explorer', { state: { query: explorerQueryFor(word) } })
+  }
+
+  // `kind` absent = enregistré avant l'ajout de ce champ, toujours un mot
+  // (voir SavedWordRecord, db.ts).
+  const savedGroups = {
+    word: savedWords.filter((w) => (w.kind ?? 'word') === 'word'),
+    phrase: savedWords.filter((w) => w.kind === 'phrase'),
+    key: savedWords.filter((w) => w.kind === 'key'),
+  }
+
   return (
     <PageTransition>
       <div className="notes-list">
@@ -82,35 +139,27 @@ export default function NotesList() {
           révision, juste pour toi.
         </p>
 
-        {loaded && savedWords.length > 0 && (
-          <div className="saved-words card">
-            <p className="saved-words__title">
-              <Bookmark size={16} strokeWidth={1.75} />
-              Mots enregistrés
-            </p>
-            <ul className="saved-words__list">
-              {savedWords.map((word) => (
-                <li key={word.id} className="saved-words__item">
-                  <button
-                    type="button"
-                    className="saved-words__word"
-                    onClick={() => navigate('/explorer', { state: { query: explorerQueryFor(word) } })}
-                  >
-                    {word.word}
-                    <span className="saved-words__meaning">{word.meaning}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="saved-words__remove"
-                    onClick={() => handleRemoveSavedWord(word)}
-                    title="Retirer de la liste"
-                  >
-                    <X size={14} strokeWidth={2} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+        {loaded && (
+          <>
+            <SavedList
+              title="Mots enregistrés"
+              items={savedGroups.word}
+              onNavigate={handleNavigateSavedWord}
+              onRemove={handleRemoveSavedWord}
+            />
+            <SavedList
+              title="Phrases enregistrées"
+              items={savedGroups.phrase}
+              onNavigate={handleNavigateSavedWord}
+              onRemove={handleRemoveSavedWord}
+            />
+            <SavedList
+              title="Clés enregistrées"
+              items={savedGroups.key}
+              onNavigate={handleNavigateSavedWord}
+              onRemove={handleRemoveSavedWord}
+            />
+          </>
         )}
 
         {loaded && (

@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
 import PageTransition from '../../components/ui/PageTransition'
 import AmbientGlow from '../../components/ui/AmbientGlow'
+import ChoiceButtonGroup from '../../components/ui/ChoiceButtonGroup'
 import { mockKanjiList, type JlptLevel } from '../kanji/mockKanji'
 import { mockVocabList } from '../vocab/mockVocab'
 import { mockGrammarList } from '../grammar/mockGrammar'
@@ -21,6 +23,7 @@ const fadeUp = {
 }
 
 const JLPT_LEVELS: JlptLevel[] = ['N5', 'N4', 'N3', 'N2', 'N1']
+const LEVEL_FILTER_OPTIONS = ['Tous', ...JLPT_LEVELS]
 
 // Format court "12 min" / "1h05" — les séances dépassent rarement l'heure,
 // mais on ne veut pas afficher "90 min" si ça arrive.
@@ -34,6 +37,13 @@ function formatDuration(seconds: number): string {
 
 export default function StatsScreen() {
   const profileId = useProfileStore((s) => s.activeProfileId)
+  // "Tous" par défaut (comportement d'origine, tout le contenu confondu)
+  // — les boutons filtrent "Répartition par module" et le sous-titre
+  // d'en-tête ; "Progression par niveau JLPT" montre déjà les 5 niveaux
+  // côte à côte, donc pas concernée par ce filtre (le filtrer à un seul
+  // niveau viderait le graphique de son intérêt de comparaison).
+  const [levelFilter, setLevelFilter] = useState<string>('Tous')
+  const selectedLevel = levelFilter === 'Tous' ? null : (levelFilter as JlptLevel)
 
   // Seule vraie donnée persistée de cet écran : ce qui a été coché
   // "Maîtrisé" en séance (voir src/db/mastery.ts). Tout le reste de cette
@@ -61,20 +71,34 @@ export default function StatsScreen() {
   const maxDaySeconds = Math.max(1, ...timeSpentByDay.map((d) => d.seconds))
   const weekTotalSeconds = timeSpentByDay.reduce((sum, d) => sum + d.seconds, 0)
 
+  const kanjiPool = selectedLevel ? mockKanjiList.filter((k) => k.jlptLevel === selectedLevel) : mockKanjiList
+  const vocabPool = selectedLevel ? mockVocabList.filter((w) => w.jlptLevel === selectedLevel) : mockVocabList
+  const grammarPool = selectedLevel ? mockGrammarList.filter((g) => g.jlptLevel === selectedLevel) : mockGrammarList
+
   const moduleBreakdown = [
-    { label: 'Kanjis', mastered: masteredKanji.size, total: mockKanjiList.length },
-    { label: 'Vocabulaire', mastered: masteredVocab.size, total: mockVocabList.length },
-    { label: 'Grammaire', mastered: masteredGrammar.size, total: mockGrammarList.length },
+    { label: 'Kanjis', mastered: kanjiPool.filter((k) => masteredKanji.has(k.id)).length, total: kanjiPool.length },
+    { label: 'Vocabulaire', mastered: vocabPool.filter((w) => masteredVocab.has(w.id)).length, total: vocabPool.length },
+    { label: 'Grammaire', mastered: grammarPool.filter((g) => masteredGrammar.has(g.id)).length, total: grammarPool.length },
   ]
 
+  // Somme kanjis + vocabulaire + grammaire par niveau (demande
+  // utilisatrice — auparavant kanjis seuls, pas représentatif de la vraie
+  // progression). Toujours sur tout le contenu, indépendant du filtre
+  // ci-dessus.
   const levelProgress = JLPT_LEVELS.map((level) => {
     const levelKanji = mockKanjiList.filter((k) => k.jlptLevel === level)
-    const mastered = levelKanji.filter((k) => masteredKanji.has(k.id)).length
-    return { level, mastered, target: levelKanji.length }
+    const levelVocab = mockVocabList.filter((w) => w.jlptLevel === level)
+    const levelGrammar = mockGrammarList.filter((g) => g.jlptLevel === level)
+    const mastered =
+      levelKanji.filter((k) => masteredKanji.has(k.id)).length +
+      levelVocab.filter((w) => masteredVocab.has(w.id)).length +
+      levelGrammar.filter((g) => masteredGrammar.has(g.id)).length
+    const target = levelKanji.length + levelVocab.length + levelGrammar.length
+    return { level, mastered, target }
   }).filter((l) => l.target > 0)
 
-  const totalMastered = masteredKanji.size
-  const totalTarget = mockKanjiList.length
+  const totalMastered = kanjiPool.filter((k) => masteredKanji.has(k.id)).length
+  const totalTarget = kanjiPool.length
 
   return (
     <PageTransition>
@@ -83,8 +107,12 @@ export default function StatsScreen() {
           <AmbientGlow top={-90} left={-60} size={240} />
           <h1 className="stats__title">Statistiques</h1>
           <p className="stats__subtitle">
-            {totalMastered} / {totalTarget} kanjis maîtrisés (sur le contenu déjà disponible)
+            {totalMastered} / {totalTarget} kanjis maîtrisés
+            {selectedLevel ? ` (${selectedLevel})` : ' (sur le contenu déjà disponible)'}
           </p>
+          <div className="stats__level-filter">
+            <ChoiceButtonGroup options={LEVEL_FILTER_OPTIONS} selected={[levelFilter]} onToggle={setLevelFilter} />
+          </div>
         </div>
 
         <motion.div variants={listVariants} initial="hidden" animate="visible">
@@ -120,7 +148,7 @@ export default function StatsScreen() {
           </motion.section>
 
           <motion.section className="stats-card" variants={fadeUp}>
-            <h2 className="stats-card__title">Répartition par module</h2>
+            <h2 className="stats-card__title">Répartition par module{selectedLevel ? ` — ${selectedLevel}` : ''}</h2>
             <ul className="module-breakdown">
               {moduleBreakdown.map((m) => {
                 const percent = m.total > 0 ? Math.round((m.mastered / m.total) * 100) : 0
@@ -147,7 +175,7 @@ export default function StatsScreen() {
           <motion.section className="stats-card" variants={fadeUp}>
             <h2 className="stats-card__title">Progression par niveau JLPT</h2>
             <p className="stats-card__hint">
-              Basée sur les kanjis déjà disponibles dans l'app — pas d'objectif chiffré équivalent côté vocabulaire/grammaire.
+              Kanjis, vocabulaire et grammaire combinés, sur le contenu déjà disponible à ce niveau.
             </p>
             <ul className="level-bars">
               {levelProgress.map((l) => {

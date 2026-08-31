@@ -175,12 +175,29 @@ export default function KanjiCardLoop({
             <>
               <p className="flip-card__label">Clés</p>
               <ul className="flip-card__components">
-                {kanji.components.map((c) => (
-                  <li key={c.character} className="component-chip">
-                    <span className="component-chip__char">{c.character}</span>
-                    <span className="component-chip__meaning">{c.meaning}</span>
-                  </li>
-                ))}
+                {kanji.components.map((c) => {
+                  const isKeySaved = savedWordTexts.has(c.character)
+                  return (
+                    <li key={c.character} className="component-chip">
+                      <span className="component-chip__char">{c.character}</span>
+                      <span className="component-chip__meaning">{c.meaning}</span>
+                      {/* "Je veux revoir cette clé après" (demande
+                          utilisatrice) — même mécanisme que les mots
+                          enregistrés, consultable depuis Notes. */}
+                      <button
+                        type="button"
+                        className={`component-chip__save${isKeySaved ? ' is-saved' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (profileId) toggleSavedWord(profileId, c.character, '', c.meaning, kanji.character, 'key')
+                        }}
+                        title={isKeySaved ? 'Retirer de mes clés enregistrées' : 'Ajouter à mes clés enregistrées'}
+                      >
+                        <Bookmark size={12} strokeWidth={2} fill={isKeySaved ? 'currentColor' : 'none'} />
+                      </button>
+                    </li>
+                  )
+                })}
               </ul>
             </>
           )}
@@ -234,12 +251,31 @@ export default function KanjiCardLoop({
               <ul className="example-list">
                 {kanji.examples.map((ex, i) => {
                   const revealIndex = kanji.frequentWords.length + i
+                  const text = reconstructText(ex.segments)
+                  const isPhraseSaved = savedWordTexts.has(text)
                   return (
                     <li key={i} className="example-item">
-                      <p className="example__jp example__jp--sentence">
-                        <FuriganaText segments={ex.segments} />
-                        <SpeakButton text={reconstructReading(ex.segments)} />
-                      </p>
+                      <div className="example-item__row">
+                        <p className="example__jp example__jp--sentence">
+                          <FuriganaText segments={ex.segments} />
+                          <SpeakButton text={reconstructReading(ex.segments)} />
+                        </p>
+                        {/* Même mécanisme que "Mots" (demande utilisatrice :
+                            pouvoir enregistrer aussi des phrases, pas
+                            seulement des mots isolés). */}
+                        <button
+                          type="button"
+                          className={`example-save-btn${isPhraseSaved ? ' is-saved' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (profileId)
+                              toggleSavedWord(profileId, text, reconstructReading(ex.segments), ex.translation, kanji.character, 'phrase')
+                          }}
+                          title={isPhraseSaved ? 'Retirer de mes phrases enregistrées' : 'Ajouter à mes phrases enregistrées'}
+                        >
+                          <Bookmark size={16} strokeWidth={2} fill={isPhraseSaved ? 'currentColor' : 'none'} />
+                        </button>
+                      </div>
                       <button
                         type="button"
                         className={`example__translation${revealed.has(revealIndex) ? ' is-revealed' : ''}`}
