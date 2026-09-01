@@ -5,11 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Pera Pera" />
     <meta name="theme-color" content="#14a098" />
     <!-- Empêche Safari iOS de transformer automatiquement certains motifs de
          texte (dates, tél., adresses) en liens bleus soulignés — observé sur
          iPad avec des kanjis/mots dans Vocabulaire et Grammaire. -->
     <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
+    <!-- Manifest PWA standard (display: standalone) en plus des balises
+         apple-mobile-web-app-* ci-dessus — comportement "app installée"
+         plus robuste sur les versions récentes d'iOS/Android que les
+         balises historiques seules. -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <title>Pera Pera</title>
   </head>
   <body>
