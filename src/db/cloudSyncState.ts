@@ -16,6 +16,18 @@ export async function enableCloudSync(profileId: string, pin: string): Promise<v
   await db.cloudSyncState.put({ profileId, pin, enabled: true, lastSyncedAt: null })
 }
 
+// Équivalent de enableCloudSync mais pour un profil lié par compte email
+// (voir useEmailAuthLink.ts, déclenché après un lien magique cliqué avec
+// succès) — `pin` vide, `authUserId` sert de garde dans
+// cloudSyncEngine.ts pour vérifier que la session Supabase active sur cet
+// appareil correspond bien au compte auquel ce profil a été lié (et pas à
+// un autre, si quelqu'un d'autre s'est connecté entre-temps sur le même
+// appareil).
+export async function enableEmailSync(profileId: string, email: string, authUserId: string): Promise<void> {
+  if (!profileId) return
+  await db.cloudSyncState.put({ profileId, pin: '', enabled: true, lastSyncedAt: null, email, authUserId })
+}
+
 export async function disableCloudSync(profileId: string): Promise<void> {
   if (!profileId) return
   const existing = await db.cloudSyncState.get(profileId)

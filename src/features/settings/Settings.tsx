@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Trash2, Check, AlertTriangle, CloudUpload, CheckCheck, Volume2 } from 'lucide-react'
+import { Trash2, Check, AlertTriangle, CheckCheck, Volume2, Mail } from 'lucide-react'
 import PageTransition from '../../components/ui/PageTransition'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import { useProfileStore } from '../profile/profileStore'
@@ -12,12 +12,12 @@ import { resetNotes } from '../../db/notes'
 import { resetFavorites } from '../../db/favorites'
 import { resetTimeSpent } from '../../db/timeSpent'
 import { resetSavedWords } from '../../db/savedWords'
-import { exportProfileData } from '../../db/profileSync'
 import { deleteProfile } from '../../db/profiles'
-import { getKanjiGoal, setKanjiGoal, getHasCloudBackup, setHasCloudBackup, DEFAULT_KANJI_GOAL } from '../../db/settings'
-import { getCloudSyncState, enableCloudSync, disableCloudSync } from '../../db/cloudSyncState'
-import { backupProfile, deleteAccountBackup } from '../profile/cloudSync'
+import { getKanjiGoal, setKanjiGoal, DEFAULT_KANJI_GOAL } from '../../db/settings'
+import { getCloudSyncState, disableCloudSync } from '../../db/cloudSyncState'
+import { deleteAccountBackup } from '../profile/cloudSync'
 import { syncNow } from '../profile/cloudSyncEngine'
+import { sendMagicLink, setPendingEmailLinkProfileId, signOutEmail } from '../profile/emailAuth'
 import {
   isSpeechSupported,
   listJapaneseVoices,
@@ -109,31 +109,20 @@ export default function Settings() {
   const [done, setDone] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  const [pin, setPin] = useState('')
-  const [backupBusy, setBackupBusy] = useState(false)
-  const [backupResult, setBackupResult] = useState<'ok' | string | null>(null)
-
-  // Une fois qu'une sauvegarde a réussi pour ce profil, on n'invite plus à
-  // (re)créer un code — voir src/db/settings.ts. Réservé au statut connu
-  // localement (pas d'appel serveur juste pour l'afficher).
-  const hasCloudBackup = useLiveQuery(
-    () => (profileId ? getHasCloudBackup(profileId) : Promise.resolve(false)),
-    [profileId],
-    false,
-  )
-
   // État de la synchronisation automatique en arrière-plan pour ce
-  // profil SUR CET APPAREIL (voir cloudSyncState.ts) — distinct de
-  // `hasCloudBackup` : un profil peut avoir une sauvegarde en ligne sans
-  // que la synchro auto soit activée ICI (ex. sauvegarde faite avant
-  // l'existence de cette fonctionnalité — voir le texte conditionnel
-  // plus bas, qui invite alors à ressaisir le code une fois).
+  // profil SUR CET APPAREIL (voir cloudSyncState.ts).
   const cloudSyncState = useLiveQuery(
     () => (profileId ? getCloudSyncState(profileId) : Promise.resolve(undefined)),
     [profileId],
     undefined,
   )
   const [manualSyncBusy, setManualSyncBusy] = useState(false)
+
+  const [email, setEmail] = useState('')
+  const [sendBusy, setSendBusy] = useState(false)
+  const [linkSent, setLinkSent] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
   // Objectif de kanjis affiché sur le Dashboard, personnalisable — `null`
   // tant que l'utilisatrice n'a pas commencé à taper, pour que le champ
@@ -209,31 +198,6 @@ export default function Settings() {
     setDone(true)
   }
 
-  async function handleBackup() {
-    if (!profileId || !profileName || !/^\d{4}$/.test(pin)) return
-    setBackupBusy(true)
-    setBackupResult(null)
-    try {
-      const payload = await exportProfileData(profileId)
-      await backupProfile(profileName, pin, payload)
-      await setHasCloudBackup(profileId, true)
-      // Active la synchro automatique en arrière-plan sur cet appareil —
-      // le code n'a plus besoin d'être ressaisi ensuite (voir
-      // cloudSyncState.ts, useCloudSyncScheduler.ts).
-      await enableCloudSync(profileId, pin)
-      setBackupResult('ok')
-      setPin('')
-      // Pas attendu : ne bloque pas l'affichage du message de succès,
-      // juste une première synchro immédiate plutôt que d'attendre le
-      // prochain déclenchement automatique.
-      syncNow(profileId, profileName)
-    } catch (err) {
-      setBackupResult(err instanceof Error ? err.message : 'Échec de la sauvegarde.')
-    } finally {
-      setBackupBusy(false)
-    }
-  }
-
   async function handleManualSync() {
     if (!profileId || !profileName) return
     setManualSyncBusy(true)
@@ -243,6 +207,31 @@ export default function Settings() {
 
   async function handleDisableSync() {
     if (!profileId) return
+    await disableCloudSync(profileId)
+  }
+
+  async function handleSendMagicLink() {
+    if (!profileId || !isValidEmail) return
+    setSendBusy(true)
+    setSendError(null)
+    try {
+      // Posé AVANT l'envoi : la page va se recharger dans un contexte
+      // tout neuf au retour du clic sur le lien (voir emailAuth.ts), le
+      // seul moyen de retrouver "quel profil voulait se connecter" est de
+      // le déposer maintenant plutôt que de compter sur l'état React.
+      setPendingEmailLinkProfileId(profileId)
+      await sendMagicLink(email)
+      setLinkSent(true)
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Échec de l'envoi du lien.")
+    } finally {
+      setSendBusy(false)
+    }
+  }
+
+  async function handleSignOutEmail() {
+    if (!profileId) return
+    await signOutEmail()
     await disableCloudSync(profileId)
   }
 
@@ -291,13 +280,34 @@ export default function Settings() {
         <section className="settings-card">
           <h2 className="settings-card__title">Synchronisation entre appareils</h2>
 
-          {cloudSyncState?.enabled ? (
+          {cloudSyncState?.enabled && cloudSyncState.authUserId ? (
             <>
-              {/* Une fois activée, la synchro tourne toute seule en
-                  arrière-plan (voir useCloudSyncScheduler.ts) — plus
-                  besoin de reressaisir le code ni de cliquer quoi que ce
-                  soit pour que les notes/progrès faits sur un appareil
-                  apparaissent sur l'autre. */}
+              {/* Lié par compte email (voir emailAuth.ts/emailSync.ts) —
+                  une fois connecté, la synchro tourne toute seule en
+                  arrière-plan (voir useCloudSyncScheduler.ts). */}
+              <p className="settings-card__hint">
+                <Check size={15} strokeWidth={2} className="settings-card__hint-icon" />
+                Connecté en tant que {cloudSyncState.email}. Dernière synchro :{' '}
+                {cloudSyncState.lastSyncedAt ? formatRelativeSync(cloudSyncState.lastSyncedAt) : 'pas encore'}.
+              </p>
+              <p className="settings-card__hint">
+                Connecte-toi avec la même adresse email sur ton autre appareil pour les lier ensemble.
+              </p>
+              <div className="reset-confirm__actions">
+                <button type="button" className="btn-link" onClick={handleManualSync} disabled={manualSyncBusy}>
+                  {manualSyncBusy ? 'Synchronisation…' : 'Synchroniser maintenant'}
+                </button>
+                <button type="button" className="btn-link" onClick={handleSignOutEmail}>
+                  Se déconnecter
+                </button>
+              </div>
+            </>
+          ) : cloudSyncState?.enabled ? (
+            <>
+              {/* Lié à l'ancien système nom+code (voir cloudSync.ts),
+                  conservé tel quel pour ne pas casser une synchro déjà en
+                  place — nouveaux réglages : voir la connexion par email
+                  ci-dessous une fois désactivé. */}
               <p className="settings-card__hint">
                 <Check size={15} strokeWidth={2} className="settings-card__hint-icon" />
                 Synchronisation automatique activée pour {profileName ?? 'ce profil'}. Dernière synchro :{' '}
@@ -318,48 +328,42 @@ export default function Settings() {
             </>
           ) : (
             <>
-              {/* Cas d'un profil sauvegardé manuellement avant l'ajout de
-                  la synchro automatique (hasCloudBackup vrai mais pas de
-                  code enregistré localement, voir cloudSyncState.ts) —
-                  une seule ressaisie suffit pour l'activer. */}
               <p className="settings-card__hint">
-                {hasCloudBackup
-                  ? `Une sauvegarde existe déjà pour ${profileName ?? 'ce profil'}, mais la synchronisation automatique n'est pas encore activée sur cet appareil. Ressaisis le même code pour l'activer.`
-                  : `Choisis un code à 4 chiffres pour ${profileName ?? 'ce profil'}. Une fois activée, la synchronisation avec ton autre appareil se fait ensuite toute seule, en arrière-plan — utilise "Récupérer un profil" avec le même nom et le même code sur l'autre appareil pour les lier.`}
+                Connecte-toi avec ton adresse email pour retrouver ta progression sur tous tes appareils — pas de mot
+                de passe à retenir, juste un lien envoyé par email.
               </p>
 
-              <div className="pin-row">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={4}
-                  placeholder="Code à 4 chiffres"
-                  className="pin-input"
-                  value={pin}
-                  onChange={(e) => {
-                    setPin(e.target.value.replace(/\D/g, '').slice(0, 4))
-                    setBackupResult(null)
-                  }}
-                />
-                <button
-                  type="button"
-                  className="btn-primary"
-                  disabled={!/^\d{4}$/.test(pin) || backupBusy}
-                  onClick={handleBackup}
-                >
-                  <CloudUpload size={16} strokeWidth={1.75} />
-                  {backupBusy ? 'Activation…' : hasCloudBackup ? 'Activer la synchronisation' : 'Sauvegarder en ligne'}
-                </button>
-              </div>
-
-              {backupResult === 'ok' && (
-                <p className="reset-done">
-                  <Check size={15} strokeWidth={2} />
-                  Synchronisation activée.
+              {linkSent ? (
+                <p className="settings-card__hint">
+                  <Check size={15} strokeWidth={2} className="settings-card__hint-icon" />
+                  Lien envoyé à {email} — ouvre ta boîte mail sur cet appareil et clique sur le lien pour te
+                  connecter.
                 </p>
+              ) : (
+                <div className="pin-row">
+                  <input
+                    type="email"
+                    placeholder="ton@email.com"
+                    className="pin-input"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value)
+                      setSendError(null)
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={!isValidEmail || sendBusy}
+                    onClick={handleSendMagicLink}
+                  >
+                    <Mail size={16} strokeWidth={1.75} />
+                    {sendBusy ? 'Envoi…' : 'Envoyer le lien'}
+                  </button>
+                </div>
               )}
-              {backupResult && backupResult !== 'ok' && <p className="settings-error">{backupResult}</p>}
+
+              {sendError && <p className="settings-error">{sendError}</p>}
             </>
           )}
         </section>

@@ -192,6 +192,11 @@ export interface CloudSyncStateRecord {
   pin: string
   enabled: boolean
   lastSyncedAt: number | null
+  // Présents seulement si ce profil est lié à un compte email (Supabase
+  // Auth) plutôt qu'à un nom+code — voir emailAuth.ts/emailSync.ts.
+  // `pin` reste '' dans ce cas, pas utilisé par ce mode.
+  email?: string
+  authUserId?: string
 }
 
 class PeraPeraDB extends Dexie {

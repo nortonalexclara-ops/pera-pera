@@ -4,6 +4,7 @@ import MainLayout from './app/MainLayout'
 import ProfileSelector from './features/profile/ProfileSelector'
 import { restoreActiveProfileFromStorage } from './features/profile/profileStore'
 import { useCloudSyncScheduler } from './features/profile/useCloudSyncScheduler'
+import { useEmailAuthLink } from './features/profile/useEmailAuthLink'
 import Dashboard from './features/dashboard/Dashboard'
 import Explorer from './features/explorer/Explorer'
 import Notebook from './features/notebook/Notebook'
@@ -53,6 +54,10 @@ export default function App() {
   // écrans plein écran de séance (hors MainLayout) sont justement là où
   // mastery/reviewMarks/timeSpent/activity s'écrivent le plus.
   useCloudSyncScheduler()
+  // Toujours monté, indépendamment du profil actif ou de la route — le
+  // retour du lien magique (voir emailAuth.ts) peut atterrir n'importe où
+  // selon ce qui était affiché avant le départ vers la boîte mail.
+  useEmailAuthLink()
 
   if (!profileReady) return null
 
