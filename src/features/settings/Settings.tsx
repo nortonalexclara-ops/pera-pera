@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Trash2, Check, AlertTriangle, CheckCheck, Volume2, Mail } from 'lucide-react'
+import { Trash2, Check, AlertTriangle, CheckCheck, Volume2, Mail, Sun, Moon } from 'lucide-react'
 import PageTransition from '../../components/ui/PageTransition'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import { useProfileStore } from '../profile/profileStore'
@@ -15,6 +15,7 @@ import { resetSavedWords } from '../../db/savedWords'
 import { deleteProfile } from '../../db/profiles'
 import { getKanjiGoal, setKanjiGoal, DEFAULT_KANJI_GOAL } from '../../db/settings'
 import { getCloudSyncState, disableCloudSync } from '../../db/cloudSyncState'
+import { useThemeStore } from '../theme/themeStore'
 import { deleteAccountBackup } from '../profile/cloudSync'
 import { syncNow } from '../profile/cloudSyncEngine'
 import { sendMagicLink, setPendingEmailLinkProfileId, signOutEmail } from '../profile/emailAuth'
@@ -104,6 +105,8 @@ export default function Settings() {
   const profileId = useProfileStore((s) => s.activeProfileId)
   const profileName = useProfileStore((s) => s.activeProfileName)
   const clearActiveProfile = useProfileStore((s) => s.clearActiveProfile)
+  const theme = useThemeStore((s) => s.theme)
+  const setTheme = useThemeStore((s) => s.setTheme)
   const [selected, setSelected] = useState<Set<ResetOption>>(new Set())
   const [confirming, setConfirming] = useState(false)
   const [done, setDone] = useState(false)
@@ -276,6 +279,28 @@ export default function Settings() {
           <h1 className="settings__title">Réglages</h1>
           <p className="settings__subtitle">Profil actif : {profileName ?? '—'}</p>
         </div>
+
+        <section className="settings-card">
+          <h2 className="settings-card__title">Apparence</h2>
+          <div className="theme-toggle">
+            <button
+              type="button"
+              className={`theme-toggle__option${theme === 'light' ? ' active' : ''}`}
+              onClick={() => setTheme('light')}
+            >
+              <Sun size={16} strokeWidth={1.75} />
+              Clair
+            </button>
+            <button
+              type="button"
+              className={`theme-toggle__option${theme === 'dark' ? ' active' : ''}`}
+              onClick={() => setTheme('dark')}
+            >
+              <Moon size={16} strokeWidth={1.75} />
+              Sombre
+            </button>
+          </div>
+        </section>
 
         <section className="settings-card">
           <h2 className="settings-card__title">Synchronisation entre appareils</h2>

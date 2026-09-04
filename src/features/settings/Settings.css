@@ -29,6 +29,40 @@
   margin-bottom: var(--space-lg);
 }
 
+/* Contrôle segmenté Clair/Sombre (voir Settings.tsx) — remplace le bouton
+   unique auparavant dans la barre de navigation, retiré à la demande de
+   l'utilisatrice ("enlève le truc mode nuit, laisse-le juste dans
+   réglages"). */
+.theme-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  padding: 4px;
+}
+
+.theme-toggle__option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.theme-toggle__option.active {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
 .settings-card__title {
   font-size: 15px;
   font-weight: 600;

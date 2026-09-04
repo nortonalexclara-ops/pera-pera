@@ -11,7 +11,6 @@ import type { ItemKind } from '../../db/db'
 import { mockKanjiList } from '../kanji/mockKanji'
 import { getKanjiGoal, getHasCloudBackup, DEFAULT_KANJI_GOAL } from '../../db/settings'
 import { getWordOfDay } from './wordOfDay'
-import AmbientGlow from '../../components/ui/AmbientGlow'
 import ProgressRing from '../../components/ui/ProgressRing'
 import PageTransition from '../../components/ui/PageTransition'
 import SessionModeToggle, { type SessionMode } from './SessionModeToggle'
@@ -150,8 +149,6 @@ export default function Dashboard() {
       {showPinOnboarding && <PinOnboardingModal onDismiss={() => setShowPinOnboarding(false)} />}
       <div className="dashboard">
         <div className="dashboard__header">
-          <AmbientGlow top={-90} left={-60} size={260} color="var(--color-warm-glow)" />
-          <AmbientGlow top={-40} left={140} size={200} />
           <h1 className="dashboard__greeting">
             {greeting()}, {profileName}
           </h1>

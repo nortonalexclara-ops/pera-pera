@@ -1,9 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Home, BookOpen, ScanSearch, StickyNote, BarChart3, Settings, Sun, Moon, Type } from 'lucide-react'
+import { Home, BookOpen, ScanSearch, StickyNote, BarChart3, Settings, Type } from 'lucide-react'
 import { useProfileStore } from '../features/profile/profileStore'
 import { avatarGradients } from '../features/profile/mockProfiles'
-import { useThemeStore } from '../features/theme/themeStore'
 import './MainLayout.css'
 
 const TABS = [
@@ -23,8 +22,6 @@ export default function MainLayout() {
   const activeProfileName = useProfileStore((s) => s.activeProfileName)
   const activeProfileColorIndex = useProfileStore((s) => s.activeProfileColorIndex)
   const [from, to] = avatarGradients[(activeProfileColorIndex ?? 0) % avatarGradients.length]
-  const theme = useThemeStore((s) => s.theme)
-  const toggleTheme = useThemeStore((s) => s.toggleTheme)
 
   // Signalé sur iPhone : en changeant de page (ex. vers Reconnaissance de
   // kanji), on arrivait parfois déjà scrollé en bas de la nouvelle page
@@ -56,14 +53,6 @@ export default function MainLayout() {
           >
             {activeProfileName?.charAt(0).toUpperCase() ?? '?'}
           </span>
-        </button>
-
-        <button
-          className="tab-bar__theme"
-          onClick={toggleTheme}
-          title={theme === 'light' ? 'Passer en thème sombre' : 'Passer en thème clair'}
-        >
-          {theme === 'light' ? <Moon size={18} strokeWidth={1.75} /> : <Sun size={18} strokeWidth={1.75} />}
         </button>
 
         {TABS.map(({ to: path, label, icon: Icon }) => (
