@@ -18,6 +18,27 @@ export function consumePendingEmailLinkProfileId(): string | null {
   return value
 }
 
+// Même principe que PENDING_LINK_KEY, mais pour une connexion lancée
+// depuis l'écran de sélection de profil (voir ProfileSelector.tsx) plutôt
+// que depuis les Réglages d'un profil déjà créé — pas de profileId
+// existant à retrouver ici puisqu'aucun profil local n'existe encore sur
+// cet appareil (cas d'un nouvel appareil, ou d'une personne qui n'a pas
+// encore créé de profil ici). Le nom saisi sert à créer le nouveau profil
+// local une fois la connexion établie (voir useEmailAuthLink.ts) — écrasé
+// par la progression récupérée si ce compte a déjà une sauvegarde, gardé
+// tel quel sinon.
+const PENDING_SIGNUP_KEY = 'pera-pera-pending-email-signup'
+
+export function setPendingEmailSignup(name: string): void {
+  localStorage.setItem(PENDING_SIGNUP_KEY, name)
+}
+
+export function consumePendingEmailSignup(): string | null {
+  const value = localStorage.getItem(PENDING_SIGNUP_KEY)
+  if (value) localStorage.removeItem(PENDING_SIGNUP_KEY)
+  return value
+}
+
 export async function sendMagicLink(email: string): Promise<void> {
   if (!supabase) throw new Error('Connexion par email indisponible.')
   const { error } = await supabase.auth.signInWithOtp({

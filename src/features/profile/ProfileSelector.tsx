@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Plus, Check, CloudDownload, RefreshCw } from 'lucide-react'
+import { Plus, Check, CloudDownload, RefreshCw, Mail } from 'lucide-react'
 import { avatarGradients } from './mockProfiles'
 import { useProfileStore } from './profileStore'
 import { listProfiles, createProfile } from '../../db/profiles'
@@ -11,6 +11,7 @@ import { setHasCloudBackup } from '../../db/settings'
 import { enableCloudSync } from '../../db/cloudSyncState'
 import { restoreProfile } from './cloudSync'
 import { syncNow } from './cloudSyncEngine'
+import { sendMagicLink, setPendingEmailSignup } from './emailAuth'
 import { isStandalonePwa } from '../../utils/pwa'
 import type { ProfileRecord } from '../../db/db'
 import AmbientGlow from '../../components/ui/AmbientGlow'
@@ -42,6 +43,14 @@ export default function ProfileSelector() {
   const [restorePin, setRestorePin] = useState('')
   const [restoreBusy, setRestoreBusy] = useState(false)
   const [restoreError, setRestoreError] = useState<string | null>(null)
+
+  const [emailSigningUp, setEmailSigningUp] = useState(false)
+  const [signupName, setSignupName] = useState('')
+  const [signupEmail, setSignupEmail] = useState('')
+  const [signupBusy, setSignupBusy] = useState(false)
+  const [signupLinkSent, setSignupLinkSent] = useState(false)
+  const [signupError, setSignupError] = useState<string | null>(null)
+  const isValidSignupEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail)
   // Vrai si le filet de sécurité ci-dessous s'est déclenché en mode
   // autonome (voir isStandalonePwa) — affiche un bouton de rechargement
   // manuel plutôt qu'un rechargement automatique.
@@ -163,6 +172,27 @@ export default function ProfileSelector() {
       setRestoreError(err instanceof Error ? err.message : 'Impossible de récupérer ce profil.')
     } finally {
       setRestoreBusy(false)
+    }
+  }
+
+  // Connexion/récupération par email directement depuis cet écran, sans
+  // devoir d'abord créer un profil "vide" puis aller dans Réglages (gap
+  // signalé par l'utilisatrice) — le profil local n'est créé qu'une fois
+  // le lien magique cliqué avec succès (voir useEmailAuthLink.ts), pas
+  // ici : à cet instant, on ne sait pas encore si ce compte a déjà une
+  // sauvegarde à récupérer ou s'il faut en créer un tout neuf.
+  async function handleSendSignupLink() {
+    setSignupError(null)
+    if (!signupName.trim() || !isValidSignupEmail) return
+    setSignupBusy(true)
+    try {
+      setPendingEmailSignup(signupName.trim())
+      await sendMagicLink(signupEmail)
+      setSignupLinkSent(true)
+    } catch (err) {
+      setSignupError(err instanceof Error ? err.message : "Échec de l'envoi du lien.")
+    } finally {
+      setSignupBusy(false)
     }
   }
 
@@ -306,11 +336,70 @@ export default function ProfileSelector() {
                 <span className="profile-card__name">Récupérer un profil</span>
               </motion.button>
             )}
+
+            {emailSigningUp ? (
+              <motion.div className="profile-card profile-card--form profile-card--restore card" variants={cardVariants}>
+                {signupLinkSent ? (
+                  <p className="profile-card__warning">
+                    Lien envoyé à {signupEmail} — ouvre ta boîte mail sur cet appareil et clique dessus.
+                  </p>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      className="profile-card__input"
+                      placeholder="Prénom"
+                      value={signupName}
+                      autoFocus
+                      maxLength={20}
+                      onChange={(e) => setSignupName(e.target.value)}
+                    />
+                    {isDuplicateName(signupName) && (
+                      <p className="profile-card__warning">
+                        Ce nom est déjà utilisé par un profil actif sur cet appareil (pas supprimé) — celui-ci sera
+                        séparé.
+                      </p>
+                    )}
+                    <input
+                      type="email"
+                      className="profile-card__input"
+                      placeholder="ton@email.com"
+                      value={signupEmail}
+                      onChange={(e) => setSignupEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendSignupLink()}
+                    />
+                    <button
+                      type="button"
+                      className="profile-card__confirm"
+                      onClick={handleSendSignupLink}
+                      disabled={signupBusy || !signupName.trim() || !isValidSignupEmail}
+                      title="Envoyer le lien"
+                    >
+                      <Mail size={16} strokeWidth={2} />
+                    </button>
+                  </>
+                )}
+              </motion.div>
+            ) : (
+              <motion.button
+                className="profile-card profile-card--new card"
+                variants={cardVariants}
+                whileHover={{ y: -3 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setEmailSigningUp(true)}
+              >
+                <span className="profile-card__avatar">
+                  <Mail size={22} strokeWidth={1.75} />
+                </span>
+                <span className="profile-card__name">Se connecter par email</span>
+              </motion.button>
+            )}
           </motion.div>
         )}
 
         {error && <p className="profile-selector__error">{error}</p>}
         {restoreError && <p className="profile-selector__error">{restoreError}</p>}
+        {signupError && <p className="profile-selector__error">{signupError}</p>}
       </div>
     </PageTransition>
   )
