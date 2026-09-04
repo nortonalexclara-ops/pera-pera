@@ -302,32 +302,36 @@ export default function Settings() {
                 </button>
               </div>
             </>
-          ) : cloudSyncState?.enabled ? (
-            <>
-              {/* Lié à l'ancien système nom+code (voir cloudSync.ts),
-                  conservé tel quel pour ne pas casser une synchro déjà en
-                  place — nouveaux réglages : voir la connexion par email
-                  ci-dessous une fois désactivé. */}
-              <p className="settings-card__hint">
-                <Check size={15} strokeWidth={2} className="settings-card__hint-icon" />
-                Synchronisation automatique activée pour {profileName ?? 'ce profil'}. Dernière synchro :{' '}
-                {cloudSyncState.lastSyncedAt ? formatRelativeSync(cloudSyncState.lastSyncedAt) : 'pas encore'}.
-              </p>
-              <p className="settings-card__hint">
-                Utilise le même nom et le même code avec "Récupérer un profil" sur ton autre appareil pour les lier
-                ensemble.
-              </p>
-              <div className="reset-confirm__actions">
-                <button type="button" className="btn-link" onClick={handleManualSync} disabled={manualSyncBusy}>
-                  {manualSyncBusy ? 'Synchronisation…' : 'Synchroniser maintenant'}
-                </button>
-                <button type="button" className="btn-link" onClick={handleDisableSync}>
-                  Désactiver
-                </button>
-              </div>
-            </>
           ) : (
             <>
+              {/* Lié à l'ancien système nom+code (voir cloudSync.ts) —
+                  conservé tel quel pour ne pas casser une synchro déjà en
+                  place, mais le formulaire email ci-dessous reste
+                  directement accessible sans devoir d'abord cliquer sur
+                  "Désactiver" (demande explicite de l'utilisatrice, qui
+                  devait auparavant deviner ce détour) : se connecter par
+                  email remplace automatiquement cet ancien lien dès que
+                  le lien magique est cliqué avec succès (voir
+                  useEmailAuthLink.ts, enableEmailSync écrase l'ancien
+                  enregistrement nom+code). */}
+              {cloudSyncState?.enabled && (
+                <>
+                  <p className="settings-card__hint">
+                    <Check size={15} strokeWidth={2} className="settings-card__hint-icon" />
+                    Synchronisation par nom+code activée pour {profileName ?? 'ce profil'}. Dernière synchro :{' '}
+                    {cloudSyncState.lastSyncedAt ? formatRelativeSync(cloudSyncState.lastSyncedAt) : 'pas encore'}.
+                  </p>
+                  <div className="reset-confirm__actions">
+                    <button type="button" className="btn-link" onClick={handleManualSync} disabled={manualSyncBusy}>
+                      {manualSyncBusy ? 'Synchronisation…' : 'Synchroniser maintenant'}
+                    </button>
+                    <button type="button" className="btn-link" onClick={handleDisableSync}>
+                      Désactiver
+                    </button>
+                  </div>
+                </>
+              )}
+
               <p className="settings-card__hint">
                 Connecte-toi avec ton adresse email pour retrouver ta progression sur tous tes appareils — pas de mot
                 de passe à retenir, juste un lien envoyé par email.
