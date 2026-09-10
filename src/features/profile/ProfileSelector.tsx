@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Plus, Check, CloudDownload, RefreshCw, Mail } from 'lucide-react'
+import { Plus, Check, RefreshCw, Mail } from 'lucide-react'
 import { avatarGradients } from './mockProfiles'
 import { useProfileStore } from './profileStore'
 import { listProfiles, createProfile } from '../../db/profiles'
@@ -38,6 +38,13 @@ export default function ProfileSelector() {
   const [newName, setNewName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  // Recours discret pour les profils qui utilisaient encore l'ancien
+  // système nom+code (avant la connexion par email) et n'ont jamais migré
+  // — retiré une première fois comme carte au même niveau que les autres
+  // (source de confusion : deux façons de "récupérer" affichées à égalité,
+  // voir Settings.tsx), remis en lien discret plutôt que supprimé pour de
+  // bon : sans ça, ces profils n'auraient plus AUCUN moyen de retrouver
+  // leurs données sur un nouvel appareil.
   const [restoring, setRestoring] = useState(false)
   const [restoreName, setRestoreName] = useState('')
   const [restorePin, setRestorePin] = useState('')
@@ -107,14 +114,15 @@ export default function ProfileSelector() {
     navigate('/dashboard')
   }
 
-  // "Nouveau profil"/"Récupérer un profil" créent toujours un enregistrement
-  // séparé, même si un profil du même nom existe déjà sur cet appareil (les
-  // profils sont distingués par id, pas par nom) — repéré après coup par
-  // l'utilisatrice ("il y a deux profils Kurara différents"), qui avait
-  // sans le savoir récupéré deux fois (ou créé puis récupéré) sous le même
-  // nom, avec la confusion "lequel a mes vraies données ?" qui va avec.
-  // Prévenu ici plutôt que bloqué : averti mais toujours libre de continuer
-  // (deux personnes du même foyer peuvent légitimement partager un prénom).
+  // "Nouveau profil"/"Se connecter par email" créent toujours un
+  // enregistrement séparé, même si un profil du même nom existe déjà sur
+  // cet appareil (les profils sont distingués par id, pas par nom) —
+  // repéré après coup par l'utilisatrice ("il y a deux profils Kurara
+  // différents"), qui avait sans le savoir créé le même profil deux fois
+  // sous le même nom, avec la confusion "lequel a mes vraies données ?"
+  // qui va avec. Prévenu ici plutôt que bloqué : averti mais toujours
+  // libre de continuer (deux personnes du même foyer peuvent légitimement
+  // partager un prénom).
   function isDuplicateName(name: string): boolean {
     const trimmed = name.trim().toLowerCase()
     return trimmed !== '' && profiles.some((p) => p.name.trim().toLowerCase() === trimmed)
@@ -125,9 +133,8 @@ export default function ProfileSelector() {
       const record = await createProfile(newName)
       // Déclenche la fenêtre "protège ta progression" (voir
       // PinOnboardingModal.tsx) au prochain passage sur le Dashboard —
-      // seulement pour un TOUT NOUVEAU profil, jamais après une
-      // récupération (voir handleRestore, qui suppose déjà un code connu
-      // ailleurs).
+      // seulement pour un TOUT NOUVEAU profil, jamais après une connexion
+      // par email (voir useEmailAuthLink.ts, qui lie déjà un compte).
       markPinOnboardingPending(record.id)
       setProfiles((prev) => [...prev, record])
       setCreating(false)
@@ -139,10 +146,9 @@ export default function ProfileSelector() {
     }
   }
 
-  // Récupère un profil sauvegardé depuis un autre appareil (voir Réglages
-  // "Retrouver mon profil sur un autre appareil") — crée un nouveau profil
-  // local (id forcément différent de l'appareil d'origine) puis y importe
-  // la progression reçue du cloud.
+  // Récupère un profil sauvegardé sous l'ancien système nom+code (voir
+  // cloudSync.ts) — crée un nouveau profil local puis y importe la
+  // progression reçue du serveur.
   async function handleRestore() {
     setRestoreError(null)
     if (!restoreName.trim() || !/^\d{4}$/.test(restorePin)) return
@@ -151,18 +157,9 @@ export default function ProfileSelector() {
       const result = await restoreProfile(restoreName, restorePin)
       const record = await createProfile(result.displayName)
       await replaceProfileData(record.id, result.payload)
-      // On vient de prouver qu'une sauvegarde en ligne existe pour ce
-      // profil (on est en train de la récupérer) — pas la peine de
-      // réafficher la bannière/le formulaire "crée un code" juste après.
       await setHasCloudBackup(record.id, true)
-      // Active la synchro automatique en arrière-plan sur cet appareil
-      // aussi (voir cloudSyncState.ts) — sans ça, ce nouveau profil
-      // resterait figé sur l'instantané récupéré à l'instant, jamais
-      // remis à jour tout seul par la suite.
       await enableCloudSync(record.id, restorePin)
       setProfiles((prev) => [...prev, record])
-      // Pas attendu : la sélection du profil (ci-dessous) ne doit pas
-      // attendre cette synchro pour se faire.
       syncNow(record.id, record.name)
       setRestoring(false)
       setRestoreName('')
@@ -284,59 +281,6 @@ export default function ProfileSelector() {
               </motion.button>
             )}
 
-            {restoring ? (
-              <motion.div className="profile-card profile-card--form profile-card--restore card" variants={cardVariants}>
-                <input
-                  type="text"
-                  className="profile-card__input"
-                  placeholder="Nom du profil"
-                  value={restoreName}
-                  autoFocus
-                  maxLength={20}
-                  onChange={(e) => setRestoreName(e.target.value)}
-                />
-                {isDuplicateName(restoreName) && (
-                  <p className="profile-card__warning">
-                    Ce nom est déjà utilisé par un profil actif sur cet appareil (pas supprimé) — la récupération en
-                    créera un second, séparé.
-                  </p>
-                )}
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={4}
-                  className="profile-card__input"
-                  placeholder="Code à 4 chiffres"
-                  value={restorePin}
-                  onChange={(e) => setRestorePin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  onKeyDown={(e) => e.key === 'Enter' && handleRestore()}
-                />
-                <button
-                  type="button"
-                  className="profile-card__confirm"
-                  onClick={handleRestore}
-                  disabled={restoreBusy}
-                  title="Récupérer ce profil"
-                >
-                  <Check size={16} strokeWidth={2} />
-                </button>
-              </motion.div>
-            ) : (
-              <motion.button
-                className="profile-card profile-card--new card"
-                variants={cardVariants}
-                whileHover={{ y: -3 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setRestoring(true)}
-              >
-                <span className="profile-card__avatar">
-                  <CloudDownload size={24} strokeWidth={1.75} />
-                </span>
-                <span className="profile-card__name">Récupérer un profil</span>
-              </motion.button>
-            )}
-
             {emailSigningUp ? (
               <motion.div className="profile-card profile-card--form profile-card--restore card" variants={cardVariants}>
                 {signupLinkSent ? (
@@ -397,8 +341,66 @@ export default function ProfileSelector() {
           </motion.div>
         )}
 
+        {loaded && !restoring && (
+          <button type="button" className="profile-selector__legacy-link" onClick={() => setRestoring(true)}>
+            J'ai un ancien code de récupération
+          </button>
+        )}
+
+        {restoring && (
+          <motion.div
+            className="profile-selector__legacy-form card"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <input
+              type="text"
+              className="profile-card__input"
+              placeholder="Nom du profil"
+              value={restoreName}
+              autoFocus
+              maxLength={20}
+              onChange={(e) => setRestoreName(e.target.value)}
+            />
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={4}
+              className="profile-card__input"
+              placeholder="Code à 4 chiffres"
+              value={restorePin}
+              onChange={(e) => setRestorePin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              onKeyDown={(e) => e.key === 'Enter' && handleRestore()}
+            />
+            <div className="profile-selector__legacy-form-actions">
+              <button
+                type="button"
+                className="btn-link"
+                onClick={() => {
+                  setRestoring(false)
+                  setRestoreName('')
+                  setRestorePin('')
+                  setRestoreError(null)
+                }}
+                disabled={restoreBusy}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleRestore}
+                disabled={restoreBusy || !restoreName.trim() || !/^\d{4}$/.test(restorePin)}
+              >
+                {restoreBusy ? 'Récupération…' : 'Récupérer'}
+              </button>
+            </div>
+            {restoreError && <p className="profile-selector__error">{restoreError}</p>}
+          </motion.div>
+        )}
+
         {error && <p className="profile-selector__error">{error}</p>}
-        {restoreError && <p className="profile-selector__error">{restoreError}</p>}
         {signupError && <p className="profile-selector__error">{signupError}</p>}
       </div>
     </PageTransition>

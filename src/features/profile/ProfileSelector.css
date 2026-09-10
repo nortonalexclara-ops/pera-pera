@@ -148,6 +148,37 @@
   font-size: 14px;
 }
 
+/* Recours discret pour l'ancien système nom+code (voir ProfileSelector.tsx)
+   — volontairement un simple lien texte, pas une carte au même niveau que
+   "Nouveau profil"/"Se connecter par email" : deux façons de "récupérer"
+   affichées à égalité avait déjà créé de la confusion (voir Settings.tsx,
+   où le même problème existait). */
+.profile-selector__legacy-link {
+  margin-top: var(--space-lg);
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.profile-selector__legacy-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+  max-width: 260px;
+  margin-top: var(--space-lg);
+}
+
+.profile-selector__legacy-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
 .profile-selector__reload {
   display: flex;
   align-items: center;

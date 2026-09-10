@@ -208,11 +208,6 @@ export default function Settings() {
     setManualSyncBusy(false)
   }
 
-  async function handleDisableSync() {
-    if (!profileId) return
-    await disableCloudSync(profileId)
-  }
-
   async function handleSendMagicLink() {
     if (!profileId || !isValidEmail) return
     setSendBusy(true)
@@ -329,34 +324,15 @@ export default function Settings() {
             </>
           ) : (
             <>
-              {/* Lié à l'ancien système nom+code (voir cloudSync.ts) —
-                  conservé tel quel pour ne pas casser une synchro déjà en
-                  place, mais le formulaire email ci-dessous reste
-                  directement accessible sans devoir d'abord cliquer sur
-                  "Désactiver" (demande explicite de l'utilisatrice, qui
-                  devait auparavant deviner ce détour) : se connecter par
-                  email remplace automatiquement cet ancien lien dès que
-                  le lien magique est cliqué avec succès (voir
-                  useEmailAuthLink.ts, enableEmailSync écrase l'ancien
-                  enregistrement nom+code). */}
-              {cloudSyncState?.enabled && (
-                <>
-                  <p className="settings-card__hint">
-                    <Check size={15} strokeWidth={2} className="settings-card__hint-icon" />
-                    Synchronisation par nom+code activée pour {profileName ?? 'ce profil'}. Dernière synchro :{' '}
-                    {cloudSyncState.lastSyncedAt ? formatRelativeSync(cloudSyncState.lastSyncedAt) : 'pas encore'}.
-                  </p>
-                  <div className="reset-confirm__actions">
-                    <button type="button" className="btn-link" onClick={handleManualSync} disabled={manualSyncBusy}>
-                      {manualSyncBusy ? 'Synchronisation…' : 'Synchroniser maintenant'}
-                    </button>
-                    <button type="button" className="btn-link" onClick={handleDisableSync}>
-                      Désactiver
-                    </button>
-                  </div>
-                </>
-              )}
-
+              {/* Un profil encore lié à l'ancien système nom+code (voir
+                  cloudSync.ts) tombe ici aussi — se connecter par email
+                  remplace automatiquement cet ancien lien dès que le lien
+                  magique est cliqué avec succès (voir useEmailAuthLink.ts,
+                  enableEmailSync écrase l'ancien enregistrement nom+code),
+                  pas besoin d'un statut ou d'un bouton "Désactiver" séparé
+                  pour ça — source de confusion signalée par l'utilisatrice
+                  ("j'ai déjà synchronisé avec mon email" alors que l'écran
+                  montrait encore l'ancien statut nom+code). */}
               <p className="settings-card__hint">
                 Connecte-toi avec ton adresse email pour retrouver ta progression sur tous tes appareils — pas de mot
                 de passe à retenir, juste un lien envoyé par email.
