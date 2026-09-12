@@ -13,6 +13,11 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-md) var(--space-lg);
+  /* Sur iPhone, les boutons "À revoir"/"Maîtrisé" (derniers éléments de
+     `.session__card-col`, tout en bas) se retrouvaient collés contre la
+     zone du bandeau d'accueil, sans marge (signalé par l'utilisatrice) —
+     `padding-bottom` seul ne connaît pas cette zone, `env()` si. */
+  padding-bottom: max(var(--space-md), env(safe-area-inset-bottom));
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -999,6 +1004,7 @@ rt {
 @media (max-width: 600px) {
   .session {
     padding: var(--space-sm) var(--space-md);
+    padding-bottom: max(var(--space-sm), env(safe-area-inset-bottom));
   }
 
   .session__header {
