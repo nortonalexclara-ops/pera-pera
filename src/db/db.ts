@@ -144,14 +144,16 @@ export interface SavedWordRecord {
   reading: string
   meaning: string
   // 'word' (mot exemple, comportement d'origine) | 'phrase' (phrase
-  // d'exemple entière) | 'key' (clé/composant d'un kanji, ex. 日 dans 明)
-  // — optionnel pour compat avec les enregistrements déjà existants avant
+  // d'exemple entière) | 'key' (clé/composant d'un kanji, ex. 日 dans 明) |
+  // 'kanji' (un des kanjis qui composent un mot, ex. 有 dans 有名 — voir
+  // VocabCardLoop.tsx, section "Kanjis", distincte de "Clés") —
+  // optionnel pour compat avec les enregistrements déjà existants avant
   // ce champ (tous 'word' implicitement, voir listSavedWords côté
-  // affichage). Un composant a un sens fixe indépendant du kanji où on le
-  // rencontre (日 = "soleil" partout) : pas besoin de le distinguer par
-  // kanjiChar, `word` seul (le caractère du composant) suffit comme clé
-  // de dédoublonnage, exactement comme pour 'word'/'phrase'.
-  kind?: 'word' | 'phrase' | 'key'
+  // affichage). Un composant/kanji a un sens fixe indépendant du mot où on
+  // le rencontre : pas besoin de le distinguer par kanjiChar, `word` seul
+  // (le caractère) suffit comme clé de dédoublonnage, exactement comme
+  // pour 'word'/'phrase'.
+  kind?: 'word' | 'phrase' | 'key' | 'kanji'
   // Caractère du kanji dont ce mot est un exemple d'usage — beaucoup de
   // ces mots (illustratifs, choisis pour montrer le kanji en contexte)
   // n'ont pas de fiche à eux dans le catalogue de vocabulaire. Sert de

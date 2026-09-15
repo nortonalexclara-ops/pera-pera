@@ -1,4 +1,4 @@
-import { db, type ItemKind, type SyncTombstoneTable } from './db'
+import { db, type ItemKind, type SyncTombstoneTable, type SavedWordRecord } from './db'
 import { getKanjiGoal, setKanjiGoal, DEFAULT_KANJI_GOAL } from './settings'
 import { writeTombstone } from './syncTombstones'
 
@@ -20,7 +20,14 @@ export interface ProfileBackupPayload {
   // sync, sert au calcul du delta lors d'une fusion (cloudSyncMerge.ts).
   timeSpent: { date: string; seconds: number; syncedSeconds?: number }[]
   reviewMarks: { kind: ItemKind; itemId: string; markedAt: number }[]
-  savedWords: { word: string; reading: string; meaning: string; kanjiChar: string; savedAt: number }[]
+  savedWords: {
+    word: string
+    reading: string
+    meaning: string
+    kanjiChar: string
+    kind?: SavedWordRecord['kind']
+    savedAt: number
+  }[]
   // Traces de suppression (voir SyncTombstoneRecord, db.ts) — nécessaire
   // pour qu'une suppression faite sur UN appareil ne "ressuscite" pas au
   // contact d'un autre appareil qui ne l'a pas encore vue.
@@ -60,6 +67,11 @@ export async function exportProfileData(profileId: string): Promise<ProfileBacku
       reading: s.reading,
       meaning: s.meaning,
       kanjiChar: s.kanjiChar,
+      // Absent jusqu'ici (bug repéré lors d'un audit) : Phrases/Clés/Kanjis
+      // enregistrés perdaient leur type à chaque synchro entre appareils,
+      // redevenant implicitement "Mots" en arrivant sur l'autre appareil
+      // (voir NotesList.tsx, `(w.kind ?? 'word')`).
+      kind: s.kind,
       savedAt: s.savedAt,
     })),
     tombstones: tombstones.map((t) => ({ table: t.table, key: t.key, deletedAt: t.deletedAt })),

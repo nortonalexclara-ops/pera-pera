@@ -128,6 +128,7 @@ export default function NotesList() {
     word: savedWords.filter((w) => (w.kind ?? 'word') === 'word'),
     phrase: savedWords.filter((w) => w.kind === 'phrase'),
     key: savedWords.filter((w) => w.kind === 'key'),
+    kanji: savedWords.filter((w) => w.kind === 'kanji'),
   }
 
   return (
@@ -156,6 +157,12 @@ export default function NotesList() {
             <SavedList
               title="Clés enregistrées"
               items={savedGroups.key}
+              onNavigate={handleNavigateSavedWord}
+              onRemove={handleRemoveSavedWord}
+            />
+            <SavedList
+              title="Kanjis enregistrés"
+              items={savedGroups.kanji}
               onNavigate={handleNavigateSavedWord}
               onRemove={handleRemoveSavedWord}
             />

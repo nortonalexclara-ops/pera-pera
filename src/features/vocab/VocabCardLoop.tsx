@@ -211,12 +211,26 @@ export default function VocabCardLoop({
             <>
               <p className="flip-card__label">Kanjis</p>
               <ul className="flip-card__components">
-                {wordKanjis.map((k) => (
-                  <li key={k.id} className="component-chip">
-                    <span className="component-chip__char">{k.character}</span>
-                    <span className="component-chip__meaning">{k.meanings[0]}</span>
-                  </li>
-                ))}
+                {wordKanjis.map((k) => {
+                  const isKanjiSaved = savedWordTexts.has(k.character)
+                  return (
+                    <li key={k.id} className="component-chip">
+                      <span className="component-chip__char">{k.character}</span>
+                      <span className="component-chip__meaning">{k.meanings[0]}</span>
+                      <button
+                        type="button"
+                        className={`component-chip__save${isKanjiSaved ? ' is-saved' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (profileId) toggleSavedWord(profileId, k.character, '', k.meanings[0], k.character, 'kanji')
+                        }}
+                        title={isKanjiSaved ? 'Retirer de mes kanjis enregistrés' : 'Ajouter à mes kanjis enregistrés'}
+                      >
+                        <Bookmark size={12} strokeWidth={2} fill={isKanjiSaved ? 'currentColor' : 'none'} />
+                      </button>
+                    </li>
+                  )
+                })}
               </ul>
             </>
           )}

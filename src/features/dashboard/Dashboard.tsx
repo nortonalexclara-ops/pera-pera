@@ -167,7 +167,7 @@ export default function Dashboard() {
           >
             <CloudUpload size={18} strokeWidth={1.75} className="backup-banner__icon" />
             <p className="backup-banner__text">
-              Retrouve ton compte et ta progression sur tous tes appareils : crée un code à 4 chiffres.
+              Retrouve ton compte et ta progression sur tous tes appareils : connecte-toi avec ton adresse email.
             </p>
             <button type="button" className="backup-banner__link" onClick={() => navigate('/settings')}>
               Configurer

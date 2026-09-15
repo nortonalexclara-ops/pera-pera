@@ -39,8 +39,8 @@ export default function PinOnboardingModal({ onDismiss }: PinOnboardingModalProp
 
         <h2 className="pin-onboarding__title">Protège ta progression</h2>
         <p className="pin-onboarding__text">
-          Pour l'instant, tout ce que tu apprends ne vit que sur cet appareil. Choisis un code à 4 chiffres pour
-          pouvoir la retrouver sur un autre appareil — ou si tu dois un jour réinstaller l'app.
+          Pour l'instant, tout ce que tu apprends ne vit que sur cet appareil. Connecte-toi avec ton adresse email
+          pour pouvoir la retrouver sur un autre appareil — ou si tu dois un jour réinstaller l'app.
         </p>
 
         <div className="pin-onboarding__actions">
