@@ -15,10 +15,20 @@ export default defineConfig({
     // `registerType: 'autoUpdate'` : le nouveau service worker prend le
     // relais tout seul dès qu'une mise à jour est détectée en ligne, pas
     // de bannière "recharger ?" à gérer côté UI.
+    // `strategies: 'injectManifest'` + `srcDir/filename` : service worker
+    // ÉCRIT À LA MAIN (voir src/sw.ts) plutôt que généré automatiquement —
+    // nécessaire pour les rappels quotidiens (demande explicite de
+    // l'utilisatrice) : afficher une notification reçue ('push') ou réagir
+    // à son clic ('notificationclick') ne peut pas s'accrocher à un
+    // service worker `generateSW` généré tout seul, seul le pré-cache
+    // (`precacheAndRoute`) l'était jusqu'ici.
     VitePWA({
       registerType: 'autoUpdate',
       manifest: false,
-      workbox: {
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
         // Le bundle JS principal (~8 Mo) et dictionary-fr.json (~2 Mo)
         // dépassent la limite par défaut de Workbox (2 Mo) — sans ça, ils
         // seraient silencieusement exclus de la mise en cache et l'appli

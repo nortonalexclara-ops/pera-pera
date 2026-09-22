@@ -9,5 +9,11 @@
         { "key": "Cache-Control", "value": "no-store" }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/send-daily-reminder",
+      "schedule": "0 8 * * *"
+    }
   ]
 }

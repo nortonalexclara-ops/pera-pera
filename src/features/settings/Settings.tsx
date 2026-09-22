@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Trash2, Check, AlertTriangle, CheckCheck, Volume2, Mail, Sun, Moon } from 'lucide-react'
+import { Trash2, Check, AlertTriangle, CheckCheck, Volume2, Mail, Sun, Moon, Bell } from 'lucide-react'
 import PageTransition from '../../components/ui/PageTransition'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import { useProfileStore } from '../profile/profileStore'
@@ -19,6 +19,7 @@ import { useThemeStore } from '../theme/themeStore'
 import { deleteAccountBackup } from '../profile/cloudSync'
 import { syncNow } from '../profile/cloudSyncEngine'
 import { sendMagicLink, setPendingEmailLinkProfileId, signOutEmail } from '../profile/emailAuth'
+import { isPushSupported, subscribeToPush, unsubscribeFromPush } from '../notifications/pushNotifications'
 import {
   isSpeechSupported,
   listJapaneseVoices,
@@ -296,6 +297,8 @@ export default function Settings() {
             </button>
           </div>
         </section>
+
+        <NotificationSection profileId={profileId} />
 
         <section className="settings-card">
           <h2 className="settings-card__title">Synchronisation entre appareils</h2>
@@ -614,6 +617,69 @@ export default function Settings() {
         </section>
       </div>
     </PageTransition>
+  )
+}
+
+// Rappel quotidien (demande explicite de l'utilisatrice : recevoir une
+// notification une fois par jour pour penser à réviser) — activé/désactivé
+// par profil, sur CET appareil. `pushEnabledKey` : préférence purement
+// locale (pas dans la sauvegarde cloud, comme la voix de prononciation
+// ci-dessous) — l'abonnement Push lui-même est de toute façon propre à un
+// appareil, pas transférable d'un profil/appareil à l'autre.
+function NotificationSection({ profileId }: { profileId: string | null }) {
+  const supported = useMemo(() => isPushSupported(), [])
+  const pushEnabledKey = profileId ? `pera-pera:push-enabled:${profileId}` : null
+  const [enabled, setEnabled] = useState(() => pushEnabledKey != null && localStorage.getItem(pushEnabledKey) === '1')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleToggle() {
+    if (!profileId || !pushEnabledKey) return
+    setError(null)
+    setBusy(true)
+    try {
+      if (enabled) {
+        await unsubscribeFromPush(profileId)
+        localStorage.removeItem(pushEnabledKey)
+        setEnabled(false)
+      } else {
+        await subscribeToPush(profileId)
+        localStorage.setItem(pushEnabledKey, '1')
+        setEnabled(true)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Échec.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="settings-card">
+      <h2 className="settings-card__title">Rappel quotidien</h2>
+      {supported ? (
+        <>
+          <p className="settings-card__hint">
+            Reçois une notification une fois par jour pour penser à réviser.
+          </p>
+          <button
+            type="button"
+            className={enabled ? 'btn-danger' : 'btn-primary'}
+            onClick={handleToggle}
+            disabled={busy || !profileId}
+          >
+            <Bell size={16} strokeWidth={1.75} />
+            {busy ? 'Patiente…' : enabled ? 'Désactiver les rappels' : 'Activer les rappels'}
+          </button>
+          {error && <p className="settings-error">{error}</p>}
+        </>
+      ) : (
+        <p className="settings-card__hint">
+          Pas disponible sur cet appareil pour l'instant — sur iPhone/iPad, ajoute d'abord l'appli à l'écran
+          d'accueil (Safari → Partager → Sur l'écran d'accueil), nécessite iOS 16.4 ou plus récent.
+        </p>
+      )}
+    </section>
   )
 }
 

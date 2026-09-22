@@ -171,6 +171,21 @@ export default function NotesList() {
 
         {loaded && (
           <motion.div className="notes-list__grid" variants={gridVariants} initial="hidden" animate="visible">
+            {/* En premier plutôt qu'à la fin de la grille — sinon, avec
+                beaucoup de notes existantes, il fallait défiler jusqu'en
+                bas rien que pour en créer une nouvelle (signalé par
+                l'utilisatrice). */}
+            <motion.button
+              className="note-card note-card--new card"
+              variants={cardVariants}
+              whileHover={{ y: -3 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleCreate}
+            >
+              <Plus size={22} strokeWidth={1.75} />
+              <span className="note-card__title">Nouvelle note</span>
+            </motion.button>
+
             {notes.map((note) => (
               <motion.button
                 key={note.id}
@@ -186,17 +201,6 @@ export default function NotesList() {
                 {note.text && <span className="note-card__preview">{note.text}</span>}
               </motion.button>
             ))}
-
-            <motion.button
-              className="note-card note-card--new card"
-              variants={cardVariants}
-              whileHover={{ y: -3 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleCreate}
-            >
-              <Plus size={22} strokeWidth={1.75} />
-              <span className="note-card__title">Nouvelle note</span>
-            </motion.button>
           </motion.div>
         )}
       </div>
