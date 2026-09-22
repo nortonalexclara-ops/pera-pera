@@ -17,8 +17,16 @@ import { getKanjiGoal, setKanjiGoal, DEFAULT_KANJI_GOAL } from '../../db/setting
 import { getCloudSyncState, disableCloudSync } from '../../db/cloudSyncState'
 import { useThemeStore } from '../theme/themeStore'
 import { deleteAccountBackup } from '../profile/cloudSync'
+import { deleteEmailBackup } from '../profile/emailSync'
 import { syncNow } from '../profile/cloudSyncEngine'
-import { sendMagicLink, setPendingEmailLinkProfileId, signOutEmail } from '../profile/emailAuth'
+import {
+  signInWithPassword,
+  signUpWithPassword,
+  sendPasswordResetEmail,
+  setPendingEmailLinkProfileId,
+  consumePendingEmailLinkProfileId,
+  signOutEmail,
+} from '../profile/emailAuth'
 import { isPushSupported, subscribeToPush, unsubscribeFromPush } from '../notifications/pushNotifications'
 import {
   isSpeechSupported,
@@ -122,11 +130,16 @@ export default function Settings() {
   )
   const [manualSyncBusy, setManualSyncBusy] = useState(false)
 
-  const [email, setEmail] = useState('')
-  const [sendBusy, setSendBusy] = useState(false)
-  const [linkSent, setLinkSent] = useState(false)
-  const [sendError, setSendError] = useState<string | null>(null)
-  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  // Connexion par email — mot de passe (comme sur Okane), voir
+  // ProfileSelector.tsx pour le même mécanisme côté écran de sélection.
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authBusy, setAuthBusy] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [confirmSent, setConfirmSent] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
+  const isValidAuthEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authEmail)
 
   // Objectif de kanjis affiché sur le Dashboard, personnalisable — `null`
   // tant que l'utilisatrice n'a pas commencé à taper, pour que le champ
@@ -209,22 +222,55 @@ export default function Settings() {
     setManualSyncBusy(false)
   }
 
-  async function handleSendMagicLink() {
-    if (!profileId || !isValidEmail) return
-    setSendBusy(true)
-    setSendError(null)
+  // Connexion à un compte EXISTANT, pour lier ce profil-ci — synchrone
+  // (établit la session tout de suite), le marqueur posé avant sert de
+  // filet au cas où l'événement de connexion Supabase arrive avant que ce
+  // `await` ne se résolve ici (voir useEmailAuthLink.ts).
+  async function handleSettingsLogin() {
+    if (!profileId || !isValidAuthEmail || !authPassword) return
+    setAuthBusy(true)
+    setAuthError(null)
     try {
-      // Posé AVANT l'envoi : la page va se recharger dans un contexte
-      // tout neuf au retour du clic sur le lien (voir emailAuth.ts), le
-      // seul moyen de retrouver "quel profil voulait se connecter" est de
-      // le déposer maintenant plutôt que de compter sur l'état React.
       setPendingEmailLinkProfileId(profileId)
-      await sendMagicLink(email)
-      setLinkSent(true)
+      await signInWithPassword(authEmail, authPassword)
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : "Échec de l'envoi du lien.")
+      consumePendingEmailLinkProfileId()
+      setAuthError(err instanceof Error ? err.message : 'Échec de la connexion.')
     } finally {
-      setSendBusy(false)
+      setAuthBusy(false)
+    }
+  }
+
+  // Création d'un tout nouveau compte pour ce profil — si Supabase exige
+  // une confirmation par email, la liaison n'a lieu qu'au clic sur ce lien
+  // (voir useEmailAuthLink.ts), pas ici.
+  async function handleSettingsSignup() {
+    if (!profileId || !isValidAuthEmail || authPassword.length < 6) return
+    setAuthBusy(true)
+    setAuthError(null)
+    try {
+      setPendingEmailLinkProfileId(profileId)
+      const { needsConfirmation } = await signUpWithPassword(authEmail, authPassword)
+      if (needsConfirmation) setConfirmSent(true)
+    } catch (err) {
+      consumePendingEmailLinkProfileId()
+      setAuthError(err instanceof Error ? err.message : 'Échec de la création du compte.')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  async function handleSettingsForgotPassword() {
+    if (!isValidAuthEmail) return
+    setAuthBusy(true)
+    setAuthError(null)
+    try {
+      await sendPasswordResetEmail(authEmail)
+      setForgotSent(true)
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : "Échec de l'envoi du lien.")
+    } finally {
+      setAuthBusy(false)
     }
   }
 
@@ -242,25 +288,37 @@ export default function Settings() {
     setGoalSaved(true)
   }
 
-  // Le code n'est vérifié que si ce profil a déjà une sauvegarde en ligne
-  // (voir api/delete-account.ts) — sinon rien à protéger, la suppression
-  // locale se fait dès confirmation. Empêche qu'un autre utilisateur du
-  // même appareil supprime un profil sauvegardé qui n'est pas le sien.
-  // Un souci serveur (Redis indisponible, réseau...) ne bloque PAS la
-  // suppression locale — seul un vrai refus (mauvais code) le fait, voir
-  // `deleteAccountBackup`.
+  // Un code n'est demandé QUE pour l'ancien système nom+code — protège
+  // contre une suppression par quelqu'un d'autre sur le même appareil, vu
+  // que ce système "réserve" juste un nom (voir api/backup.ts). Pour un
+  // profil lié par compte email, rien à redemander : la connexion elle-
+  // même (voir Réglages, section Synchronisation) EST déjà la protection,
+  // demander en plus un code à 4 chiffres qui n'a jamais existé pour ce
+  // système n'a fait que dérouter l'utilisatrice ("il me demande un code
+  // que je n'ai pas configuré"). Un souci serveur (Redis/Supabase
+  // indisponible, réseau...) ne bloque PAS la suppression locale — seul un
+  // vrai refus (mauvais code, système nom+code) le fait.
   async function handleDeleteProfile() {
     if (!profileId || !profileName) return
     setDeleteBusy(true)
     setDeleteError(null)
-    const result = await deleteAccountBackup(profileName, deletePin)
-    if (result.blockedByWrongPin) {
-      setDeleteError(result.error ?? 'Code incorrect.')
-      setDeleteBusy(false)
-      return
-    }
-    if (!result.ok) {
-      console.warn('Suppression de la sauvegarde en ligne impossible (suppression locale quand même) :', result.error)
+    if (cloudSyncState?.authUserId) {
+      try {
+        await deleteEmailBackup()
+      } catch (err) {
+        console.warn('Suppression de la sauvegarde email impossible (suppression locale quand même) :', err)
+      }
+      await signOutEmail()
+    } else if (cloudSyncState?.pin) {
+      const result = await deleteAccountBackup(profileName, deletePin)
+      if (result.blockedByWrongPin) {
+        setDeleteError(result.error ?? 'Code incorrect.')
+        setDeleteBusy(false)
+        return
+      }
+      if (!result.ok) {
+        console.warn('Suppression de la sauvegarde en ligne impossible (suppression locale quand même) :', result.error)
+      }
     }
     await deleteProfile(profileId)
     clearActiveProfile()
@@ -329,49 +387,94 @@ export default function Settings() {
             <>
               {/* Un profil encore lié à l'ancien système nom+code (voir
                   cloudSync.ts) tombe ici aussi — se connecter par email
-                  remplace automatiquement cet ancien lien dès que le lien
-                  magique est cliqué avec succès (voir useEmailAuthLink.ts,
+                  remplace automatiquement cet ancien lien dès qu'un compte
+                  est lié avec succès (voir useEmailAuthLink.ts,
                   enableEmailSync écrase l'ancien enregistrement nom+code),
                   pas besoin d'un statut ou d'un bouton "Désactiver" séparé
                   pour ça — source de confusion signalée par l'utilisatrice
                   ("j'ai déjà synchronisé avec mon email" alors que l'écran
                   montrait encore l'ancien statut nom+code). */}
               <p className="settings-card__hint">
-                Connecte-toi avec ton adresse email pour retrouver ta progression sur tous tes appareils — pas de mot
-                de passe à retenir, juste un lien envoyé par email.
+                Connecte-toi avec ton adresse email pour retrouver ta progression sur tous tes appareils.
               </p>
 
-              {linkSent ? (
+              {confirmSent ? (
                 <p className="settings-card__hint">
                   <Check size={15} strokeWidth={2} className="settings-card__hint-icon" />
-                  Lien envoyé à {email} — ouvre ta boîte mail sur cet appareil et clique sur le lien pour te
-                  connecter.
+                  Compte créé — ouvre ta boîte mail sur cet appareil et clique sur le lien de confirmation pour lier
+                  ce profil.
+                </p>
+              ) : forgotSent ? (
+                <p className="settings-card__hint">
+                  <Check size={15} strokeWidth={2} className="settings-card__hint-icon" />
+                  Lien envoyé à {authEmail} — ouvre ta boîte mail et clique dessus pour choisir un nouveau mot de
+                  passe.
                 </p>
               ) : (
-                <div className="pin-row">
-                  <input
-                    type="email"
-                    placeholder="ton@email.com"
-                    className="pin-input"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value)
-                      setSendError(null)
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    disabled={!isValidEmail || sendBusy}
-                    onClick={handleSendMagicLink}
-                  >
-                    <Mail size={16} strokeWidth={1.75} />
-                    {sendBusy ? 'Envoi…' : 'Envoyer le lien'}
-                  </button>
-                </div>
+                <>
+                  <div className="pin-row">
+                    <input
+                      type="email"
+                      placeholder="ton@email.com"
+                      className="pin-input"
+                      autoComplete="email"
+                      value={authEmail}
+                      onChange={(e) => {
+                        setAuthEmail(e.target.value)
+                        setAuthError(null)
+                      }}
+                    />
+                    <input
+                      type="password"
+                      placeholder="Mot de passe"
+                      className="pin-input"
+                      autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+                      value={authPassword}
+                      onChange={(e) => {
+                        setAuthPassword(e.target.value)
+                        setAuthError(null)
+                      }}
+                      onKeyDown={(e) =>
+                        e.key === 'Enter' && (authMode === 'login' ? handleSettingsLogin() : handleSettingsSignup())
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      disabled={
+                        authBusy || !isValidAuthEmail || (authMode === 'login' ? !authPassword : authPassword.length < 6)
+                      }
+                      onClick={authMode === 'login' ? handleSettingsLogin : handleSettingsSignup}
+                    >
+                      <Mail size={16} strokeWidth={1.75} />
+                      {authBusy ? '…' : authMode === 'login' ? 'Se connecter' : 'Créer mon compte'}
+                    </button>
+                  </div>
+                  <p className="auth-links">
+                    {authMode === 'login' ? (
+                      <>
+                        <button type="button" className="auth-inline-link" onClick={() => setAuthMode('signup')}>
+                          Créer un compte
+                        </button>
+                        {' · '}
+                        <button
+                          type="button"
+                          className="auth-inline-link"
+                          onClick={handleSettingsForgotPassword}
+                        >
+                          Mot de passe oublié ?
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" className="auth-inline-link" onClick={() => setAuthMode('login')}>
+                        J'ai déjà un compte
+                      </button>
+                    )}
+                  </p>
+                </>
               )}
 
-              {sendError && <p className="settings-error">{sendError}</p>}
+              {authError && <p className="settings-error">{authError}</p>}
             </>
           )}
         </section>
@@ -559,8 +662,8 @@ export default function Settings() {
           <h2 className="settings-card__title">Supprimer ce profil</h2>
           <p className="settings-card__hint">
             Supprime définitivement {profileName ?? 'ce profil'} et toutes ses données (progression, notes, favoris) de
-            cet appareil. Si ce profil a une sauvegarde en ligne, entre son code à 4 chiffres pour confirmer — sinon,
-            laisse le champ vide.
+            cet appareil{cloudSyncState?.authUserId ? ' et sa sauvegarde en ligne' : ''}.
+            {cloudSyncState?.pin && !cloudSyncState?.authUserId && ' Entre son code à 4 chiffres pour confirmer.'}
           </p>
 
           {!deleteConfirming ? (
@@ -579,21 +682,23 @@ export default function Settings() {
                 <AlertTriangle size={16} strokeWidth={1.75} />
                 Action irréversible pour {profileName ?? 'ce profil'}.
               </p>
-              <div className="pin-row">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={4}
-                  placeholder="Code à 4 chiffres (si sauvegardé)"
-                  className="pin-input"
-                  value={deletePin}
-                  onChange={(e) => {
-                    setDeletePin(e.target.value.replace(/\D/g, '').slice(0, 4))
-                    setDeleteError(null)
-                  }}
-                />
-              </div>
+              {cloudSyncState?.pin && !cloudSyncState?.authUserId && (
+                <div className="pin-row">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={4}
+                    placeholder="Code à 4 chiffres"
+                    className="pin-input"
+                    value={deletePin}
+                    onChange={(e) => {
+                      setDeletePin(e.target.value.replace(/\D/g, '').slice(0, 4))
+                      setDeleteError(null)
+                    }}
+                  />
+                </div>
+              )}
               <div className="reset-confirm__actions">
                 <button
                   type="button"

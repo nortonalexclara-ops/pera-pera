@@ -105,6 +105,25 @@ a:focus-visible {
   transition: color 0.15s ease;
 }
 
+/* Bascule Se connecter/Créer un compte + mot de passe oublié (voir
+   ProfileSelector.tsx et Settings.tsx, même bascule aux deux endroits) —
+   neutre, pas la teinte "avertissement" de `.profile-card__warning` : ce
+   sont de simples liens de navigation. */
+.auth-links {
+  font-size: 11px;
+  text-align: center;
+}
+
+.auth-inline-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 11px;
+}
+
 .btn-link:hover {
   color: var(--color-accent-dark);
 }

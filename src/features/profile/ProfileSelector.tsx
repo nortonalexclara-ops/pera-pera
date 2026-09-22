@@ -11,7 +11,13 @@ import { setHasCloudBackup } from '../../db/settings'
 import { enableCloudSync } from '../../db/cloudSyncState'
 import { restoreProfile } from './cloudSync'
 import { syncNow } from './cloudSyncEngine'
-import { sendMagicLink, setPendingEmailSignup } from './emailAuth'
+import {
+  signInWithPassword,
+  signUpWithPassword,
+  sendPasswordResetEmail,
+  setPendingEmailSignup,
+  consumePendingEmailSignup,
+} from './emailAuth'
 import { isStandalonePwa } from '../../utils/pwa'
 import type { ProfileRecord } from '../../db/db'
 import AmbientGlow from '../../components/ui/AmbientGlow'
@@ -51,13 +57,21 @@ export default function ProfileSelector() {
   const [restoreBusy, setRestoreBusy] = useState(false)
   const [restoreError, setRestoreError] = useState<string | null>(null)
 
-  const [emailSigningUp, setEmailSigningUp] = useState(false)
-  const [signupName, setSignupName] = useState('')
-  const [signupEmail, setSignupEmail] = useState('')
-  const [signupBusy, setSignupBusy] = useState(false)
-  const [signupLinkSent, setSignupLinkSent] = useState(false)
-  const [signupError, setSignupError] = useState<string | null>(null)
-  const isValidSignupEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signupEmail)
+  // Connexion par email — mot de passe (comme sur Okane, demande explicite
+  // de l'utilisatrice) plutôt qu'un lien magique : plus rapide sur un
+  // nouvel appareil (pas besoin d'aller vérifier sa boîte mail à chaque
+  // connexion), seule la CRÉATION de compte garde une étape par email
+  // (confirmation, voir emailAuth.ts) quand Supabase l'exige.
+  const [emailOpen, setEmailOpen] = useState(false)
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
+  const [authName, setAuthName] = useState('')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authBusy, setAuthBusy] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [confirmSent, setConfirmSent] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
+  const isValidAuthEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(authEmail)
   // Vrai si le filet de sécurité ci-dessous s'est déclenché en mode
   // autonome (voir isStandalonePwa) — affiche un bouton de rechargement
   // manuel plutôt qu'un rechargement automatique.
@@ -172,24 +186,63 @@ export default function ProfileSelector() {
     }
   }
 
-  // Connexion/récupération par email directement depuis cet écran, sans
+  // Connexion à un compte email EXISTANT directement depuis cet écran, sans
   // devoir d'abord créer un profil "vide" puis aller dans Réglages (gap
-  // signalé par l'utilisatrice) — le profil local n'est créé qu'une fois
-  // le lien magique cliqué avec succès (voir useEmailAuthLink.ts), pas
-  // ici : à cet instant, on ne sait pas encore si ce compte a déjà une
-  // sauvegarde à récupérer ou s'il faut en créer un tout neuf.
-  async function handleSendSignupLink() {
-    setSignupError(null)
-    if (!signupName.trim() || !isValidSignupEmail) return
-    setSignupBusy(true)
+  // signalé par l'utilisatrice). Synchrone : contrairement à une création
+  // de compte (qui peut exiger une confirmation par email), se connecter à
+  // un compte déjà confirmé établit la session tout de suite — le marqueur
+  // "en attente" posé juste avant sert quand même de filet (voir
+  // useEmailAuthLink.ts) au cas où l'événement de connexion Supabase
+  // arrive avant que ce `await` ne se résolve ici.
+  async function handleLogin() {
+    setAuthError(null)
+    if (!isValidAuthEmail || !authPassword) return
+    setAuthBusy(true)
     try {
-      setPendingEmailSignup(signupName.trim())
-      await sendMagicLink(signupEmail)
-      setSignupLinkSent(true)
+      // Nom de repli SEULEMENT si ce compte n'a encore aucune sauvegarde
+      // (cas rare pour une connexion) — sinon le vrai nom déjà enregistré
+      // est utilisé à la place (voir completeEmailAuth.ts).
+      setPendingEmailSignup(authEmail.split('@')[0])
+      await signInWithPassword(authEmail, authPassword)
     } catch (err) {
-      setSignupError(err instanceof Error ? err.message : "Échec de l'envoi du lien.")
+      consumePendingEmailSignup()
+      setAuthError(err instanceof Error ? err.message : 'Échec de la connexion.')
     } finally {
-      setSignupBusy(false)
+      setAuthBusy(false)
+    }
+  }
+
+  // Création d'un tout nouveau compte — le profil local n'est créé qu'une
+  // fois la connexion effectivement établie (voir useEmailAuthLink.ts),
+  // pas ici : si Supabase exige une confirmation par email, rien n'est
+  // encore vrai à cet instant, juste une demande en attente.
+  async function handleSignup() {
+    setAuthError(null)
+    if (!authName.trim() || !isValidAuthEmail || authPassword.length < 6) return
+    setAuthBusy(true)
+    try {
+      setPendingEmailSignup(authName.trim())
+      const { needsConfirmation } = await signUpWithPassword(authEmail, authPassword)
+      if (needsConfirmation) setConfirmSent(true)
+    } catch (err) {
+      consumePendingEmailSignup()
+      setAuthError(err instanceof Error ? err.message : 'Échec de la création du compte.')
+    } finally {
+      setAuthBusy(false)
+    }
+  }
+
+  async function handleForgotPassword() {
+    setAuthError(null)
+    if (!isValidAuthEmail) return
+    setAuthBusy(true)
+    try {
+      await sendPasswordResetEmail(authEmail)
+      setForgotSent(true)
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : "Échec de l'envoi du lien.")
+    } finally {
+      setAuthBusy(false)
     }
   }
 
@@ -281,24 +334,32 @@ export default function ProfileSelector() {
               </motion.button>
             )}
 
-            {emailSigningUp ? (
+            {emailOpen ? (
               <motion.div className="profile-card profile-card--form profile-card--restore card" variants={cardVariants}>
-                {signupLinkSent ? (
+                {confirmSent ? (
                   <p className="profile-card__warning">
-                    Lien envoyé à {signupEmail} — ouvre ta boîte mail sur cet appareil et clique dessus.
+                    Compte créé — ouvre ta boîte mail sur cet appareil et clique sur le lien de confirmation pour te
+                    connecter.
+                  </p>
+                ) : forgotSent ? (
+                  <p className="profile-card__warning">
+                    Lien envoyé à {authEmail} — ouvre ta boîte mail et clique dessus pour choisir un nouveau mot de
+                    passe.
                   </p>
                 ) : (
                   <>
-                    <input
-                      type="text"
-                      className="profile-card__input"
-                      placeholder="Prénom"
-                      value={signupName}
-                      autoFocus
-                      maxLength={20}
-                      onChange={(e) => setSignupName(e.target.value)}
-                    />
-                    {isDuplicateName(signupName) && (
+                    {authMode === 'signup' && (
+                      <input
+                        type="text"
+                        className="profile-card__input"
+                        placeholder="Prénom"
+                        value={authName}
+                        autoFocus
+                        maxLength={20}
+                        onChange={(e) => setAuthName(e.target.value)}
+                      />
+                    )}
+                    {authMode === 'signup' && isDuplicateName(authName) && (
                       <p className="profile-card__warning">
                         Ce nom est déjà utilisé par un profil actif sur cet appareil (pas supprimé) — celui-ci sera
                         séparé.
@@ -308,21 +369,53 @@ export default function ProfileSelector() {
                       type="email"
                       className="profile-card__input"
                       placeholder="ton@email.com"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSendSignupLink()}
+                      autoComplete="email"
+                      value={authEmail}
+                      autoFocus={authMode === 'login'}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                    />
+                    <input
+                      type="password"
+                      className="profile-card__input"
+                      placeholder="Mot de passe"
+                      autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (authMode === 'login' ? handleLogin() : handleSignup())}
                     />
                     <button
                       type="button"
                       className="profile-card__confirm"
-                      onClick={handleSendSignupLink}
-                      disabled={signupBusy || !signupName.trim() || !isValidSignupEmail}
-                      title="Envoyer le lien"
+                      onClick={authMode === 'login' ? handleLogin : handleSignup}
+                      disabled={
+                        authBusy ||
+                        !isValidAuthEmail ||
+                        (authMode === 'login' ? !authPassword : !authName.trim() || authPassword.length < 6)
+                      }
+                      title={authMode === 'login' ? 'Se connecter' : 'Créer mon compte'}
                     >
-                      <Mail size={16} strokeWidth={2} />
+                      {authBusy ? '…' : authMode === 'login' ? 'Se connecter' : 'Créer mon compte'}
                     </button>
+                    <p className="auth-links">
+                      {authMode === 'login' ? (
+                        <>
+                          <button type="button" className="auth-inline-link" onClick={() => setAuthMode('signup')}>
+                            Créer un compte
+                          </button>
+                          {' · '}
+                          <button type="button" className="auth-inline-link" onClick={handleForgotPassword}>
+                            Mot de passe oublié ?
+                          </button>
+                        </>
+                      ) : (
+                        <button type="button" className="auth-inline-link" onClick={() => setAuthMode('login')}>
+                          J'ai déjà un compte
+                        </button>
+                      )}
+                    </p>
                   </>
                 )}
+                {authError && <p className="profile-selector__error">{authError}</p>}
               </motion.div>
             ) : (
               <motion.button
@@ -330,7 +423,7 @@ export default function ProfileSelector() {
                 variants={cardVariants}
                 whileHover={{ y: -3 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => setEmailSigningUp(true)}
+                onClick={() => setEmailOpen(true)}
               >
                 <span className="profile-card__avatar">
                   <Mail size={22} strokeWidth={1.75} />
@@ -401,7 +494,6 @@ export default function ProfileSelector() {
         )}
 
         {error && <p className="profile-selector__error">{error}</p>}
-        {signupError && <p className="profile-selector__error">{signupError}</p>}
       </div>
     </PageTransition>
   )

@@ -33,3 +33,35 @@ export async function restoreProfileEmail(): Promise<ProfileBackupPayload | null
   if (error) throw new Error(error.message)
   return (data?.payload as ProfileBackupPayload | undefined) ?? null
 }
+
+// Supprime la sauvegarde Supabase du compte connecté (voir Settings.tsx
+// "Supprimer ce profil") — protégé par les policies RLS posées sur
+// `profile_backups` (auth.uid() = user_id), seule la personne connectée
+// avec CE compte peut supprimer SA ligne : pas besoin de redemander un
+// code ici, la connexion elle-même (email + mot de passe) est déjà la
+// protection.
+export async function deleteEmailBackup(): Promise<void> {
+  if (!supabase) return
+  const session = await getCurrentSession()
+  if (!session) return
+  const { error } = await supabase.from('profile_backups').delete().eq('user_id', session.user.id)
+  if (error) throw new Error(error.message)
+}
+
+// Comme restoreProfileEmail, mais renvoie aussi le nom affiché sauvegardé
+// avec ce compte — sert à nommer CORRECTEMENT le nouveau profil local créé
+// lors d'une connexion sur un nouvel appareil (voir completeEmailAuth.ts),
+// plutôt que de redemander un prénom qu'on connaît déjà.
+export async function fetchRemoteProfileMeta(): Promise<{ displayName: string; payload: ProfileBackupPayload } | null> {
+  if (!supabase) throw new Error('Connexion par email indisponible.')
+  const session = await getCurrentSession()
+  if (!session) throw new Error('Non connecté.')
+  const { data, error } = await supabase
+    .from('profile_backups')
+    .select('display_name, payload')
+    .eq('user_id', session.user.id)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data) return null
+  return { displayName: data.display_name as string, payload: data.payload as ProfileBackupPayload }
+}

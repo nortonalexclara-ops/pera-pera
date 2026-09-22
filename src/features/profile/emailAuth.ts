@@ -1,12 +1,14 @@
 import { supabase } from '../../lib/supabaseClient'
 
-// Clé localStorage posée juste avant l'envoi du lien magique (voir
-// Settings.tsx handleSendMagicLink) — le clic sur le lien recharge
-// l'appli dans un contexte JS tout neuf (nouvel onglet/navigation), donc
-// le seul moyen de savoir "quel profil local voulait se connecter" est de
-// le déposer ici avant de partir, puis de le relire une fois la session
-// établie (voir useEmailAuthLink.ts).
+// Filets de sécurité pour le SEUL cas qui reste asynchrone/multi-page dans
+// la connexion par email : une création de compte qui exige une
+// confirmation par email avant de pouvoir se connecter (voir
+// signUpWithPassword ci-dessous, et useEmailAuthLink.ts qui les consomme).
+// La connexion à un compte déjà confirmé, elle, est directe/synchrone —
+// pas besoin de ces marqueurs dans ce cas (voir ProfileSelector.tsx/
+// Settings.tsx).
 const PENDING_LINK_KEY = 'pera-pera-pending-email-link'
+const PENDING_SIGNUP_KEY = 'pera-pera-pending-email-signup'
 
 export function setPendingEmailLinkProfileId(profileId: string): void {
   localStorage.setItem(PENDING_LINK_KEY, profileId)
@@ -18,17 +20,6 @@ export function consumePendingEmailLinkProfileId(): string | null {
   return value
 }
 
-// Même principe que PENDING_LINK_KEY, mais pour une connexion lancée
-// depuis l'écran de sélection de profil (voir ProfileSelector.tsx) plutôt
-// que depuis les Réglages d'un profil déjà créé — pas de profileId
-// existant à retrouver ici puisqu'aucun profil local n'existe encore sur
-// cet appareil (cas d'un nouvel appareil, ou d'une personne qui n'a pas
-// encore créé de profil ici). Le nom saisi sert à créer le nouveau profil
-// local une fois la connexion établie (voir useEmailAuthLink.ts) — écrasé
-// par la progression récupérée si ce compte a déjà une sauvegarde, gardé
-// tel quel sinon.
-const PENDING_SIGNUP_KEY = 'pera-pera-pending-email-signup'
-
 export function setPendingEmailSignup(name: string): void {
   localStorage.setItem(PENDING_SIGNUP_KEY, name)
 }
@@ -39,12 +30,38 @@ export function consumePendingEmailSignup(): string | null {
   return value
 }
 
-export async function sendMagicLink(email: string): Promise<void> {
+// `needsConfirmation` vrai si Supabase exige de cliquer un lien de
+// confirmation reçu par email avant de pouvoir se connecter (réglage par
+// défaut d'un projet Supabase) — dans ce cas, aucune session n'est établie
+// tout de suite, la création du profil local attendra ce clic (voir
+// useEmailAuthLink.ts). Si `needsConfirmation` est faux, la session est
+// déjà active à cet instant, exactement comme après signInWithPassword.
+export async function signUpWithPassword(email: string, password: string): Promise<{ needsConfirmation: boolean }> {
   if (!supabase) throw new Error('Connexion par email indisponible.')
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: `${window.location.origin}/` },
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  if (error) {
+    throw new Error(/already registered|already exists/i.test(error.message) ? 'Un compte existe déjà avec cet email.' : error.message)
+  }
+  return { needsConfirmation: !data.session }
+}
+
+export async function signInWithPassword(email: string, password: string): Promise<void> {
+  if (!supabase) throw new Error('Connexion par email indisponible.')
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) throw new Error('Email ou mot de passe incorrect.')
+}
+
+export async function sendPasswordResetEmail(email: string): Promise<void> {
+  if (!supabase) throw new Error('Connexion par email indisponible.')
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
   })
+  if (error) throw new Error(error.message)
+}
+
+export async function updatePassword(newPassword: string): Promise<void> {
+  if (!supabase) throw new Error('Connexion par email indisponible.')
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
   if (error) throw new Error(error.message)
 }
 

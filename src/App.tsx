@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import MainLayout from './app/MainLayout'
 import ProfileSelector from './features/profile/ProfileSelector'
+import ResetPassword from './features/profile/ResetPassword'
 import { restoreActiveProfileFromStorage } from './features/profile/profileStore'
 import { useCloudSyncScheduler } from './features/profile/useCloudSyncScheduler'
 import { useEmailAuthLink } from './features/profile/useEmailAuthLink'
@@ -55,8 +56,9 @@ export default function App() {
   // mastery/reviewMarks/timeSpent/activity s'écrivent le plus.
   useCloudSyncScheduler()
   // Toujours monté, indépendamment du profil actif ou de la route — le
-  // retour du lien magique (voir emailAuth.ts) peut atterrir n'importe où
-  // selon ce qui était affiché avant le départ vers la boîte mail.
+  // retour du lien de confirmation d'inscription (voir emailAuth.ts) peut
+  // atterrir n'importe où selon ce qui était affiché avant le départ vers
+  // la boîte mail.
   useEmailAuthLink()
 
   if (!profileReady) return null
@@ -64,6 +66,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<ProfileSelector />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/session" element={<SessionFlow />} />
       <Route path="/session/test" element={<TestKnowledge />} />
       <Route path="/session/mastery-test" element={<MasteryTest />} />
