@@ -5,6 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Trash2, Check, AlertTriangle, CheckCheck, Volume2, Mail, Sun, Moon, Bell } from 'lucide-react'
 import PageTransition from '../../components/ui/PageTransition'
 import AmbientGlow from '../../components/ui/AmbientGlow'
+import GoogleIcon from '../../components/ui/GoogleIcon'
 import { useProfileStore } from '../profile/profileStore'
 import { resetMastery, bulkMarkMastered, getMasteredIds, resetReviewMarks } from '../../db/mastery'
 import { resetActivity } from '../../db/activity'
@@ -429,6 +430,16 @@ export default function Settings() {
                 </p>
               ) : (
                 <>
+                  <button
+                    type="button"
+                    className="auth-google-btn"
+                    onClick={handleSettingsGoogleSignIn}
+                    disabled={authBusy}
+                  >
+                    <GoogleIcon />
+                    Continuer avec Google
+                  </button>
+                  <p className="auth-divider">ou</p>
                   <div className="pin-row">
                     <input
                       type="email"
@@ -488,15 +499,6 @@ export default function Settings() {
                       </button>
                     )}
                   </p>
-                  <p className="auth-divider">ou</p>
-                  <button
-                    type="button"
-                    className="auth-google-btn"
-                    onClick={handleSettingsGoogleSignIn}
-                    disabled={authBusy}
-                  >
-                    Continuer avec Google
-                  </button>
                 </>
               )}
 

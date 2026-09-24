@@ -84,6 +84,18 @@
   gap: var(--space-sm);
 }
 
+/* Le formulaire email/mot de passe (voir ProfileSelector.tsx) a bien plus
+   de contenu que les autres cartes (deux champs, bouton Google, liens) —
+   la largeur de carte standard (140px, voir .profile-card) le rendait
+   comprimé/illisible sur téléphone (signalé par l'utilisatrice). Prend
+   toute la largeur disponible de la grille plutôt que de rester coincé à
+   140px — `width: 100%` le fait automatiquement passer seul sur sa ligne
+   dans la grille en `flex-wrap`. */
+.profile-card--email {
+  width: 100%;
+  max-width: 320px;
+}
+
 .profile-card__input {
   width: 100%;
   text-align: center;

@@ -23,6 +23,7 @@ import { isStandalonePwa } from '../../utils/pwa'
 import type { ProfileRecord } from '../../db/db'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import PageTransition from '../../components/ui/PageTransition'
+import GoogleIcon from '../../components/ui/GoogleIcon'
 import './ProfileSelector.css'
 
 const gridVariants = {
@@ -354,7 +355,10 @@ export default function ProfileSelector() {
             )}
 
             {emailOpen ? (
-              <motion.div className="profile-card profile-card--form profile-card--restore card" variants={cardVariants}>
+              <motion.div
+                className="profile-card profile-card--form profile-card--restore profile-card--email card"
+                variants={cardVariants}
+              >
                 {confirmSent ? (
                   <p className="profile-card__warning">
                     Compte créé — ouvre ta boîte mail sur cet appareil et clique sur le lien de confirmation pour te
@@ -367,6 +371,11 @@ export default function ProfileSelector() {
                   </p>
                 ) : (
                   <>
+                    <button type="button" className="auth-google-btn" onClick={handleGoogleSignIn} disabled={authBusy}>
+                      <GoogleIcon />
+                      Continuer avec Google
+                    </button>
+                    <p className="auth-divider">ou</p>
                     {authMode === 'signup' && (
                       <input
                         type="text"
@@ -390,7 +399,6 @@ export default function ProfileSelector() {
                       placeholder="ton@email.com"
                       autoComplete="email"
                       value={authEmail}
-                      autoFocus={authMode === 'login'}
                       onChange={(e) => setAuthEmail(e.target.value)}
                     />
                     <input
@@ -432,10 +440,6 @@ export default function ProfileSelector() {
                         </button>
                       )}
                     </p>
-                    <p className="auth-divider">ou</p>
-                    <button type="button" className="auth-google-btn" onClick={handleGoogleSignIn} disabled={authBusy}>
-                      Continuer avec Google
-                    </button>
                   </>
                 )}
                 {authError && <p className="profile-selector__error">{authError}</p>}
