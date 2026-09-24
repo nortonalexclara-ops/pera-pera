@@ -24,13 +24,16 @@ export async function linkExistingProfileToEmail(profileId: string): Promise<voi
 // (écran de sélection de profil — nouvel appareil, ou première visite) :
 // crée le profil local correspondant, rempli avec la sauvegarde existante
 // de ce compte si elle existe déjà (connexion depuis un autre appareil —
-// `fallbackName` n'est alors pas utilisé, le vrai nom sauvegardé prime),
-// sinon tout neuf sous `fallbackName`.
+// `fallbackName` n'est alors pas utilisé, le vrai nom sauvegardé prime).
+// Sinon, nom choisi dans l'ordre : celui fourni par Google (connexion
+// Google, pas de prénom demandé avant le redirect) > `fallbackName` (tapé
+// à la main pour une création de compte par mot de passe).
 export async function createProfileFromEmailAuth(fallbackName: string): Promise<ProfileRecord> {
   const session = await getCurrentSession()
   if (!session) throw new Error('Non connecté.')
   const remote = await fetchRemoteProfileMeta()
-  const record = await createProfile(remote?.displayName || fallbackName)
+  const googleName = session.user.user_metadata?.full_name || session.user.user_metadata?.name
+  const record = await createProfile(remote?.displayName || googleName || fallbackName)
   if (remote) await replaceProfileData(record.id, remote.payload)
   await enableEmailSync(record.id, session.user.email ?? '', session.user.id)
   await setHasCloudBackup(record.id, true)

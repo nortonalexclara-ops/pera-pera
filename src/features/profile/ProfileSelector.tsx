@@ -15,6 +15,7 @@ import {
   signInWithPassword,
   signUpWithPassword,
   sendPasswordResetEmail,
+  signInWithGoogle,
   setPendingEmailSignup,
   consumePendingEmailSignup,
 } from './emailAuth'
@@ -246,6 +247,24 @@ export default function ProfileSelector() {
     }
   }
 
+  // Redirige immédiatement vers Google — rien à faire après cet appel,
+  // ce qui suit ne s'exécute jamais si la redirection a lieu (voir
+  // emailAuth.ts). Nom de repli générique : le vrai prénom vient soit de
+  // Google (session.user.user_metadata), soit d'une sauvegarde déjà
+  // existante pour ce compte (voir completeEmailAuth.ts).
+  async function handleGoogleSignIn() {
+    setAuthError(null)
+    setAuthBusy(true)
+    try {
+      setPendingEmailSignup('Mon profil')
+      await signInWithGoogle()
+    } catch (err) {
+      consumePendingEmailSignup()
+      setAuthError(err instanceof Error ? err.message : 'Échec de la connexion Google.')
+      setAuthBusy(false)
+    }
+  }
+
   return (
     <PageTransition>
       <div className="profile-selector">
@@ -413,6 +432,10 @@ export default function ProfileSelector() {
                         </button>
                       )}
                     </p>
+                    <p className="auth-divider">ou</p>
+                    <button type="button" className="auth-google-btn" onClick={handleGoogleSignIn} disabled={authBusy}>
+                      Continuer avec Google
+                    </button>
                   </>
                 )}
                 {authError && <p className="profile-selector__error">{authError}</p>}

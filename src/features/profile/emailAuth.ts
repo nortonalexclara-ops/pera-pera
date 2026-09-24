@@ -65,6 +65,21 @@ export async function updatePassword(newPassword: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+// Contrairement à signIn/signUp par mot de passe, cet appel ne "résout"
+// jamais vraiment ici — il fait quitter la page tout de suite vers
+// l'écran de consentement Google, puis Supabase ramène sur `redirectTo`
+// une fois connecté (voir useEmailAuthLink.ts, qui prend le relais avec
+// le marqueur posé juste avant l'appel côté ProfileSelector.tsx/
+// Settings.tsx — même mécanisme que pour la confirmation par email).
+export async function signInWithGoogle(): Promise<void> {
+  if (!supabase) throw new Error('Connexion par Google indisponible.')
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: `${window.location.origin}/` },
+  })
+  if (error) throw new Error(error.message)
+}
+
 export async function getCurrentSession() {
   if (!supabase) return null
   const { data } = await supabase.auth.getSession()

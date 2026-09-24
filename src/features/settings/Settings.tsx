@@ -23,6 +23,7 @@ import {
   signInWithPassword,
   signUpWithPassword,
   sendPasswordResetEmail,
+  signInWithGoogle,
   setPendingEmailLinkProfileId,
   consumePendingEmailLinkProfileId,
   signOutEmail,
@@ -274,6 +275,22 @@ export default function Settings() {
     }
   }
 
+  // Lie ce profil-ci à un compte Google — redirige immédiatement, rien à
+  // faire après cet appel (voir emailAuth.ts, useEmailAuthLink.ts).
+  async function handleSettingsGoogleSignIn() {
+    if (!profileId) return
+    setAuthError(null)
+    setAuthBusy(true)
+    try {
+      setPendingEmailLinkProfileId(profileId)
+      await signInWithGoogle()
+    } catch (err) {
+      consumePendingEmailLinkProfileId()
+      setAuthError(err instanceof Error ? err.message : 'Échec de la connexion Google.')
+      setAuthBusy(false)
+    }
+  }
+
   async function handleSignOutEmail() {
     if (!profileId) return
     await signOutEmail()
@@ -471,6 +488,15 @@ export default function Settings() {
                       </button>
                     )}
                   </p>
+                  <p className="auth-divider">ou</p>
+                  <button
+                    type="button"
+                    className="auth-google-btn"
+                    onClick={handleSettingsGoogleSignIn}
+                    disabled={authBusy}
+                  >
+                    Continuer avec Google
+                  </button>
                 </>
               )}
 
