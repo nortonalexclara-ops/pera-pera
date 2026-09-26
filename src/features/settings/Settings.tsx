@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Trash2, Check, AlertTriangle, CheckCheck, Volume2, Mail, Sun, Moon, Bell } from 'lucide-react'
+import { Trash2, Check, AlertTriangle, CheckCheck, Volume2, Mail, Sun, Moon, Bell, Pencil } from 'lucide-react'
 import PageTransition from '../../components/ui/PageTransition'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import GoogleIcon from '../../components/ui/GoogleIcon'
@@ -13,7 +13,7 @@ import { resetNotes } from '../../db/notes'
 import { resetFavorites } from '../../db/favorites'
 import { resetTimeSpent } from '../../db/timeSpent'
 import { resetSavedWords } from '../../db/savedWords'
-import { deleteProfile } from '../../db/profiles'
+import { deleteProfile, renameProfile } from '../../db/profiles'
 import { getKanjiGoal, setKanjiGoal, DEFAULT_KANJI_GOAL } from '../../db/settings'
 import { getCloudSyncState, disableCloudSync } from '../../db/cloudSyncState'
 import { useThemeStore } from '../theme/themeStore'
@@ -115,7 +115,16 @@ export default function Settings() {
   const navigate = useNavigate()
   const profileId = useProfileStore((s) => s.activeProfileId)
   const profileName = useProfileStore((s) => s.activeProfileName)
+  const profileColorIndex = useProfileStore((s) => s.activeProfileColorIndex)
+  const setActiveProfile = useProfileStore((s) => s.setActiveProfile)
   const clearActiveProfile = useProfileStore((s) => s.clearActiveProfile)
+  // Renommer (demande explicite de l'utilisatrice : une connexion par
+  // email/Google peut avoir donné un nom de repli pas terrible, ex.
+  // l'adresse email complète — voir completeEmailAuth.ts) — purement
+  // local à cet appareil, voir renameProfile (db/profiles.ts).
+  const [renaming, setRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
+  const [renameError, setRenameError] = useState<string | null>(null)
   const theme = useThemeStore((s) => s.theme)
   const setTheme = useThemeStore((s) => s.setTheme)
   const [selected, setSelected] = useState<Set<ResetOption>>(new Set())
@@ -343,13 +352,60 @@ export default function Settings() {
     navigate('/')
   }
 
+  async function handleRename() {
+    setRenameError(null)
+    if (!profileId || !renameValue.trim()) return
+    try {
+      await renameProfile(profileId, renameValue.trim())
+      setActiveProfile(profileId, renameValue.trim(), profileColorIndex ?? 0)
+      setRenaming(false)
+    } catch (err) {
+      setRenameError(err instanceof Error ? err.message : 'Échec du renommage.')
+    }
+  }
+
   return (
     <PageTransition>
       <div className="settings">
         <div className="settings__header">
           <AmbientGlow top={-90} left={-60} size={240} />
           <h1 className="settings__title">Réglages</h1>
-          <p className="settings__subtitle">Profil actif : {profileName ?? '—'}</p>
+          {renaming ? (
+            <div className="settings__rename-row">
+              <input
+                type="text"
+                className="pin-input"
+                value={renameValue}
+                autoFocus
+                maxLength={20}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+              />
+              <button type="button" className="btn-link" onClick={handleRename}>
+                <Check size={15} strokeWidth={2} />
+              </button>
+              <button type="button" className="btn-link" onClick={() => setRenaming(false)}>
+                Annuler
+              </button>
+            </div>
+          ) : (
+            <p className="settings__subtitle">
+              Profil actif : {profileName ?? '—'}
+              <button
+                type="button"
+                className="settings__rename-trigger"
+                onClick={() => {
+                  setRenameValue(profileName ?? '')
+                  setRenameError(null)
+                  setRenaming(true)
+                }}
+                title="Renommer ce profil"
+              >
+                <Pencil size={13} strokeWidth={1.75} />
+              </button>
+            </p>
+          )}
+          {renameError && <p className="settings-error">{renameError}</p>}
         </div>
 
         <section className="settings-card">

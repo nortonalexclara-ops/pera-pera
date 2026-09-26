@@ -46,8 +46,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         await webpush.sendNotification(
           subscription as never,
+          // Pas "Pera Pera" comme titre : iOS ajoute déjà lui-même "from
+          // Pera Pera" sous le titre pour les notifications web (marqueur
+          // système, impossible à retirer) — répéter le nom ici donnait
+          // "Pera Pera / from Pera Pera", redondant (signalé par
+          // l'utilisatrice).
           JSON.stringify({
-            title: 'Pera Pera',
+            title: 'Rappel quotidien',
             body: "C'est l'heure de réviser un peu de japonais !",
           }),
         )

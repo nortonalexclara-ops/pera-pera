@@ -930,6 +930,16 @@ rt {
     cursor: pointer;
   }
 
+  /* Le bouton crayon ci-dessus reste FIXE en bas à droite de l'écran,
+     indépendamment du défilement — sans marge réservée, le dernier
+     exemple d'une carte (et son bouton marque-page "Phrases") pouvait
+     scroller pile en dessous, rendant son appui muet (signalé par
+     l'utilisatrice : "le bouton enregistrer ne fonctionne pas"). 52px de
+     bouton + 24px de marge, un peu de plus pour ne pas juste effleurer. */
+  .flip-card__face--back {
+    padding-bottom: 96px;
+  }
+
   .session__writing-backdrop.is-open {
     display: block;
     position: fixed;
@@ -1067,6 +1077,15 @@ rt {
   .flip-card__face--front,
   .flip-card__face--back {
     padding: var(--space-md);
+  }
+
+  /* Longhand APRÈS le raccourci `padding` ci-dessus (même propriété,
+     source plus tard = priorité) — sinon il écrasait la marge de secours
+     posée plus haut contre le bouton crayon fixe (voir
+     .session__writing-fab), le bouton "Phrases" du dernier exemple
+     redevenait injoignable sous 600px de large. */
+  .flip-card__face--back {
+    padding-bottom: 96px;
   }
 
   /* "Agrandit le cadran en déplaçant l'ordre des traits sur la gauche en

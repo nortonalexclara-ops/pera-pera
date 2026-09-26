@@ -31,7 +31,10 @@ self.addEventListener('push', (event) => {
     // Filet de sécurité si jamais le contenu n'est pas du JSON valide —
     // une notification générique reste préférable à aucune notification.
   }
-  const title = payload.title || 'Pera Pera'
+  // Pas "Pera Pera" par défaut : iOS ajoute déjà lui-même "from Pera Pera"
+  // sous le titre pour les notifications web (voir
+  // api/send-daily-reminder.ts pour le détail).
+  const title = payload.title || 'Rappel quotidien'
   event.waitUntil(
     self.registration.showNotification(title, {
       body: payload.body || "C'est l'heure de réviser un peu de japonais !",

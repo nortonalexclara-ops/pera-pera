@@ -41,6 +41,19 @@ export async function createProfile(name: string): Promise<ProfileRecord> {
   return record
 }
 
+// Renomme un profil existant — demande explicite de l'utilisatrice
+// (connexion par email/Google : le prénom vient parfois de repli, ex.
+// l'email complet, et n'a pas de raison de rester figé pour autant, voir
+// Settings.tsx). Purement local à cet appareil : le nom ne fait pas
+// partie de la sauvegarde qui voyage entre appareils (voir
+// ProfileBackupPayload, db/profileSync.ts), donc renommer ici ne change
+// rien sur un autre appareil déjà connecté au même compte.
+export async function renameProfile(profileId: string, name: string): Promise<void> {
+  const trimmed = name.trim()
+  if (!trimmed) throw new Error('Le nom du profil ne peut pas être vide.')
+  await db.profiles.update(profileId, { name: trimmed })
+}
+
 // Supprime le profil ET toutes ses données locales (maîtrise, notes,
 // activité, favoris) — la sauvegarde en ligne éventuelle est supprimée
 // séparément côté serveur avant l'appel à cette fonction (voir

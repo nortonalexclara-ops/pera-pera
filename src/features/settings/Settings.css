@@ -19,6 +19,34 @@
   margin-top: var(--space-sm);
   font-size: 14px;
   color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Crayon "renommer ce profil" (voir Settings.tsx) — discret à côté du nom,
+   pas un vrai bouton qui rivaliserait visuellement. */
+.settings__rename-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 2px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.settings__rename-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  max-width: 320px;
+}
+
+.settings__rename-row .pin-input {
+  flex: 1;
 }
 
 .settings-card {
