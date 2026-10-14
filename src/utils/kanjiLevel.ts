@@ -65,6 +65,25 @@ export function wordHasUnmasteredKanji(word: string, masteredKanjiIds: Set<strin
   return false
 }
 
+// Fiche complète d'un caractère, s'il existe comme kanji dans le programme
+// — sert à ouvrir la vraie fiche quand on touche une clé qui est aussi un
+// kanji à part entière (ex. 口 "bouche", 大 "grand"), voir
+// useFicheOverlay.tsx.
+export function findKanjiByCharacter(char: string): Kanji | undefined {
+  return kanjiByChar.get(char)
+}
+
+// Kanjis du programme qui utilisent ce caractère comme radical ou comme
+// composant — pour la fiche d'une clé qui n'est PAS un kanji du programme
+// (ex. 艹 "herbe", 广 "abri" : de simples éléments de construction, sans
+// fiche à eux), afin qu'elle montre au moins où on la retrouve plutôt
+// qu'un simple caractère et son sens.
+export function kanjisUsingComponent(char: string): Kanji[] {
+  return mockKanjiList.filter(
+    (k) => k.radical.character === char || k.components.some((c) => c.character === char),
+  )
+}
+
 // Les kanjis (dans l'ordre, sans doublon) qui composent un mot de
 // vocabulaire, avec leur fiche complète — sert à afficher le tracé de
 // chacun (voir VocabCardLoop, demande explicite de l'utilisatrice

@@ -80,6 +80,18 @@ export async function signInWithGoogle(): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+// Version "sans redirection" de signInWithGoogle : le bouton Google de la
+// page (voir GoogleSignInButton.tsx) a déjà fait choisir le compte et
+// renvoie un jeton, qu'on remet à Supabase pour ouvrir la session. Comme
+// pour les autres connexions, le reste (création/liaison du profil) est
+// pris en charge par useEmailAuthLink.ts au SIGNED_IN, d'après les
+// marqueurs posés AVANT cet appel.
+export async function signInWithGoogleIdToken(idToken: string, nonce: string): Promise<void> {
+  if (!supabase) throw new Error('Connexion par Google indisponible.')
+  const { error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken, nonce })
+  if (error) throw new Error(error.message)
+}
+
 export async function getCurrentSession() {
   if (!supabase) return null
   const { data } = await supabase.auth.getSession()

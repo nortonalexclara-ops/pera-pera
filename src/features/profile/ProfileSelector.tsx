@@ -15,7 +15,6 @@ import {
   signInWithPassword,
   signUpWithPassword,
   sendPasswordResetEmail,
-  signInWithGoogle,
   setPendingEmailSignup,
   consumePendingEmailSignup,
 } from './emailAuth'
@@ -23,7 +22,7 @@ import { isStandalonePwa } from '../../utils/pwa'
 import type { ProfileRecord } from '../../db/db'
 import AmbientGlow from '../../components/ui/AmbientGlow'
 import PageTransition from '../../components/ui/PageTransition'
-import GoogleIcon from '../../components/ui/GoogleIcon'
+import GoogleSignInButton from './GoogleSignInButton'
 import './ProfileSelector.css'
 
 const gridVariants = {
@@ -248,22 +247,21 @@ export default function ProfileSelector() {
     }
   }
 
-  // Redirige immédiatement vers Google — rien à faire après cet appel,
-  // ce qui suit ne s'exécute jamais si la redirection a lieu (voir
-  // emailAuth.ts). Nom de repli générique : le vrai prénom vient soit de
-  // Google (session.user.user_metadata), soit d'une sauvegarde déjà
-  // existante pour ce compte (voir completeEmailAuth.ts).
-  async function handleGoogleSignIn() {
+  // Connexion Google (voir GoogleSignInButton.tsx) — le profil est créé par
+  // useEmailAuthLink.ts une fois la session ouverte. Nom de repli
+  // générique : le vrai prénom vient soit de Google
+  // (session.user.user_metadata), soit d'une sauvegarde déjà existante pour
+  // ce compte (voir completeEmailAuth.ts).
+  function handleGoogleStart() {
     setAuthError(null)
     setAuthBusy(true)
-    try {
-      setPendingEmailSignup('Mon profil')
-      await signInWithGoogle()
-    } catch (err) {
-      consumePendingEmailSignup()
-      setAuthError(err instanceof Error ? err.message : 'Échec de la connexion Google.')
-      setAuthBusy(false)
-    }
+    setPendingEmailSignup('Mon profil')
+  }
+
+  function handleGoogleError(message: string) {
+    consumePendingEmailSignup()
+    setAuthError(message)
+    setAuthBusy(false)
   }
 
   return (
@@ -371,10 +369,7 @@ export default function ProfileSelector() {
                   </p>
                 ) : (
                   <>
-                    <button type="button" className="auth-google-btn" onClick={handleGoogleSignIn} disabled={authBusy}>
-                      <GoogleIcon />
-                      Continuer avec Google
-                    </button>
+                    <GoogleSignInButton onStart={handleGoogleStart} onError={handleGoogleError} disabled={authBusy} />
                     <p className="auth-divider">ou</p>
                     {authMode === 'signup' && (
                       <input

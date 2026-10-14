@@ -4,6 +4,7 @@ import { Bookmark } from 'lucide-react'
 import FuriganaText from '../../components/ui/FuriganaText'
 import SpeakButton from '../../components/ui/SpeakButton'
 import CardLoopShell from './CardLoopShell'
+import { useFicheOverlay } from './useFicheOverlay'
 import type { SeenItem } from '../test/buildTest'
 import { mockKanjiList, type JlptLevel, type Kanji } from './mockKanji'
 import { useProfileStore } from '../profile/profileStore'
@@ -40,6 +41,9 @@ export default function KanjiCardLoop({
   onItemSeen,
 }: KanjiCardLoopProps) {
   const profileId = useProfileStore((s) => s.activeProfileId)
+  // Fiche d'une clé ouverte par-dessus la séance en touchant une puce
+  // "Clés" du verso (voir useFicheOverlay.tsx).
+  const { overlay, openCle } = useFicheOverlay()
   const masteredIds = useLiveQuery(
     () => (profileId ? getMasteredIds(profileId, 'kanji') : Promise.resolve(EMPTY_SET)),
     [profileId],
@@ -91,6 +95,7 @@ export default function KanjiCardLoop({
     (contentMode !== 'new' || masteredIds !== EMPTY_SET) && (contentMode !== 'review' || reviewIds !== EMPTY_SET)
 
   return (
+    <>
     <CardLoopShell
       items={kanjiList}
       itemsReady={itemsReady}
@@ -179,8 +184,21 @@ export default function KanjiCardLoop({
                   const isKeySaved = savedWordTexts.has(c.character)
                   return (
                     <li key={c.character} className="component-chip">
-                      <span className="component-chip__char">{c.character}</span>
-                      <span className="component-chip__meaning">{c.meaning}</span>
+                      {/* Toucher la clé ouvre sa fiche par-dessus la séance
+                          (voir useFicheOverlay.tsx), flèche retour pour
+                          revenir à la carte en cours. */}
+                      <button
+                        type="button"
+                        className="component-chip__open"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openCle(c)
+                        }}
+                        title={`Ouvrir la fiche de ${c.character}`}
+                      >
+                        <span className="component-chip__char">{c.character}</span>
+                        <span className="component-chip__meaning">{c.meaning}</span>
+                      </button>
                       {/* "Je veux revoir cette clé après" (demande
                           utilisatrice) — même mécanisme que les mots
                           enregistrés, consultable depuis Notes. */}
@@ -292,5 +310,7 @@ export default function KanjiCardLoop({
         </>
       )}
     />
+    {overlay}
+    </>
   )
 }

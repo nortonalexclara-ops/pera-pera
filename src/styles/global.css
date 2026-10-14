@@ -159,6 +159,20 @@ a:focus-visible {
   cursor: not-allowed;
 }
 
+/* Bouton Google intégré à la page (voir GoogleSignInButton.tsx) — Google
+   dessine lui-même son contenu dans un cadre de 40px de haut. */
+.auth-google-gis {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 40px;
+}
+
+.auth-google-gis.is-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .btn-primary:disabled {
   opacity: 0.4;
   cursor: not-allowed;

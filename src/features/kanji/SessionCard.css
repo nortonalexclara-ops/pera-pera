@@ -504,6 +504,28 @@
   color: var(--color-text-secondary);
 }
 
+/* Partie cliquable d'une puce de kanji (caractère + sens) qui ouvre la
+   fiche du kanji — même mise en page qu'avant (baseline entre le grand
+   caractère et son sens), juste enveloppée dans un bouton sans habillage
+   propre pour que seule la puce reste visible. */
+.component-chip__open {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.component-chip__open:hover .component-chip__char,
+.component-chip__open:focus-visible .component-chip__char {
+  color: var(--color-accent-dark);
+}
+
 /* "Enregistrer cette clé" (demande utilisatrice) — même mécanisme que
    `.example-save-btn` sur Mots/Phrases, en plus compact pour tenir dans
    la puce sans l'élargir excessivement. */

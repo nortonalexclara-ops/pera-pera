@@ -1,0 +1,63 @@
+/* Panneau plein écran par-dessus la séance (voir KanjiFicheOverlay.tsx) —
+   `position: fixed` + z-index au-dessus du bouton crayon (15) et de tout
+   ce que la séance empile déjà. Fond opaque : il recouvre la carte en
+   cours, il ne doit rien laisser transparaître. */
+.kanji-fiche {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--color-bg);
+  padding: 0 var(--space-md) max(var(--space-lg), env(safe-area-inset-bottom));
+  /* `.session` (parent logique) désactive la sélection partout — ici c'est
+     du contenu à lire, pas une zone de tracé (même exception que le
+     verso de la carte, voir `.flip-card__face--back`). */
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.kanji-fiche__inner {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* Reste visible en défilant : une fiche longue (beaucoup d'exemples)
+   ne doit jamais éloigner la flèche retour. */
+.kanji-fiche__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: max(var(--space-sm), env(safe-area-inset-top)) 0 var(--space-sm);
+  background: var(--color-bg);
+}
+
+.kanji-fiche__title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-md);
+  margin-top: var(--space-sm);
+}
+
+.kanji-fiche__char {
+  font-size: 96px;
+  line-height: 1;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.kanji-fiche__level {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  padding: 2px 10px;
+}
+
+.kanji-fiche__meanings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: var(--space-md) 0 var(--space-lg);
+}

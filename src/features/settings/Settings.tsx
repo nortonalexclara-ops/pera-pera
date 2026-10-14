@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Trash2, Check, AlertTriangle, CheckCheck, Volume2, Mail, Sun, Moon, Bell, Pencil } from 'lucide-react'
 import PageTransition from '../../components/ui/PageTransition'
 import AmbientGlow from '../../components/ui/AmbientGlow'
-import GoogleIcon from '../../components/ui/GoogleIcon'
+import GoogleSignInButton from '../profile/GoogleSignInButton'
 import { useProfileStore } from '../profile/profileStore'
 import { resetMastery, bulkMarkMastered, getMasteredIds, resetReviewMarks } from '../../db/mastery'
 import { resetActivity } from '../../db/activity'
@@ -24,7 +24,6 @@ import {
   signInWithPassword,
   signUpWithPassword,
   sendPasswordResetEmail,
-  signInWithGoogle,
   setPendingEmailLinkProfileId,
   consumePendingEmailLinkProfileId,
   signOutEmail,
@@ -285,20 +284,20 @@ export default function Settings() {
     }
   }
 
-  // Lie ce profil-ci à un compte Google — redirige immédiatement, rien à
-  // faire après cet appel (voir emailAuth.ts, useEmailAuthLink.ts).
-  async function handleSettingsGoogleSignIn() {
+  // Lie ce profil-ci à un compte Google (voir GoogleSignInButton.tsx) — la
+  // liaison elle-même est faite par useEmailAuthLink.ts une fois la session
+  // ouverte.
+  function handleSettingsGoogleStart() {
     if (!profileId) return
     setAuthError(null)
     setAuthBusy(true)
-    try {
-      setPendingEmailLinkProfileId(profileId)
-      await signInWithGoogle()
-    } catch (err) {
-      consumePendingEmailLinkProfileId()
-      setAuthError(err instanceof Error ? err.message : 'Échec de la connexion Google.')
-      setAuthBusy(false)
-    }
+    setPendingEmailLinkProfileId(profileId)
+  }
+
+  function handleSettingsGoogleError(message: string) {
+    consumePendingEmailLinkProfileId()
+    setAuthError(message)
+    setAuthBusy(false)
   }
 
   async function handleSignOutEmail() {
@@ -486,15 +485,11 @@ export default function Settings() {
                 </p>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    className="auth-google-btn"
-                    onClick={handleSettingsGoogleSignIn}
+                  <GoogleSignInButton
+                    onStart={handleSettingsGoogleStart}
+                    onError={handleSettingsGoogleError}
                     disabled={authBusy}
-                  >
-                    <GoogleIcon />
-                    Continuer avec Google
-                  </button>
+                  />
                   <p className="auth-divider">ou</p>
                   <div className="pin-row">
                     <input

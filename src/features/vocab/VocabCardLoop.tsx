@@ -5,6 +5,7 @@ import FuriganaText from '../../components/ui/FuriganaText'
 import SpeakButton from '../../components/ui/SpeakButton'
 import CardLoopShell from '../kanji/CardLoopShell'
 import type { JlptLevel } from '../kanji/mockKanji'
+import { useFicheOverlay } from '../kanji/useFicheOverlay'
 import type { SeenItem } from '../test/buildTest'
 import { mockVocabList, type VocabWord } from './mockVocab'
 import { useProfileStore } from '../profile/profileStore'
@@ -51,6 +52,9 @@ export default function VocabCardLoop({
   onItemSeen,
 }: VocabCardLoopProps) {
   const profileId = useProfileStore((s) => s.activeProfileId)
+  // Fiche (kanji ou clé) ouverte par-dessus la séance en touchant une
+  // puce "Kanjis"/"Clés" du verso (voir useFicheOverlay.tsx).
+  const { overlay, openKanji, openCle } = useFicheOverlay()
   const masteredIds = useLiveQuery(
     () => (profileId ? getMasteredIds(profileId, 'vocab') : Promise.resolve(EMPTY_SET)),
     [profileId],
@@ -114,6 +118,7 @@ export default function VocabCardLoop({
     (contentMode !== 'new' || masteredIds !== EMPTY_SET) && (contentMode !== 'review' || reviewIds !== EMPTY_SET)
 
   return (
+    <>
     <CardLoopShell
       items={vocabList}
       itemsReady={itemsReady}
@@ -215,8 +220,21 @@ export default function VocabCardLoop({
                   const isKanjiSaved = savedWordTexts.has(k.character)
                   return (
                     <li key={k.id} className="component-chip">
-                      <span className="component-chip__char">{k.character}</span>
-                      <span className="component-chip__meaning">{k.meanings[0]}</span>
+                      {/* Toucher le kanji ouvre sa fiche par-dessus la séance
+                          (voir KanjiFicheOverlay.tsx), flèche retour pour
+                          revenir à la carte en cours. */}
+                      <button
+                        type="button"
+                        className="component-chip__open"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openKanji(k)
+                        }}
+                        title={`Ouvrir la fiche de ${k.character}`}
+                      >
+                        <span className="component-chip__char">{k.character}</span>
+                        <span className="component-chip__meaning">{k.meanings[0]}</span>
+                      </button>
                       <button
                         type="button"
                         className={`component-chip__save${isKanjiSaved ? ' is-saved' : ''}`}
@@ -252,8 +270,18 @@ export default function VocabCardLoop({
                       const isKeySaved = savedWordTexts.has(c.character)
                       return (
                         <li key={c.character} className="component-chip">
-                          <span className="component-chip__char">{c.character}</span>
-                          <span className="component-chip__meaning">{c.meaning}</span>
+                          <button
+                            type="button"
+                            className="component-chip__open"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openCle(c)
+                            }}
+                            title={`Ouvrir la fiche de ${c.character}`}
+                          >
+                            <span className="component-chip__char">{c.character}</span>
+                            <span className="component-chip__meaning">{c.meaning}</span>
+                          </button>
                           <button
                             type="button"
                             className={`component-chip__save${isKeySaved ? ' is-saved' : ''}`}
@@ -369,5 +397,7 @@ export default function VocabCardLoop({
         )
       }}
     />
+    {overlay}
+    </>
   )
 }
