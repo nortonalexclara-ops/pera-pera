@@ -132,7 +132,10 @@
   align-items: flex-start;
   justify-content: center;
   padding-top: var(--space-2xl);
-  width: 56px;
+  /* Sans ça, le remplissage latéral par défaut des boutons (6px de
+     chaque côté) rétrécit la flèche dans une bande étroite. */
+  padding-inline: 0;
+  width: var(--nav-w);
   border: none;
   background: transparent;
   color: var(--color-text-muted);
@@ -150,9 +153,15 @@
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
 }
 
-.session__nav-btn:hover:not(:disabled) {
-  background: var(--color-bg);
-  color: var(--color-text-primary);
+/* Survol réservé aux appareils qui en ont un : sur tactile, `:hover` reste
+   "collé" après un appui (iOS) et laissait la bande peinte en fond opaque
+   par-dessus le bord de la carte (signalé par l'utilisatrice, capture
+   d'écran à l'appui). */
+@media (hover: hover) {
+  .session__nav-btn:hover:not(:disabled) {
+    background: var(--color-bg);
+    color: var(--color-text-primary);
+  }
 }
 
 .session__nav-btn:disabled {
@@ -204,6 +213,14 @@
 
 /* Carte retournable */
 .flip-card {
+  /* Largeur des bandes de navigation gauche/droite (voir .session__nav-btn)
+     — aussi la largeur que le verso doit laisser libre de chaque côté, sinon
+     les bandes (z-index 5) passent PAR-DESSUS le contenu du bord et
+     avalent les appuis : chip "Kanjis"/"Clés" tout à gauche qui ramenait
+     à la carte précédente au lieu d'ouvrir sa fiche, marque-page des
+     phrases tout à droite qui n'enregistrait rien (bande "suivante",
+     grisée mais quand même cible de l'appui). */
+  --nav-w: 56px;
   position: relative;
   flex: 1;
   min-height: 0;
@@ -254,6 +271,8 @@
 .flip-card__face--back {
   transform: rotateY(180deg);
   padding: var(--space-lg);
+  /* Voir --nav-w sur .flip-card : le contenu commence APRÈS les bandes. */
+  padding-inline: calc(var(--nav-w) + 4px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -1079,8 +1098,13 @@ rt {
   /* Bandes de navigation resserrées sur petit écran (moins de largeur
      disponible de part et d'autre du contenu de la carte), mais toujours
      pleine hauteur et toujours plus larges qu'un simple bouton rond. */
-  .session__nav-btn {
-    width: 40px;
+  .flip-card {
+    --nav-w: 28px;
+  }
+
+  .session__nav-btn svg {
+    width: 22px;
+    height: 22px;
   }
 
   .session__level-counter {
@@ -1108,6 +1132,9 @@ rt {
      redevenait injoignable sous 600px de large. */
   .flip-card__face--back {
     padding-bottom: 96px;
+    /* Idem : le raccourci `padding` plus haut écrase `padding-inline` du
+       style de base — à redéclarer après lui (voir --nav-w). */
+    padding-inline: calc(var(--nav-w) + 4px);
   }
 
   /* "Agrandit le cadran en déplaçant l'ordre des traits sur la gauche en
